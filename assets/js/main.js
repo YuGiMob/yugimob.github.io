@@ -126,12 +126,12 @@ function renderQuestLog(activity) {
   const section = document.getElementById('quest-log');
   section.appendChild(el('h2')).textContent = 'Quest Log';
 
-  const window = el('span', 'window');
-  window.textContent = `Quest log — ${activity.window}`;
+  const windowSpan = el('span', 'window');
+  windowSpan.textContent = `Quest log — ${activity.window}`;
   const pushes = el('span', 'pushes');
   pushes.textContent = `${activity.pushes} pushes`;
   const line = el('p');
-  line.append(window, ' · ', pushes);
+  line.append(windowSpan, ' · ', pushes);
   section.appendChild(line);
 
   const ul = el('ul');

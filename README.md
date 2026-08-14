@@ -3,7 +3,7 @@
 This is the source for [yugimob.github.io](https://yugimob.github.io), a static
 single-page profile site for the GitHub account YuGiMob: plain HTML, CSS, and
 JavaScript with a Dungeons & Dragons theme. It has a hero header, a short
-background, twelve artifact cards (one per public repo), a quest log of recent
+background, artifact cards (one per curated public repo), a quest log of recent
 activity, ability-score stat bars, and a campfire footer with a GitHub link.
 
 Everything renders from one data file, `data/site-data.json`, with no build
@@ -13,7 +13,7 @@ step and no framework. GitHub Pages serves these files directly.
 
 - **Hero** (`#hero`): avatar, display name, class title, tagline
 - **Background** (`#background`): prose paragraphs
-- **Artifacts** (`#artifacts`): cards for all 12 public repos
+- **Artifacts** (`#artifacts`): cards for the curated public repos
 - **Quest log** (`#quest-log`): recent activity snapshot
 - **Ability scores** (`#ability-scores`): stat bars
 - **Campfire** (`#campfire`): footer with GitHub link
@@ -38,7 +38,7 @@ All content lives in `data/site-data.json`. Edit it by hand, then commit.
 
 ### projects
 
-An array of 12 entries, one per public repo, each with `name`, `description`,
+An array of entries, one per curated public repo, each with `name`, `description`,
 `language`, `stars`, `forks`, `url`, `npm`, and `license` (`npm` and `license`
 are `null` when not applicable). Cards sort by `stars` descending, and the
 rarity tier comes from the star count:

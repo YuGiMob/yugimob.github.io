@@ -36,6 +36,7 @@ const NPM_PACKAGES = [
 
 const ACCOUNT_CREATED_YEAR = 2022;
 const MAX_HIGHLIGHTS = 5;
+const FETCH_TIMEOUT_MS = 15000;
 
 // ---------------------------------------------------------------------------
 // Load the existing (curated) data file, if present.
@@ -82,7 +83,7 @@ async function getJson(url, headers, warnPrefix) {
   for (let attempt = 1; attempt <= 2; attempt++) {
     let response;
     try {
-      response = await fetch(url, { headers });
+      response = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     } catch (err) {
       if (attempt < 2) {
         await sleep(300);
@@ -155,25 +156,27 @@ const repoByName = new Map(repos.map((r) => [r.name, r]));
 for (const project of data.projects) {
   const repo = repoByName.get(project.name);
   if (!repo) continue;
+  const prev = existing.projects.find((p) => p.name === project.name);
   if (typeof repo.stargazers_count === 'number') {
-    report(`projects.${project.name}.stars`, existing.projects.find((p) => p.name === project.name)?.stars, repo.stargazers_count);
+    report(`projects.${project.name}.stars`, prev?.stars, repo.stargazers_count);
     project.stars = repo.stargazers_count;
   }
   if (typeof repo.forks_count === 'number') {
-    report(`projects.${project.name}.forks`, existing.projects.find((p) => p.name === project.name)?.forks, repo.forks_count);
+    report(`projects.${project.name}.forks`, prev?.forks, repo.forks_count);
     project.forks = repo.forks_count;
   }
   if (repo.language) {
-    report(`projects.${project.name}.language`, existing.projects.find((p) => p.name === project.name)?.language, repo.language);
+    report(`projects.${project.name}.language`, prev?.language, repo.language);
     project.language = repo.language;
   }
   if (repo.description && (project.description === null || project.description === undefined || project.description === '')) {
-    report(`projects.${project.name}.description`, existing.projects.find((p) => p.name === project.name)?.description, repo.description);
+    report(`projects.${project.name}.description`, prev?.description, repo.description);
     project.description = repo.description;
   }
 }
 
 // activity — pushes (PushEvent count), highlights from events, window, fetchedAt.
+const today = new Date().toISOString().slice(0, 10);
 if (Array.isArray(events)) {
   const pushes = events.filter((e) => e.type === 'PushEvent').length;
   data.activity.pushes = pushes;
@@ -189,10 +192,8 @@ if (Array.isArray(events)) {
       highlights.push(`${e.payload.action} issue #${e.payload.issue.number} on ${repoName}`);
     }
   }
-  if (highlights.length > 0) {
-    data.activity.highlights = highlights;
-    report('activity.highlights', existing.activity.highlights, highlights);
-  }
+  data.activity.highlights = highlights;
+  report('activity.highlights', existing.activity.highlights, highlights);
 
   const dates = events
     .map((e) => (e.created_at ? String(e.created_at).slice(0, 10) : null))
@@ -203,10 +204,12 @@ if (Array.isArray(events)) {
     const max = dates[dates.length - 1];
     data.activity.window =
       min.slice(0, 7) === max.slice(0, 7) ? `${min}..${max.slice(8)}` : `${min}..${max}`;
-    report('activity.window', existing.activity.window, data.activity.window);
+  } else {
+    data.activity.window = today;
   }
+  report('activity.window', existing.activity.window, data.activity.window);
 }
-data.activity.fetchedAt = new Date().toISOString().slice(0, 10);
+data.activity.fetchedAt = today;
 report('activity.fetchedAt', existing.activity.fetchedAt, data.activity.fetchedAt);
 
 // ---------------------------------------------------------------------------
@@ -226,9 +229,10 @@ for (const pkg of NPM_PACKAGES) {
 for (const { pkg, json } of npmResults) {
   const project = data.projects.find((p) => p.npm === pkg);
   if (!project || !json || typeof json.downloads !== 'number') continue;
+  const prev = existing.projects.find((p) => p.name === project.name);
   report(
     `projects.${project.name}.npmWeeklyDownloads`,
-    existing.projects.find((p) => p.name === project.name)?.npmWeeklyDownloads,
+    prev?.npmWeeklyDownloads,
     json.downloads,
   );
   project.npmWeeklyDownloads = json.downloads;

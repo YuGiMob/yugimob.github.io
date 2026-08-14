@@ -11,7 +11,7 @@
   },
   "about": {
     "paragraphs": [
-      "Author of pi-coding-agent extensions (8 published TypeScript packages on npm), a dependency-free Python file server, and a personal pi configuration repo. All repos are MIT-licensed where licensed, and the account has been active since 2022."
+      "Author of pi-coding-agent extensions (9 published TypeScript packages on npm), a dependency-free Python file server, and a personal pi configuration repo. All repos are MIT-licensed where licensed, and the account has been active since 2022."
     ]
   },
   "projects": [
@@ -154,12 +154,9 @@
     "accountYears": 4
   },
   "activity": {
-    "window": "2026-08-12..14",
+    "window": "2026-08-13..14",
     "pushes": 29,
-    "highlights": [
-      "starred ggml-org/llama.cpp",
-      "closed issue #22 on pi-hashline-edit-pro"
-    ],
+    "highlights": [],
     "fetchedAt": "2026-08-14"
   },
   "sections": {
