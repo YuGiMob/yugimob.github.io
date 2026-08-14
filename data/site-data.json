@@ -4,7 +4,10 @@
     "classTitle": "Artificer of Agent Tools",
     "tagline": "Crafts pi-coding-agent extensions - hash-anchored edits, Tor-wrapped requests, cloud models.",
     "avatarUrl": "https://avatars.githubusercontent.com/u/110136195?v=4",
-    "links": { "github": "https://github.com/YuGiMob", "email": null }
+    "links": {
+      "github": "https://github.com/YuGiMob",
+      "email": null
+    }
   },
   "about": {
     "paragraphs": [
@@ -20,7 +23,8 @@
       "forks": 11,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
-      "license": "MIT"
+      "license": "MIT",
+      "npmWeeklyDownloads": 6121
     },
     {
       "name": "pi-tor-proxy",
@@ -30,7 +34,8 @@
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-tor-proxy",
       "npm": "pi-tor-proxy",
-      "license": "MIT"
+      "license": "MIT",
+      "npmWeeklyDownloads": 16
     },
     {
       "name": "pi-cloud-ollama",
@@ -40,7 +45,8 @@
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-cloud-ollama",
       "npm": "pi-cloud-ollama",
-      "license": "MIT"
+      "license": "MIT",
+      "npmWeeklyDownloads": 150
     },
     {
       "name": "pi-context-inspector",
@@ -50,7 +56,8 @@
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-context-inspector",
       "npm": "pi-context-inspector",
-      "license": "MIT"
+      "license": "MIT",
+      "npmWeeklyDownloads": 358
     },
     {
       "name": "pi-git-commit",
@@ -60,7 +67,8 @@
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-git-commit",
       "npm": "pi-git-commit",
-      "license": "MIT"
+      "license": "MIT",
+      "npmWeeklyDownloads": 148
     },
     {
       "name": "pi-msg-queue",
@@ -70,7 +78,8 @@
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-msg-queue",
       "npm": "pi-msg-queue",
-      "license": "MIT"
+      "license": "MIT",
+      "npmWeeklyDownloads": 144
     },
     {
       "name": "pi-msg-workflow",
@@ -80,7 +89,8 @@
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-msg-workflow",
       "npm": "pi-msg-workflow",
-      "license": "MIT"
+      "license": "MIT",
+      "npmWeeklyDownloads": 900
     },
     {
       "name": "pi-multi-web-search",
@@ -90,7 +100,8 @@
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-multi-web-search",
       "npm": "pi-multi-web-search",
-      "license": "MIT"
+      "license": "MIT",
+      "npmWeeklyDownloads": 150
     },
     {
       "name": "pi-tps-status",
@@ -100,7 +111,8 @@
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-tps-status",
       "npm": "pi-tps-status",
-      "license": "MIT"
+      "license": "MIT",
+      "npmWeeklyDownloads": 153
     },
     {
       "name": "mypi",
@@ -142,9 +154,12 @@
     "accountYears": 4
   },
   "activity": {
-    "window": "2026-08-11..14",
-    "pushes": 28,
-    "highlights": ["starred ggml-org/llama.cpp", "closed issue #22 on pi-hashline-edit-pro"],
+    "window": "2026-08-12..14",
+    "pushes": 29,
+    "highlights": [
+      "starred ggml-org/llama.cpp",
+      "closed issue #22 on pi-hashline-edit-pro"
+    ],
     "fetchedAt": "2026-08-14"
   },
   "sections": {
