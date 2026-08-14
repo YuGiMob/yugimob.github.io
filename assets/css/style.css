@@ -1,0 +1,346 @@
+/* ==========================================================================
+   YuGiMob — D&D Fantasy Theme
+   Dark-ink scroll-and-artifact aesthetic: parchment on obsidian, ember and
+   gold accents. System serif only — zero external fonts, images, or network
+   requests at runtime.
+   ========================================================================== */
+
+/* --------------------------------------------- 1. Design tokens */
+:root {
+  /* palette */
+  --ink: #0e0c0a;          /* page ground */
+  --ink-alt: #17130f;      /* alternate ground */
+  --panel: #1d1812;        /* card / panel */
+  --border: #3a2f1d;       /* 1px panel border */
+  --parchment: #e8d5a3;    /* primary text */
+  --muted: #9a8b6f;        /* secondary text */
+  --ember: #c04a1f;        /* flame accent */
+  --gold: #d4a017;         /* treasure accent */
+  /* in-palette shades */
+  --gold-bright: #e2bb55;
+  --steel: #8a7f66;        /* silvered parchment (uncommon tier) */
+  --gold-soft: rgba(212, 160, 23, 0.16);
+  --ember-soft: rgba(192, 74, 31, 0.14);
+  --parchment-soft: rgba(232, 213, 163, 0.22);
+  /* type */
+  --serif: Georgia, 'Times New Roman', serif;
+  /* geometry */
+  --bar-track: 24px;
+}
+/* --------------------------------------------- 2. Reset & base */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--ink);
+  background-image:
+    radial-gradient(ellipse 90% 45% at 50% -10%, rgba(212, 160, 23, 0.06), transparent 60%),
+    radial-gradient(ellipse 70% 35% at 100% 115%, rgba(192, 74, 31, 0.05), transparent 60%);
+  background-repeat: no-repeat;
+  color: var(--parchment);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.65;
+}
+h1, h2, h3, h4, p, dl, dd, ul { margin: 0; }
+img { max-width: 100%; }
+a {
+  color: var(--gold);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+::selection { background: var(--ember-soft); color: var(--parchment); }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+/* --------------------------------------------- 3. Fantasy headings */
+h1, h2, h3, h4 {
+  font-family: var(--serif);
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+}
+/* --------------------------------------------- 4. Hero (sticky) */
+#hero {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 26px 20px 18px;
+  text-align: center;
+  background: linear-gradient(180deg, var(--ink-alt), var(--ink));
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+#avatar {
+  display: block;
+  width: 108px;
+  height: 108px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--panel);
+  border: 3px solid var(--gold);
+  box-shadow:
+    0 0 0 4px var(--ink),
+    0 0 0 5px var(--border),
+    0 0 22px var(--gold-soft);
+}
+#display-name {
+  font-size: 2.3rem;
+  line-height: 1.15;
+  color: var(--parchment);
+  text-shadow: 0 2px 14px rgba(212, 160, 23, 0.22);
+}
+#class-title {
+  margin-top: 6px;
+  color: var(--gold);
+  font-variant: small-caps;
+  letter-spacing: 0.24em;
+  font-size: 0.95rem;
+}
+#class-title::before { content: "✦ "; color: var(--ember); }
+#class-title::after  { content: " ✦"; color: var(--ember); }
+#tagline {
+  margin-top: 8px;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.98rem;
+}
+/* --------------------------------------------- 5. Sections & ornaments */
+#background, #artifacts, #quest-log, #ability-scores {
+  position: relative;
+  max-width: 980px;
+  margin: 64px auto 0;
+  padding: 10px 24px 0;
+  border-top: 1px double var(--border);
+}
+#background::before, #artifacts::before, #quest-log::before, #ability-scores::before {
+  content: "✦";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 14px;
+  background: var(--ink);
+  color: var(--gold);
+  font-size: 1rem;
+  line-height: 1.4;
+  text-shadow: 0 0 10px var(--gold-soft);
+}
+section h2 {
+  margin: 4px 0 24px;
+  text-align: center;
+  font-size: 1.6rem;
+  color: var(--parchment);
+}
+section h2::before { content: "✦ "; color: var(--ember); }
+section h2::after  { content: " ✦"; color: var(--ember); }
+/* --------------------------------------------- 6. Background prose */
+#background p {
+  max-width: 62ch;
+  margin: 0 auto 14px;
+  color: var(--parchment);
+}
+/* --------------------------------------------- 7. Artifact grid */
+#project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  padding-bottom: 8px;
+}
+/* --------------------------------------------- 8. Artifact cards */
+.project-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 18px 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+/* scroll-edge highlight: a faint parchment sheen along the card top */
+.project-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--parchment-soft), transparent);
+}
+.project-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--gold);
+}
+.project-card h3, .project-card .name {
+  font-size: 1.12rem;
+  letter-spacing: 0.06em;
+  color: var(--parchment);
+}
+.project-card .language {
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ember);
+}
+.project-card .meta { display: flex; gap: 16px; }
+.project-card .stars, .project-card .forks {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.project-card .description, .project-card .desc {
+  flex-grow: 1;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.project-card .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+}
+.project-card a {
+  color: var(--gold);
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--border);
+}
+.project-card a:hover { color: var(--parchment); border-bottom-color: var(--ember); }
+/* --------------------------------------------- 9. Rarity tiers */
+.rarity-common   { border-color: var(--border); }
+.rarity-uncommon { border-color: var(--steel); }
+.rarity-rare     { border-color: var(--ember); box-shadow: 0 0 12px var(--ember-soft); }
+.rarity-epic     { border-color: var(--gold); box-shadow: 0 0 14px var(--gold-soft); }
+.rarity-legendary {
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 16px rgba(212, 160, 23, 0.4), 0 0 44px rgba(212, 160, 23, 0.16);
+}
+.rarity-rare h3     { color: var(--parchment); }
+.rarity-epic h3     { color: var(--gold-bright); }
+.rarity-legendary h3 { color: var(--gold-bright); text-shadow: 0 0 12px var(--gold-soft); }
+/* --------------------------------------------- 10. Ability scores */
+#ability-list {
+  max-width: 660px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px 18px;
+  align-items: center;
+  padding-bottom: 10px;
+}
+#ability-list dt {
+  text-align: right;
+  font-variant: small-caps;
+  letter-spacing: 0.14em;
+  font-size: 0.95rem;
+  color: var(--parchment);
+}
+#ability-list dd {
+  position: relative;
+  height: var(--bar-track);
+  background: var(--ink-alt);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.bar-fill {
+  display: block;
+  height: 100%;
+  width: 0; /* set inline by JS (value/55 * 100%) */
+  background: linear-gradient(90deg, var(--ember), var(--gold));
+  box-shadow:
+    inset 0 1px 0 rgba(232, 213, 163, 0.25),
+    0 0 10px rgba(212, 160, 23, 0.35);
+}
+/* --------------------------------------------- 11. Quest log */
+#quest-log ul {
+  list-style: none;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0;
+}
+#quest-log li {
+  position: relative;
+  padding: 9px 0 9px 26px;
+  border-bottom: 1px dashed var(--border);
+  color: var(--parchment);
+}
+#quest-log li:last-child { border-bottom: none; }
+#quest-log li::before {
+  content: "✦";
+  position: absolute;
+  left: 4px;
+  top: 11px;
+  color: var(--ember);
+  font-size: 0.78rem;
+}
+#quest-log .window, #quest-log .pushes {
+  margin: 16px auto 4px;
+  text-align: center;
+  color: var(--gold);
+  font-variant: small-caps;
+  letter-spacing: 0.12em;
+  font-size: 0.92rem;
+}
+/* --------------------------------------------- 12. Campfire footer */
+#campfire {
+  position: relative;
+  max-width: 980px;
+  margin: 64px auto 0;
+  padding: 44px 24px 52px;
+  text-align: center;
+  border-top: 1px double var(--border);
+  background: linear-gradient(to top, rgba(192, 74, 31, 0.07), transparent 70%);
+}
+#campfire::before {
+  content: "✦";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 14px;
+  background: var(--ink);
+  color: var(--ember);
+  font-size: 1rem;
+  text-shadow: 0 0 12px var(--ember-soft);
+}
+#github-link {
+  display: inline-block;
+  padding: 11px 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-bottom: 3px solid var(--ember);
+  color: var(--parchment);
+  font-variant: small-caps;
+  letter-spacing: 0.2em;
+  text-decoration: none;
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+#github-link:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+/* --------------------------------------------- 13. Responsive */
+@media (max-width: 720px) {
+  body { font-size: 16px; }
+  #hero { padding: 18px 14px 14px; }
+  #avatar { width: 84px; height: 84px; }
+  #display-name { font-size: 1.7rem; }
+  #background, #artifacts, #quest-log, #ability-scores {
+    margin-top: 44px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  #project-grid { grid-template-columns: 1fr; gap: 14px; }
+  #ability-list {
+    grid-template-columns: 1fr;
+    gap: 6px 0;
+  }
+  #ability-list dt { text-align: left; }
+  #campfire { margin-top: 44px; padding: 36px 16px 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+  html { scroll-behavior: auto; }
+}
