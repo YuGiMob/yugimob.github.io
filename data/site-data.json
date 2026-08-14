@@ -1,0 +1,157 @@
+{
+  "identity": {
+    "displayName": "YuGiMob",
+    "classTitle": "Artificer of Agent Tools",
+    "tagline": "Crafts pi-coding-agent extensions - hash-anchored edits, Tor-wrapped requests, cloud models.",
+    "avatarUrl": "https://avatars.githubusercontent.com/u/110136195?v=4",
+    "links": { "github": "https://github.com/YuGiMob", "email": null }
+  },
+  "about": {
+    "paragraphs": [
+      "Author of pi-coding-agent extensions (8 published TypeScript packages on npm), a dependency-free Python file server, and a personal pi configuration repo. All repos are MIT-licensed where licensed, and the account has been active since 2022."
+    ]
+  },
+  "projects": [
+    {
+      "name": "pi-hashline-edit-pro",
+      "description": "Hash-anchored read/replace/undo tools for the pi coding agent; every line gets a unique 3-char hash",
+      "language": "TypeScript",
+      "stars": 54,
+      "forks": 11,
+      "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
+      "npm": "pi-hashline-edit-pro",
+      "license": "MIT"
+    },
+    {
+      "name": "pi-tor-proxy",
+      "description": "Self-contained Pi extension to route all requests through Tor",
+      "language": "TypeScript",
+      "stars": 1,
+      "forks": 0,
+      "url": "https://github.com/YuGiMob/pi-tor-proxy",
+      "npm": "pi-tor-proxy",
+      "license": "MIT"
+    },
+    {
+      "name": "pi-cloud-ollama",
+      "description": "Registers Ollama Cloud as a provider in pi-coding-agent with live model discovery",
+      "language": "TypeScript",
+      "stars": 0,
+      "forks": 0,
+      "url": "https://github.com/YuGiMob/pi-cloud-ollama",
+      "npm": "pi-cloud-ollama",
+      "license": "MIT"
+    },
+    {
+      "name": "pi-context-inspector",
+      "description": "Tabbed overlay with the full LLM context of the current pi session",
+      "language": "TypeScript",
+      "stars": 0,
+      "forks": 0,
+      "url": "https://github.com/YuGiMob/pi-context-inspector",
+      "npm": "pi-context-inspector",
+      "license": "MIT"
+    },
+    {
+      "name": "pi-git-commit",
+      "description": "Safe commit flow for pi: bash git guard + git_commit tool + /commit",
+      "language": "TypeScript",
+      "stars": 0,
+      "forks": 0,
+      "url": "https://github.com/YuGiMob/pi-git-commit",
+      "npm": "pi-git-commit",
+      "license": "MIT"
+    },
+    {
+      "name": "pi-msg-queue",
+      "description": "Queues follow-up messages in pi via /q",
+      "language": "TypeScript",
+      "stars": 0,
+      "forks": 0,
+      "url": "https://github.com/YuGiMob/pi-msg-queue",
+      "npm": "pi-msg-queue",
+      "license": "MIT"
+    },
+    {
+      "name": "pi-msg-workflow",
+      "description": "Numbered message and command stores plus configurable improvement workflows (/msg, /cmd, /workflow)",
+      "language": "TypeScript",
+      "stars": 0,
+      "forks": 0,
+      "url": "https://github.com/YuGiMob/pi-msg-workflow",
+      "npm": "pi-msg-workflow",
+      "license": "MIT"
+    },
+    {
+      "name": "pi-multi-web-search",
+      "description": "web_search tool with Exa to Brave to Tavily fallback",
+      "language": "TypeScript",
+      "stars": 0,
+      "forks": 0,
+      "url": "https://github.com/YuGiMob/pi-multi-web-search",
+      "npm": "pi-multi-web-search",
+      "license": "MIT"
+    },
+    {
+      "name": "pi-tps-status",
+      "description": "Live tokens-per-second status widget for pi",
+      "language": "TypeScript",
+      "stars": 0,
+      "forks": 0,
+      "url": "https://github.com/YuGiMob/pi-tps-status",
+      "npm": "pi-tps-status",
+      "license": "MIT"
+    },
+    {
+      "name": "mypi",
+      "description": "My personal pi configuration: extensions, models, and settings",
+      "language": "TypeScript",
+      "stars": 0,
+      "forks": 0,
+      "url": "https://github.com/YuGiMob/mypi",
+      "npm": null,
+      "license": null
+    },
+    {
+      "name": "omo",
+      "description": null,
+      "language": null,
+      "stars": 0,
+      "forks": 0,
+      "url": "https://github.com/YuGiMob/omo",
+      "npm": null,
+      "license": null
+    },
+    {
+      "name": "browser-file-server",
+      "description": "Tiny dependency-free Python file server (browse, view, edit, upload, delete)",
+      "language": "Python",
+      "stars": 0,
+      "forks": 0,
+      "url": "https://github.com/YuGiMob/browser-file-server",
+      "npm": null,
+      "license": "MIT"
+    }
+  ],
+  "stats": {
+    "totalStars": 55,
+    "npmPackages": 9,
+    "publicRepos": 12,
+    "starsGiven": 15,
+    "forksReceived": 11,
+    "accountYears": 4
+  },
+  "activity": {
+    "window": "2026-08-11..14",
+    "pushes": 28,
+    "highlights": ["starred ggml-org/llama.cpp", "closed issue #22 on pi-hashline-edit-pro"],
+    "fetchedAt": "2026-08-14"
+  },
+  "sections": {
+    "showBackground": true,
+    "showArtifacts": true,
+    "showQuestLog": true,
+    "showAbilityScores": true,
+    "showCampfire": true
+  }
+}
