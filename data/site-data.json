@@ -148,14 +148,14 @@
   "stats": {
     "totalStars": 55,
     "npmPackages": 9,
-    "publicRepos": 12,
+    "publicRepos": 13,
     "starsGiven": 15,
     "forksReceived": 11,
     "accountYears": 4
   },
   "activity": {
     "window": "2026-08-12..14",
-    "pushes": 30,
+    "pushes": 29,
     "highlights": [
       "starred ggml-org/llama.cpp",
       "closed issue #22 on pi-hashline-edit-pro"
