@@ -17,6 +17,10 @@ const RARITY_TIERS = [
   { min: 1, cls: 'uncommon' },
   { min: 0, cls: 'common' },
 ];
+const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
 
 function rarityFor(stars) {
   for (const tier of RARITY_TIERS) {
@@ -29,6 +33,12 @@ function formatDownloads(count) {
   if (!Number.isFinite(count) || count <= 0) return null;
   if (count >= 1000) return `${Math.round((count / 1000) * 10) / 10}k`;
   return String(count);
+}
+
+function formatUpdated(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }
 
 function el(tag, className) {
@@ -101,6 +111,11 @@ function renderProjects(projects) {
     const downloadsLabel = formatDownloads(project.npmWeeklyDownloads);
     if (downloadsLabel) {
       appendText(meta, 'span', 'downloads', `↓ ${downloadsLabel}/wk`);
+    }
+
+    const updatedLabel = formatUpdated(project.pushedAt);
+    if (updatedLabel) {
+      appendText(meta, 'span', 'updated', `updated ${updatedLabel}`);
     }
     card.appendChild(meta);
 

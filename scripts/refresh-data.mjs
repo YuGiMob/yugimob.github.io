@@ -172,6 +172,10 @@ for (const project of data.projects) {
     report(`projects.${project.name}.language`, prev?.language, repo.language);
     project.language = repo.language;
   }
+  if (typeof repo.pushed_at === 'string') {
+    report(`projects.${project.name}.pushedAt`, prev?.pushedAt, repo.pushed_at);
+    project.pushedAt = repo.pushed_at;
+  }
   if (repo.description && (project.description === null || project.description === undefined || project.description === '')) {
     report(`projects.${project.name}.description`, prev?.description, repo.description);
     project.description = repo.description;

@@ -190,8 +190,8 @@ section h2::after  { content: " ✦"; color: var(--ember); }
 }
 .project-card .language { color: var(--ember); }
 .project-card .license { color: var(--muted); }
-.project-card .meta { display: flex; gap: 16px; }
-.project-card .stars, .project-card .forks, .project-card .downloads {
+.project-card .meta { display: flex; gap: 16px; flex-wrap: wrap; }
+.project-card .stars, .project-card .forks, .project-card .downloads, .project-card .updated {
   font-size: 0.85rem;
   color: var(--muted);
 }

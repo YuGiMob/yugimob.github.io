@@ -44,11 +44,13 @@ whenever you change the identity fields.
 ### projects
 
 An array of entries, one per curated public repo, each with `name`, `description`,
-`language`, `stars`, `forks`, `url`, `npm`, `license`, and `npmWeeklyDownloads`
-(`npm` and `license` are `null` when not applicable; `npmWeeklyDownloads` is
-absent for non-npm projects). Cards sort by `stars` descending, show the
-license when present, and the weekly npm download count when positive; the
-rarity tier comes from the star count:
+`language`, `stars`, `forks`, `url`, `npm`, `license`, `npmWeeklyDownloads`,
+and `pushedAt` (`npm` and `license` are `null` when not applicable;
+`npmWeeklyDownloads` is absent for non-npm projects; `pushedAt` is the last
+push date from the GitHub API). Cards sort by `stars` descending, show the
+license when present, the weekly npm download count when positive, and the
+last push date as "updated <month year>"; the rarity tier comes from the star
+count:
 
 | Stars | Rarity |
 | --- | --- |
@@ -86,8 +88,8 @@ node scripts/refresh-data.mjs
 
 This re-fetches the GitHub API (user, repos, events) and npm weekly downloads
 for the nine published pi packages, then updates the numbers: stars, forks,
-pushes, downloads. It requires Node >= 22, needs no install, and makes no
-authenticated requests, so no credentials are needed.
+last-push dates, pushes, downloads. It requires Node >= 22, needs no install,
+and makes no authenticated requests, so no credentials are needed.
 
 The site also refreshes itself daily via a scheduled GitHub Actions workflow
 (`.github/workflows/refresh-data.yml`, 06:00 UTC) that runs the same script and
