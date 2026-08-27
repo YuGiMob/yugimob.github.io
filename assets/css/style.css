@@ -192,8 +192,7 @@ section h2::after  { content: " ✦"; color: var(--ember); }
   font-size: 0.85rem;
   color: var(--muted);
 }
-.project-card .description, .project-card .desc {
-  flex-grow: 1;
+.project-card .description {
   font-size: 0.92rem;
   line-height: 1.55;
   color: var(--muted);
@@ -202,7 +201,8 @@ section h2::after  { content: " ✦"; color: var(--ember); }
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
-  margin-top: 10px;
+  margin-top: auto;
+  padding-top: 10px;
 }
 .project-card a {
   color: var(--gold);

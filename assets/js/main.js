@@ -101,9 +101,9 @@ function renderProjects(projects) {
     }
     card.appendChild(meta);
 
-    const desc = el('p', 'description');
-    desc.textContent = project.description;
-    card.appendChild(desc);
+    if (project.description) {
+      card.appendChild(el('p', 'description')).textContent = project.description;
+    }
 
     const actions = el('p', 'actions');
     if (project.npm) {
@@ -162,9 +162,9 @@ function renderQuestLog(activity) {
 }
 
 function renderFooter(identity) {
-  const link = document.getElementById('github-link');
-  link.href = identity.links.github;
-  link.textContent = identity.displayName || 'GitHub';
+  const githubLink = document.getElementById('github-link');
+  githubLink.href = identity.links.github;
+  githubLink.textContent = identity.displayName || 'GitHub';
 
   const year = document.createElement('span');
   year.textContent = `© ${new Date().getFullYear()} YuGiMob`;

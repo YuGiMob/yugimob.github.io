@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_FILE = join(ROOT, 'data', 'site-data.json');
-const TMP_FILE = `${DATA_FILE}.tmp`;
+const TMP_FILE = `${DATA_FILE}.${process.pid}.tmp`;
 
 const GITHUB_HEADERS = {
   Accept: 'application/vnd.github+json',
@@ -135,7 +135,6 @@ if (user) {
 }
 data.stats.npmPackages = npmPackages.length;
 report('stats.npmPackages', existing.stats.npmPackages, data.stats.npmPackages);
-report('stats.starsGiven', existing.stats.starsGiven, data.stats.starsGiven); // preserved, never overwritten
 data.stats.accountYears = new Date().getFullYear() - ACCOUNT_CREATED_YEAR;
 report('stats.accountYears', existing.stats.accountYears, data.stats.accountYears);
 
@@ -198,8 +197,6 @@ if (Array.isArray(events)) {
   }
   report('activity.window', existing.activity.window, data.activity.window);
 }
-data.activity.fetchedAt = today;
-report('activity.fetchedAt', existing.activity.fetchedAt, data.activity.fetchedAt);
 
 // ---------------------------------------------------------------------------
 // 2. npm weekly downloads for the published pi packages (skip on failure).
@@ -225,6 +222,16 @@ for (const { pkg, json } of npmResults) {
     json.downloads,
   );
   project.npmWeeklyDownloads = json.downloads;
+}
+
+if (
+  user !== null ||
+  Array.isArray(reposRaw) ||
+  Array.isArray(events) ||
+  npmResults.some(({ json }) => json && typeof json.downloads === 'number')
+) {
+  data.activity.fetchedAt = today;
+  report('activity.fetchedAt', existing.activity.fetchedAt, data.activity.fetchedAt);
 }
 
 // ---------------------------------------------------------------------------
