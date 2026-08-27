@@ -44,8 +44,10 @@ whenever you change the identity fields.
 ### projects
 
 An array of entries, one per curated public repo, each with `name`, `description`,
-`language`, `stars`, `forks`, `url`, `npm`, and `license` (`npm` and `license`
-are `null` when not applicable). Cards sort by `stars` descending, and the
+`language`, `stars`, `forks`, `url`, `npm`, `license`, and `npmWeeklyDownloads`
+(`npm` and `license` are `null` when not applicable; `npmWeeklyDownloads` is
+absent for non-npm projects). Cards sort by `stars` descending and show the
+weekly npm download count when positive; the
 rarity tier comes from the star count:
 
 | Stars | Rarity |
@@ -67,7 +69,7 @@ Six numbers mapped to the D&D ability bars: `totalStars` = Strength,
 - `window`: date range covered
 - `pushes`: push count in that window
 - `highlights`: notable events
-- `fetchedAt`: when the data was last fetched
+- `fetchedAt`: when the data was last fetched (shown in the quest log header)
 
 ### sections
 

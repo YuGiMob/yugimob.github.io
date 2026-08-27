@@ -25,6 +25,12 @@ function rarityFor(stars) {
   return RARITY_TIERS[RARITY_TIERS.length - 1];
 }
 
+function formatDownloads(count) {
+  if (!Number.isFinite(count) || count <= 0) return null;
+  if (count >= 1000) return `${Math.round((count / 1000) * 10) / 10}k`;
+  return String(count);
+}
+
 function el(tag, className) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -86,6 +92,13 @@ function renderProjects(projects) {
     const forks = el('span', 'forks');
     forks.textContent = `⑂ ${project.forks}`;
     meta.append(stars, forks);
+
+    const downloadsLabel = formatDownloads(project.npmWeeklyDownloads);
+    if (downloadsLabel) {
+      const downloads = el('span', 'downloads');
+      downloads.textContent = `↓ ${downloadsLabel}/wk`;
+      meta.append(downloads);
+    }
     card.appendChild(meta);
 
     const desc = el('p', 'description');
@@ -134,6 +147,11 @@ function renderQuestLog(activity) {
   pushes.textContent = `${activity.pushes} pushes`;
   const line = el('p');
   line.append(windowSpan, ' · ', pushes);
+  if (activity.fetchedAt) {
+    const fetched = el('span', 'fetched');
+    fetched.textContent = `updated ${activity.fetchedAt}`;
+    line.append(' · ', fetched);
+  }
   section.appendChild(line);
 
   const ul = el('ul');
@@ -162,7 +180,7 @@ function applyVisibility(sections) {
 }
 
 async function init() {
-  const response = await fetch('data/site-data.json', { cache: 'no-store' });
+  const response = await fetch('data/site-data.json', { cache: 'no-cache' });
   if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
   const data = await response.json();
 

@@ -188,7 +188,7 @@ section h2::after  { content: " ✦"; color: var(--ember); }
   color: var(--ember);
 }
 .project-card .meta { display: flex; gap: 16px; }
-.project-card .stars, .project-card .forks {
+.project-card .stars, .project-card .forks, .project-card .downloads {
   font-size: 0.85rem;
   color: var(--muted);
 }
@@ -279,7 +279,7 @@ section h2::after  { content: " ✦"; color: var(--ember); }
   color: var(--ember);
   font-size: 0.78rem;
 }
-#quest-log .window, #quest-log .pushes {
+#quest-log .window, #quest-log .pushes, #quest-log .fetched {
   margin: 16px auto 4px;
   text-align: center;
   color: var(--gold);
