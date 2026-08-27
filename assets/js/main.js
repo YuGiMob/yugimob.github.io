@@ -220,6 +220,7 @@ function renderAbilityScores(stats) {
   setSectionHeading(section, 'ability-heading', 'Ability Scores');
   section.appendChild(list);
   list.replaceChildren();
+  const max = Math.max(55, ...ABILITY_ORDER.map(([key]) => Number.isFinite(stats?.[key]) ? stats[key] : 0));
   for (const [key, label] of ABILITY_ORDER) {
     const value = Number.isFinite(stats?.[key]) ? stats[key] : 0;
     const dt = el('dt');
@@ -229,12 +230,12 @@ function renderAbilityScores(stats) {
     const dd = el('dd');
     dd.setAttribute('role', 'progressbar');
     dd.setAttribute('aria-valuemin', '0');
-    dd.setAttribute('aria-valuemax', '55');
+    dd.setAttribute('aria-valuemax', String(max));
     dd.setAttribute('aria-valuenow', String(value));
     dd.setAttribute('aria-labelledby', dt.id);
     const bar = el('div', 'bar-fill');
     bar.setAttribute('aria-hidden', 'true');
-    bar.style.width = `${Math.max(0, Math.min((value / 55) * 100, 100))}%`;
+    bar.style.width = `${Math.max(0, Math.min((value / max) * 100, 100))}%`;
     dd.appendChild(bar);
     appendText(dd, 'span', null, value);
     list.appendChild(dd);
@@ -316,7 +317,18 @@ function renderStructuredData(data) {
 }
 
 function isValidSiteData(data) {
-  return Boolean(data && typeof data === 'object' && !Array.isArray(data) && data.identity && typeof data.identity === 'object' && !Array.isArray(data.identity) && data.about && typeof data.about === 'object' && !Array.isArray(data.about) && Array.isArray(data.about.paragraphs) && Array.isArray(data.projects) && data.stats && typeof data.stats === 'object' && !Array.isArray(data.stats) && data.activity && typeof data.activity === 'object' && !Array.isArray(data.activity) && data.sections && typeof data.sections === 'object' && !Array.isArray(data.sections));
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+  const required = ['identity', 'about', 'projects', 'stats', 'activity', 'sections'];
+  for (const key of required) {
+    if (!(key in data)) return false;
+  }
+  if (!data.identity || typeof data.identity !== 'object' || Array.isArray(data.identity)) return false;
+  if (!data.about || typeof data.about !== 'object' || Array.isArray(data.about) || !Array.isArray(data.about.paragraphs)) return false;
+  if (!Array.isArray(data.projects)) return false;
+  if (!data.stats || typeof data.stats !== 'object' || Array.isArray(data.stats)) return false;
+  if (!data.activity || typeof data.activity !== 'object' || Array.isArray(data.activity)) return false;
+  if (!data.sections || typeof data.sections !== 'object' || Array.isArray(data.sections)) return false;
+  return true;
 }
 
 async function init() {
