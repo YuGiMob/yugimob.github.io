@@ -86,6 +86,12 @@ function renderProjects(projects) {
     language.textContent = project.language || 'Unknown';
     card.appendChild(language);
 
+    if (project.license) {
+      const license = el('span', 'license');
+      license.textContent = project.license;
+      card.appendChild(license);
+    }
+
     const meta = el('span', 'meta');
     const stars = el('span', 'stars');
     stars.textContent = `★ ${project.stars}`;
@@ -155,8 +161,12 @@ function renderQuestLog(activity) {
   section.appendChild(line);
 
   const ul = el('ul');
-  for (const highlight of activity.highlights) {
-    ul.appendChild(el('li')).textContent = highlight;
+  if (activity.highlights && activity.highlights.length > 0) {
+    for (const highlight of activity.highlights) {
+      ul.appendChild(el('li')).textContent = highlight;
+    }
+  } else {
+    ul.appendChild(el('li', 'empty')).textContent = 'No notable deeds this window.';
   }
   section.appendChild(ul);
 }

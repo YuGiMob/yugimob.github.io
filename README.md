@@ -46,8 +46,8 @@ whenever you change the identity fields.
 An array of entries, one per curated public repo, each with `name`, `description`,
 `language`, `stars`, `forks`, `url`, `npm`, `license`, and `npmWeeklyDownloads`
 (`npm` and `license` are `null` when not applicable; `npmWeeklyDownloads` is
-absent for non-npm projects). Cards sort by `stars` descending and show the
-weekly npm download count when positive; the
+absent for non-npm projects). Cards sort by `stars` descending, show the
+license when present, and the weekly npm download count when positive; the
 rarity tier comes from the star count:
 
 | Stars | Rarity |
@@ -97,7 +97,9 @@ manually from the Actions tab as well.
 Curated prose is preserved: descriptions, about paragraphs, the identity block,
 and anything you wrote are never overwritten, only numbers and machine-fetched
 fields change. The file is written atomically (temp file then rename), and a
-change summary is printed.
+change summary is printed. Repos on GitHub that are not yet curated in the
+manifest, and curated projects that no longer exist on GitHub, are reported
+as warnings.
 
 ## Serving locally
 

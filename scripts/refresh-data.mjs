@@ -113,6 +113,21 @@ const [user, reposRaw, events] = await Promise.all([
 ]);
 const repos = Array.isArray(reposRaw) ? reposRaw : [];
 
+if (Array.isArray(reposRaw)) {
+  const repoNames = new Set(repos.map((r) => r.name));
+  for (const repo of repos) {
+    if (repo.name.endsWith('.github.io')) continue;
+    if (!data.projects.some((p) => p.name === repo.name)) {
+      console.warn(`repo not curated in data/site-data.json: ${repo.name}`);
+    }
+  }
+  for (const project of data.projects) {
+    if (!repoNames.has(project.name)) {
+      console.warn(`project in data/site-data.json not found on GitHub: ${project.name}`);
+    }
+  }
+}
+
 // identity.links.github — refreshed from the user API login.
 if (user && user.login) {
   data.identity.links.github = `https://github.com/${user.login}`;
@@ -174,7 +189,7 @@ if (Array.isArray(events)) {
   for (const e of events) {
     if (highlights.length >= MAX_HIGHLIGHTS) break;
     const repoName = e.repo && e.repo.name ? e.repo.name : null;
-    if (e.type === 'WatchEvent' && e.payload && e.payload.action === 'starred' && repoName) {
+    if (e.type === 'WatchEvent' && e.payload && e.payload.action === 'started' && repoName) {
       highlights.push(`starred ${repoName}`);
     } else if (e.type === 'IssuesEvent' && e.payload && e.payload.action && e.payload.issue && repoName) {
       highlights.push(`${e.payload.action} issue #${e.payload.issue.number} on ${repoName}`);

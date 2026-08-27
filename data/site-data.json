@@ -11,7 +11,7 @@
   },
   "about": {
     "paragraphs": [
-      "Author of pi-coding-agent extensions (9 published TypeScript packages on npm), a dependency-free Python file server, and a personal pi configuration repo. All repos are MIT-licensed where licensed, and the account has been active since 2022."
+      "Author of pi-coding-agent extensions (9 published TypeScript packages on npm) and a personal pi configuration repo. All repos are MIT- or AGPL-3.0-licensed where licensed, and the account has been active since 2022."
     ]
   },
   "projects": [
@@ -19,89 +19,89 @@
       "name": "pi-hashline-edit-pro",
       "description": "Hash-anchored read/replace/undo tools for the pi coding agent; every line gets a unique 3-char hash",
       "language": "TypeScript",
-      "stars": 54,
-      "forks": 11,
+      "stars": 69,
+      "forks": 17,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
-      "npmWeeklyDownloads": 6121
+      "npmWeeklyDownloads": 3961
     },
     {
       "name": "pi-tor-proxy",
       "description": "Self-contained Pi extension to route all requests through Tor",
       "language": "TypeScript",
-      "stars": 1,
+      "stars": 2,
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-tor-proxy",
       "npm": "pi-tor-proxy",
       "license": "MIT",
-      "npmWeeklyDownloads": 16
+      "npmWeeklyDownloads": 867
     },
     {
-      "name": "pi-cloud-ollama",
-      "description": "Registers Ollama Cloud as a provider in pi-coding-agent with live model discovery",
+      "name": "pi-jina-webtools",
+      "description": "web_search and web_fetch tools powered by Jina AI (s.jina.ai search, r.jina.ai reader)",
       "language": "TypeScript",
-      "stars": 0,
+      "stars": 1,
       "forks": 0,
-      "url": "https://github.com/YuGiMob/pi-cloud-ollama",
-      "npm": "pi-cloud-ollama",
+      "url": "https://github.com/YuGiMob/pi-jina-webtools",
+      "npm": "pi-jina-webtools",
       "license": "MIT",
-      "npmWeeklyDownloads": 150
+      "npmWeeklyDownloads": 42
     },
     {
       "name": "pi-context-inspector",
       "description": "Tabbed overlay with the full LLM context of the current pi session",
       "language": "TypeScript",
-      "stars": 0,
+      "stars": 1,
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-context-inspector",
       "npm": "pi-context-inspector",
       "license": "MIT",
-      "npmWeeklyDownloads": 358
+      "npmWeeklyDownloads": 69
     },
     {
       "name": "pi-git-commit",
       "description": "Safe commit flow for pi: bash git guard + git_commit tool + /commit",
       "language": "TypeScript",
-      "stars": 0,
+      "stars": 1,
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-git-commit",
       "npm": "pi-git-commit",
       "license": "MIT",
-      "npmWeeklyDownloads": 148
+      "npmWeeklyDownloads": 368
     },
     {
       "name": "pi-msg-queue",
       "description": "Queues follow-up messages in pi via /q",
       "language": "TypeScript",
-      "stars": 0,
+      "stars": 1,
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-msg-queue",
       "npm": "pi-msg-queue",
       "license": "MIT",
-      "npmWeeklyDownloads": 144
+      "npmWeeklyDownloads": 40
     },
     {
       "name": "pi-msg-workflow",
       "description": "Numbered message and command stores plus configurable improvement workflows (/msg, /cmd, /workflow)",
       "language": "TypeScript",
-      "stars": 0,
+      "stars": 1,
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-msg-workflow",
       "npm": "pi-msg-workflow",
       "license": "MIT",
-      "npmWeeklyDownloads": 900
+      "npmWeeklyDownloads": 696
     },
     {
-      "name": "pi-multi-web-search",
-      "description": "web_search tool with Exa to Brave to Tavily fallback",
+      "name": "pi-unsloth-webtools",
+      "description": "web_search and web_fetch tools ported from the Unsloth Studio codebase (DuckDuckGo search, SSRF-safe direct fetching, HTML-to-Markdown extraction)",
       "language": "TypeScript",
-      "stars": 0,
+      "stars": 1,
       "forks": 0,
-      "url": "https://github.com/YuGiMob/pi-multi-web-search",
-      "npm": "pi-multi-web-search",
-      "license": "MIT",
-      "npmWeeklyDownloads": 150
+      "url": "https://github.com/YuGiMob/pi-unsloth-webtools",
+      "npm": "pi-unsloth-webtools",
+      "license": "AGPL-3.0",
+      "npmWeeklyDownloads": 1379
     },
     {
       "name": "pi-tps-status",
@@ -112,7 +112,7 @@
       "url": "https://github.com/YuGiMob/pi-tps-status",
       "npm": "pi-tps-status",
       "license": "MIT",
-      "npmWeeklyDownloads": 153
+      "npmWeeklyDownloads": 267
     },
     {
       "name": "mypi",
@@ -123,41 +123,25 @@
       "url": "https://github.com/YuGiMob/mypi",
       "npm": null,
       "license": null
-    },
-    {
-      "name": "omo",
-      "description": null,
-      "language": null,
-      "stars": 0,
-      "forks": 0,
-      "url": "https://github.com/YuGiMob/omo",
-      "npm": null,
-      "license": null
-    },
-    {
-      "name": "browser-file-server",
-      "description": "Tiny dependency-free Python file server (browse, view, edit, upload, delete)",
-      "language": "Python",
-      "stars": 0,
-      "forks": 0,
-      "url": "https://github.com/YuGiMob/browser-file-server",
-      "npm": null,
-      "license": "MIT"
     }
   ],
   "stats": {
-    "totalStars": 55,
+    "totalStars": 77,
     "npmPackages": 9,
-    "publicRepos": 13,
+    "publicRepos": 11,
     "starsGiven": 15,
-    "forksReceived": 11,
+    "forksReceived": 17,
     "accountYears": 4
   },
   "activity": {
-    "window": "2026-08-13..14",
-    "pushes": 29,
-    "highlights": [],
-    "fetchedAt": "2026-08-14"
+    "window": "2026-08-14..27",
+    "pushes": 64,
+    "highlights": [
+      "closed issue #29 on YuGiMob/pi-hashline-edit-pro",
+      "starred Haxnstuff/PiTech",
+      "starred Rianico/pi-better-edit"
+    ],
+    "fetchedAt": "2026-08-27"
   },
   "sections": {
     "showBackground": true,

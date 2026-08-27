@@ -181,12 +181,13 @@ section h2::after  { content: " ✦"; color: var(--ember); }
   letter-spacing: 0.06em;
   color: var(--parchment);
 }
-.project-card .language {
+.project-card .language, .project-card .license {
   font-size: 0.78rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--ember);
 }
+.project-card .language { color: var(--ember); }
+.project-card .license { color: var(--muted); }
 .project-card .meta { display: flex; gap: 16px; }
 .project-card .stars, .project-card .forks, .project-card .downloads {
   font-size: 0.85rem;
@@ -279,6 +280,12 @@ section h2::after  { content: " ✦"; color: var(--ember); }
   color: var(--ember);
   font-size: 0.78rem;
 }
+
+#quest-log li.empty {
+  color: var(--muted);
+  font-style: italic;
+}
+#quest-log li.empty::before { content: none; }
 #quest-log .window, #quest-log .pushes, #quest-log .fetched {
   margin: 16px auto 4px;
   text-align: center;
