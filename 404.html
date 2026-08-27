@@ -42,17 +42,10 @@
     <a id="github-link" href="https://github.com/YuGiMob">YuGiMob</a>
   </footer>
   <script type="module">
-    import { avatarSrcSet } from '/assets/js/avatar.js';
-    fetch('data/site-data.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(d => {
+    import { hydrateAvatar } from '/assets/js/avatar.js';
+    fetch('/data/site-data.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(d => {
       if (!d?.identity) return
-      const a = document.getElementById('avatar')
-      if (a && d.identity.avatarUrl) {
-        a.src = d.identity.avatarUrl;
-        const srcSet = avatarSrcSet(d.identity.avatarUrl);
-        if (srcSet) a.srcset = srcSet;
-        else a.removeAttribute('srcset');
-        a.alt = d.identity.displayName
-      }
+      hydrateAvatar(document.getElementById('avatar'), d.identity.avatarUrl, d.identity.displayName);
       const n = document.getElementById('display-name')
       if (n) n.textContent = d.identity.displayName
       const c = document.getElementById('class-title')

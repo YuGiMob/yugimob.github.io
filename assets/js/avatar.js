@@ -12,3 +12,12 @@ export function avatarSrcSet(url) {
     return null;
   }
 }
+
+export function hydrateAvatar(element, url, displayName) {
+  if (!element || !url) return;
+  element.src = url;
+  const srcSet = avatarSrcSet(url);
+  if (srcSet) element.srcset = srcSet;
+  else element.removeAttribute('srcset');
+  if (displayName != null) element.alt = displayName;
+}

@@ -1,4 +1,4 @@
-import { avatarSrcSet } from './avatar.js';
+import { hydrateAvatar } from './avatar.js';
 const ABILITY_ORDER = [
   ['totalStars', 'Strength'],
   ['npmPackages', 'Dexterity'],
@@ -20,7 +20,7 @@ const MONTHS = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 const ANNOUNCE_DELAY = 20;
-
+let announceTimer = null;
 function rarityFor(stars) {
   if (typeof stars !== 'number' || Number.isNaN(stars)) return RARITY_TIERS[RARITY_TIERS.length - 1];
   for (const tier of RARITY_TIERS) {
@@ -70,12 +70,15 @@ function announce(message) {
   const region = document.getElementById('live-region');
   if (!region) return;
   region.textContent = '';
-  setTimeout(() => {
+  if (announceTimer) clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => {
+    announceTimer = null;
     region.textContent = message;
   }, ANNOUNCE_DELAY);
 }
 
 function setSectionHeading(section, headingId, headingText) {
+  if (!section) return;
   section.setAttribute('aria-labelledby', headingId);
   section.replaceChildren();
   const heading = el('h2');
@@ -143,20 +146,19 @@ function setHidden(id, isHidden) {
 }
 
 function renderIdentity(identity) {
-  const avatar = document.getElementById('avatar');
-  avatar.src = identity.avatarUrl;
-  const srcSet = avatarSrcSet(identity.avatarUrl);
-  if (srcSet) avatar.srcset = srcSet;
-  else if (identity.avatarUrl) avatar.removeAttribute('srcset');
-  avatar.alt = identity.displayName;
+  hydrateAvatar(document.getElementById('avatar'), identity.avatarUrl, identity.displayName);
   document.title = `${identity.displayName} — ${identity.classTitle}`;
-  document.getElementById('display-name').textContent = identity.displayName;
-  document.getElementById('class-title').textContent = identity.classTitle;
-  document.getElementById('tagline').textContent = identity.tagline;
+  const displayNameEl = document.getElementById('display-name');
+  if (displayNameEl) displayNameEl.textContent = identity.displayName;
+  const classTitleEl = document.getElementById('class-title');
+  if (classTitleEl) classTitleEl.textContent = identity.classTitle;
+  const taglineEl = document.getElementById('tagline');
+  if (taglineEl) taglineEl.textContent = identity.tagline;
 }
 
 function renderBackground(about) {
   const section = document.getElementById('background');
+  if (!section) return;
   setSectionHeading(section, 'background-heading', 'Background');
   for (const paragraph of about.paragraphs) {
     appendText(section, 'p', null, paragraph);
@@ -166,6 +168,7 @@ function renderBackground(about) {
 function renderProjects(projects) {
   const section = document.getElementById('artifacts');
   const grid = document.getElementById('project-grid');
+  if (!section || !grid) return;
   setSectionHeading(section, 'artifacts-heading', 'Artifacts');
   section.appendChild(grid);
   grid.replaceChildren();
@@ -213,6 +216,7 @@ function renderProjects(projects) {
 function renderAbilityScores(stats) {
   const section = document.getElementById('ability-scores');
   const list = document.getElementById('ability-list');
+  if (!section || !list) return;
   setSectionHeading(section, 'ability-heading', 'Ability Scores');
   section.appendChild(list);
   list.replaceChildren();
@@ -239,6 +243,7 @@ function renderAbilityScores(stats) {
 
 function renderQuestLog(activity) {
   const section = document.getElementById('quest-log');
+  if (!section) return;
   setSectionHeading(section, 'quest-heading', 'Quest Log');
   const line = el('p');
   appendText(line, 'span', 'window', `Quest log — ${activity.window}`);
@@ -262,9 +267,12 @@ function renderQuestLog(activity) {
 
 function renderFooter(identity) {
   const githubLink = document.getElementById('github-link');
-  githubLink.href = identity.links.github;
-  githubLink.textContent = identity.displayName || 'GitHub';
+  if (githubLink) {
+    githubLink.href = identity.links.github;
+    githubLink.textContent = identity.displayName || 'GitHub';
+  }
   const campfire = document.getElementById('campfire');
+  if (!campfire) return;
   const existingYear = document.getElementById('campfire-year');
   if (existingYear) existingYear.remove();
   const year = document.createElement('span');
@@ -314,7 +322,7 @@ function isValidSiteData(data) {
 async function init() {
   const fetchOptions = { cache: 'no-cache' };
   if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') fetchOptions.signal = AbortSignal.timeout(5000);
-  const response = await fetch('data/site-data.json', fetchOptions);
+  const response = await fetch('/data/site-data.json', fetchOptions);
   if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
   const data = await response.json();
   if (!isValidSiteData(data)) throw new Error('invalid data');
@@ -329,7 +337,7 @@ async function init() {
 }
 
 init().catch(() => {
-  document.getElementById('display-name').textContent =
-    'Site data unavailable — check data/site-data.json';
+  const fallback = document.getElementById('display-name');
+  if (fallback) fallback.textContent = 'Site data unavailable — check data/site-data.json';
   console.warn('YuGiMob: could not load data/site-data.json');
 });
