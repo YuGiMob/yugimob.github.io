@@ -68,7 +68,15 @@ const report = (path, oldVal, newVal) => {
   }
 };
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
+function retryDelayMs(response) {
+  const v = response.headers.get('retry-after');
+  if (!v) return 1000;
+  const n = Number(v);
+  if (Number.isFinite(n)) return Math.min(n * 1000, 60000);
+  const t = Date.parse(v);
+  if (!Number.isNaN(t)) return Math.min(Math.max(0, t - Date.now()), 60000);
+  return 1000;
+}
 async function getJson(url, headers, warnPrefix) {
   for (let attempt = 1; attempt <= 2; attempt++) {
     let response;
@@ -83,6 +91,10 @@ async function getJson(url, headers, warnPrefix) {
       return null;
     }
     if (!response.ok) {
+      if (attempt < 2 && response.status === 429) {
+        await sleep(retryDelayMs(response));
+        continue;
+      }
       if (attempt < 2 && response.status >= 500) {
         await sleep(300);
         continue;
@@ -103,10 +115,52 @@ async function getJson(url, headers, warnPrefix) {
   }
   return null;
 }
-const [user, reposRaw, events] = await Promise.all([
+async function fetchStarredCount() {
+  let page = 1;
+  let total = 0;
+  let retries429 = 0;
+  while (true) {
+    const url = `https://api.github.com/users/YuGiMob/starred?per_page=100&page=${page}`;
+    let response;
+    try {
+      response = await fetch(url, { headers: GITHUB_HEADERS, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    } catch (err) {
+      console.warn('GitHub API error for /starred:', err.message);
+      return null;
+    }
+    if (!response.ok) {
+      if (response.status === 429 && retries429 < 3) {
+        retries429 += 1;
+        await sleep(retryDelayMs(response));
+        continue;
+      }
+      if (response.status === 429) {
+        console.warn('GitHub API error for /starred: 429 retries exhausted');
+        return null;
+      }
+      console.warn('GitHub API error for /starred:', response.status);
+      return null;
+    }
+    retries429 = 0;
+    const arr = await response.json().catch(() => null);
+    if (!Array.isArray(arr)) {
+      console.warn('GitHub API error for /starred: non-array body');
+      return null;
+    }
+    total += arr.length;
+    const link = response.headers.get('link') || '';
+    const hasNext = link.split(',').some((part) => part.split(';').some((segment) => segment.trim() === 'rel="next"'));
+    if (arr.length < 100 || !hasNext) break;
+    page += 1;
+    await sleep(50);
+  }
+  return total;
+}
+const [user, reposRaw, events, starsGiven] = await Promise.all([
   getJson('https://api.github.com/users/YuGiMob', GITHUB_HEADERS, 'GitHub API error for /users/YuGiMob'),
   getJson('https://api.github.com/users/YuGiMob/repos?per_page=100', GITHUB_HEADERS, 'GitHub API error for /repos'),
   getJson('https://api.github.com/users/YuGiMob/events/public?per_page=100', GITHUB_HEADERS, 'GitHub API error for /events/public'),
+  fetchStarredCount(),
 ]);
 const repos = Array.isArray(reposRaw) ? reposRaw : [];
 
@@ -144,6 +198,10 @@ data.stats.npmPackages = npmPackages.length;
 report('stats.npmPackages', existing.stats.npmPackages, data.stats.npmPackages);
 data.stats.accountYears = new Date().getFullYear() - ACCOUNT_CREATED_YEAR;
 report('stats.accountYears', existing.stats.accountYears, data.stats.accountYears);
+if (typeof starsGiven === 'number') {
+  data.stats.starsGiven = starsGiven;
+  report('stats.starsGiven', existing.stats.starsGiven, starsGiven);
+}
 
 const repoByName = new Map(repos.map((r) => [r.name, r]));
 const existingByName = new Map(existing.projects.map((p) => [p.name, p]));
@@ -222,7 +280,8 @@ if (
   user !== null ||
   Array.isArray(reposRaw) ||
   Array.isArray(events) ||
-  anyNpmSuccess
+  anyNpmSuccess ||
+  typeof starsGiven === 'number'
 ) {
   data.activity.fetchedAt = today;
   report('activity.fetchedAt', existing.activity.fetchedAt, data.activity.fetchedAt);

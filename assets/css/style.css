@@ -222,14 +222,28 @@ section h2::after  { content: " ✦"; color: var(--ember); }
   margin-top: auto;
   padding-top: 10px;
 }
-.project-card a {
+.project-card a,
+.project-card .copy-btn {
   color: var(--gold);
   font-size: 0.88rem;
   letter-spacing: 0.04em;
-  text-decoration: none;
   border-bottom: 1px dotted var(--border);
 }
-.project-card a:hover { color: var(--parchment); border-bottom-color: var(--ember); }
+.project-card a {
+  text-decoration: none;
+}
+.project-card .copy-btn {
+  background: transparent;
+  border-top: none;
+  border-right: none;
+  border-left: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.project-card a:hover,
+.project-card .copy-btn:hover { color: var(--parchment); border-bottom-color: var(--ember); }
+.project-card .copy-btn.copied { color: var(--parchment); border-bottom-color: var(--gold); }
 
 .rarity-uncommon { border-color: var(--steel); }
 .rarity-rare     { border-color: var(--ember); box-shadow: 0 0 12px var(--ember-soft); }

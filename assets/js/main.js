@@ -59,6 +59,55 @@ function link(href, text) {
   a.textContent = text;
   return a;
 }
+function copyText(value) {
+  if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') return navigator.clipboard.writeText(value);
+  const element = document.createElement('textarea');
+  element.value = value;
+  element.setAttribute('readonly', '');
+  element.style.position = 'fixed';
+  element.style.top = '-9999px';
+  element.style.opacity = '0';
+  document.body.appendChild(element);
+  element.focus();
+  element.select();
+  if (typeof element.setSelectionRange === 'function') element.setSelectionRange(0, element.value.length);
+  let copied = false;
+  try {
+    copied = document.execCommand('copy');
+  } finally {
+    element.remove();
+  }
+  return copied ? Promise.resolve() : Promise.reject(new Error('copy failed'));
+}
+function copyButton(pkg) {
+  const button = el('button', 'copy-btn');
+  button.type = 'button';
+  const idleText = 'copy install';
+  button.textContent = idleText;
+  button.setAttribute('aria-label', `copy npm install ${pkg}`);
+  let resetTimer = null;
+  const resetDelay = 1400;
+  const scheduleReset = () => {
+    resetTimer = setTimeout(() => {
+      button.textContent = idleText;
+      button.classList.remove('copied');
+    }, resetDelay);
+  };
+  button.addEventListener('click', async () => {
+    if (resetTimer) clearTimeout(resetTimer);
+    try {
+      await copyText(`npm i ${pkg}`);
+      button.textContent = 'copied';
+      button.classList.add('copied');
+      scheduleReset();
+    } catch {
+      button.textContent = 'copy failed';
+      button.classList.remove('copied');
+      scheduleReset();
+    }
+  });
+  return button;
+}
 
 function setHidden(id, isHidden) {
   const section = document.getElementById(id);
@@ -128,6 +177,7 @@ function renderProjects(projects) {
       actions.appendChild(
         link(`https://www.npmjs.com/package/${project.npm}`, `npm · ${project.npm}`),
       );
+      actions.appendChild(copyButton(project.npm));
     }
     actions.appendChild(link(project.url, 'GitHub'));
 
