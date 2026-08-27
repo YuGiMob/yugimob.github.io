@@ -11,11 +11,11 @@ const ABILITY_ORDER = [
 ];
 
 const RARITY_TIERS = [
-  { min: 50, cls: 'legendary', label: 'legendary' },
-  { min: 30, cls: 'epic', label: 'epic' },
-  { min: 10, cls: 'rare', label: 'rare' },
-  { min: 1, cls: 'uncommon', label: 'uncommon' },
-  { min: 0, cls: 'common', label: 'common' },
+  { min: 50, cls: 'legendary' },
+  { min: 30, cls: 'epic' },
+  { min: 10, cls: 'rare' },
+  { min: 1, cls: 'uncommon' },
+  { min: 0, cls: 'common' },
 ];
 
 function rarityFor(stars) {
@@ -29,6 +29,15 @@ function el(tag, className) {
   const node = document.createElement(tag);
   if (className) node.className = className;
   return node;
+}
+
+function link(href, text) {
+  const a = el('a');
+  a.href = href;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  a.textContent = text;
+  return a;
 }
 
 function setHidden(id, isHidden) {
@@ -85,19 +94,11 @@ function renderProjects(projects) {
 
     const actions = el('p', 'actions');
     if (project.npm) {
-      const npmLink = el('a');
-      npmLink.href = `https://www.npmjs.com/package/${project.npm}`;
-      npmLink.target = '_blank';
-      npmLink.rel = 'noopener';
-      npmLink.textContent = `npm · ${project.npm}`;
-      actions.appendChild(npmLink);
+      actions.appendChild(
+        link(`https://www.npmjs.com/package/${project.npm}`, `npm · ${project.npm}`),
+      );
     }
-    const repoLink = el('a');
-    repoLink.href = project.url;
-    repoLink.target = '_blank';
-    repoLink.rel = 'noopener';
-    repoLink.textContent = 'GitHub';
-    actions.appendChild(repoLink);
+    actions.appendChild(link(project.url, 'GitHub'));
 
     card.appendChild(actions);
     grid.appendChild(card);
@@ -161,7 +162,7 @@ function applyVisibility(sections) {
 }
 
 async function init() {
-  const response = await fetch('data/site-data.json');
+  const response = await fetch('data/site-data.json', { cache: 'no-store' });
   if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
   const data = await response.json();
 

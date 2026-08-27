@@ -22,18 +22,6 @@ const GITHUB_HEADERS = {
   'User-Agent': 'yugimob-refresh',
 };
 
-const NPM_PACKAGES = [
-  'pi-hashline-edit-pro',
-  'pi-tor-proxy',
-  'pi-cloud-ollama',
-  'pi-context-inspector',
-  'pi-git-commit',
-  'pi-msg-queue',
-  'pi-msg-workflow',
-  'pi-multi-web-search',
-  'pi-tps-status',
-];
-
 const ACCOUNT_CREATED_YEAR = 2022;
 const MAX_HIGHLIGHTS = 5;
 const FETCH_TIMEOUT_MS = 15000;
@@ -63,6 +51,7 @@ if (!data || typeof data !== 'object' || Array.isArray(data)) {
 // Deep copy of the loaded state, used to diff before/after for the summary.
 const existing = JSON.parse(JSON.stringify(data));
 
+const npmPackages = data.projects.filter((p) => p.npm).map((p) => p.npm);
 const show = (v) => (v === undefined ? '(none)' : JSON.stringify(v));
 const summary = [];
 const report = (path, oldVal, newVal) => {
@@ -120,7 +109,7 @@ async function getJson(url, headers, warnPrefix) {
 const [user, reposRaw, events] = await Promise.all([
   getJson('https://api.github.com/users/YuGiMob', GITHUB_HEADERS, 'GitHub API error for /users/YuGiMob'),
   getJson('https://api.github.com/users/YuGiMob/repos?per_page=100', GITHUB_HEADERS, 'GitHub API error for /repos'),
-  getJson('https://api.github.com/users/YuGiMob/events/public?per_page=30', GITHUB_HEADERS, 'GitHub API error for /events/public'),
+  getJson('https://api.github.com/users/YuGiMob/events/public?per_page=100', GITHUB_HEADERS, 'GitHub API error for /events/public'),
 ]);
 const repos = Array.isArray(reposRaw) ? reposRaw : [];
 
@@ -144,7 +133,7 @@ if (user) {
   data.stats.publicRepos = typeof user.public_repos === 'number' ? user.public_repos : repos.length;
   report('stats.publicRepos', existing.stats.publicRepos, data.stats.publicRepos);
 }
-data.stats.npmPackages = data.projects.filter((p) => p.npm).length;
+data.stats.npmPackages = npmPackages.length;
 report('stats.npmPackages', existing.stats.npmPackages, data.stats.npmPackages);
 report('stats.starsGiven', existing.stats.starsGiven, data.stats.starsGiven); // preserved, never overwritten
 data.stats.accountYears = new Date().getFullYear() - ACCOUNT_CREATED_YEAR;
@@ -217,7 +206,7 @@ report('activity.fetchedAt', existing.activity.fetchedAt, data.activity.fetchedA
 //    Fetched sequentially with a small pause to avoid connection flakiness.
 // ---------------------------------------------------------------------------
 const npmResults = [];
-for (const pkg of NPM_PACKAGES) {
+for (const pkg of npmPackages) {
   const json = await getJson(
     `https://api.npmjs.org/downloads/point/last-week/${pkg}`,
     { Accept: 'application/json' },
