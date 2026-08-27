@@ -99,7 +99,10 @@ manually from the Actions tab as well.
 Curated prose is preserved: descriptions, about paragraphs, the identity block,
 and anything you wrote are never overwritten, only numbers and machine-fetched
 fields change. The file is written atomically (temp file then rename), and a
-change summary is printed. Repos on GitHub that are not yet curated in the
+change summary is printed. If the existing data file is present but unusable
+(unparseable or missing required sections), the refresh warns and exits
+without writing, so a corrupt file can never wipe the curated content.
+Repos on GitHub that are not yet curated in the
 manifest, and curated projects that no longer exist on GitHub, are reported
 as warnings.
 

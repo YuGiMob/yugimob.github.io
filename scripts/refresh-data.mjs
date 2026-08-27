@@ -5,7 +5,9 @@
 // the results into data/site-data.json, preserving all curated fields
 // (descriptions, npm links, about paragraphs, identity displayName/classTitle/
 // tagline, email, stats.starsGiven). Writes atomically and always exits 0 —
-// any API failure degrades to a warning and reuses the existing data.
+// any API failure degrades to a warning and reuses the existing data. If the
+// existing file is unusable (unparseable or missing required sections), the
+// refresh warns and exits 0 without writing, preserving the curated content.
 //
 // Node >= 22, global fetch, no dependencies.
 
@@ -30,14 +32,29 @@ const FETCH_TIMEOUT_MS = 15000;
 // Load the existing (curated) data file, if present.
 // ---------------------------------------------------------------------------
 let data = null;
+let fileUnusable = false;
 if (existsSync(DATA_FILE)) {
   try {
     data = JSON.parse(readFileSync(DATA_FILE, 'utf8'));
   } catch (err) {
+    fileUnusable = true;
     console.warn('Could not parse existing data/site-data.json:', err.message);
   }
 }
-if (!data || typeof data !== 'object' || Array.isArray(data)) {
+if (
+  !data ||
+  typeof data !== 'object' ||
+  Array.isArray(data) ||
+  !data.identity ||
+  !data.identity.links ||
+  typeof data.identity.links !== 'object' ||
+  !Array.isArray(data.projects) ||
+  !data.stats ||
+  typeof data.stats !== 'object' ||
+  !data.activity ||
+  typeof data.activity !== 'object'
+) {
+  fileUnusable = fileUnusable || existsSync(DATA_FILE);
   data = {
     identity: { links: {} },
     about: { paragraphs: [] },
@@ -46,6 +63,10 @@ if (!data || typeof data !== 'object' || Array.isArray(data)) {
     activity: {},
     sections: {},
   };
+}
+if (fileUnusable) {
+  console.warn('data/site-data.json is unusable; write skipped to preserve the existing file');
+  process.exit(0);
 }
 
 // Deep copy of the loaded state, used to diff before/after for the summary.
@@ -221,33 +242,32 @@ if (Array.isArray(events)) {
 // 2. npm weekly downloads for the published pi packages (skip on failure).
 //    Fetched sequentially with a small pause to avoid connection flakiness.
 // ---------------------------------------------------------------------------
-const npmResults = [];
+let anyNpmSuccess = false;
 for (const pkg of npmPackages) {
   const json = await getJson(
     `https://api.npmjs.org/downloads/point/last-week/${pkg}`,
     { Accept: 'application/json' },
     `npm API error for ${pkg}`,
   );
-  npmResults.push({ pkg, json });
-  await sleep(50);
-}
-for (const { pkg, json } of npmResults) {
   const project = data.projects.find((p) => p.npm === pkg);
-  if (!project || !json || typeof json.downloads !== 'number') continue;
-  const prev = existing.projects.find((p) => p.name === project.name);
-  report(
-    `projects.${project.name}.npmWeeklyDownloads`,
-    prev?.npmWeeklyDownloads,
-    json.downloads,
-  );
-  project.npmWeeklyDownloads = json.downloads;
+  if (project && json && typeof json.downloads === 'number') {
+    anyNpmSuccess = true;
+    const prev = existing.projects.find((p) => p.name === project.name);
+    report(
+      `projects.${project.name}.npmWeeklyDownloads`,
+      prev?.npmWeeklyDownloads,
+      json.downloads,
+    );
+    project.npmWeeklyDownloads = json.downloads;
+  }
+  await sleep(50);
 }
 
 if (
   user !== null ||
   Array.isArray(reposRaw) ||
   Array.isArray(events) ||
-  npmResults.some(({ json }) => json && typeof json.downloads === 'number')
+  anyNpmSuccess
 ) {
   data.activity.fetchedAt = today;
   report('activity.fetchedAt', existing.activity.fetchedAt, data.activity.fetchedAt);
