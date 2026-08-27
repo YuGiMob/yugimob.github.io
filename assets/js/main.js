@@ -1,6 +1,3 @@
-// YuGiMob — renders the site from the local data manifest.
-// ES module, vanilla JS, zero dependencies.
-
 const ABILITY_ORDER = [
   ['totalStars', 'Strength'],
   ['npmPackages', 'Dexterity'],
@@ -57,7 +54,7 @@ function link(href, text) {
   const a = el('a');
   a.href = href;
   a.target = '_blank';
-  a.rel = 'noopener';
+  a.rel = 'noopener noreferrer';
   a.textContent = text;
   return a;
 }

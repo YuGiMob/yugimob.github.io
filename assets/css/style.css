@@ -1,33 +1,22 @@
-/* ==========================================================================
-   YuGiMob — D&D Fantasy Theme
-   Dark-ink scroll-and-artifact aesthetic: parchment on obsidian, ember and
-   gold accents. System serif only — zero external fonts, images, or network
-   requests at runtime.
-   ========================================================================== */
-
-/* --------------------------------------------- 1. Design tokens */
 :root {
-  /* palette */
-  --ink: #0e0c0a;          /* page ground */
-  --ink-alt: #17130f;      /* alternate ground */
-  --panel: #1d1812;        /* card / panel */
-  --border: #3a2f1d;       /* 1px panel border */
-  --parchment: #e8d5a3;    /* primary text */
-  --muted: #9a8b6f;        /* secondary text */
-  --ember: #c04a1f;        /* flame accent */
-  --gold: #d4a017;         /* treasure accent */
-  /* in-palette shades */
+  color-scheme: dark;
+  --ink: #0e0c0a;
+  --ink-alt: #17130f;
+  --panel: #1d1812;
+  --border: #3a2f1d;
+  --parchment: #e8d5a3;
+  --muted: #9a8b6f;
+  --ember: #c04a1f;
+  --gold: #d4a017;
   --gold-bright: #e2bb55;
-  --steel: #8a7f66;        /* silvered parchment (uncommon tier) */
+  --steel: #8a7f66;
   --gold-soft: rgba(212, 160, 23, 0.16);
   --ember-soft: rgba(192, 74, 31, 0.14);
   --parchment-soft: rgba(232, 213, 163, 0.22);
-  /* type */
   --serif: Georgia, 'Times New Roman', serif;
-  /* geometry */
   --bar-track: 24px;
 }
-/* --------------------------------------------- 2. Reset & base */
+
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body {
@@ -52,18 +41,37 @@ a {
 }
 ::selection { background: var(--ember-soft); color: var(--parchment); }
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.skip-link {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  transform: translateY(-200%);
+  padding: 8px 14px;
+  background: var(--panel);
+  color: var(--parchment);
+  border: 1px solid var(--border);
+  z-index: 100;
+  text-decoration: none;
+  font-variant: small-caps;
+  letter-spacing: 0.12em;
+}
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
 noscript p {
   padding: 24px 20px;
   text-align: center;
   color: var(--gold);
 }
-/* --------------------------------------------- 3. Fantasy headings */
+
 h1, h2, h3, h4 {
   font-family: var(--serif);
   font-variant: small-caps;
   letter-spacing: 0.08em;
 }
-/* --------------------------------------------- 4. Hero (sticky) */
+
 #hero {
   position: sticky;
   top: 0;
@@ -109,7 +117,7 @@ h1, h2, h3, h4 {
   font-style: italic;
   font-size: 0.98rem;
 }
-/* --------------------------------------------- 5. Sections & ornaments */
+
 #background, #artifacts, #quest-log, #ability-scores {
   position: relative;
   max-width: 980px;
@@ -140,20 +148,20 @@ section h2 {
 }
 section h2::before { content: "✦ "; color: var(--ember); }
 section h2::after  { content: " ✦"; color: var(--ember); }
-/* --------------------------------------------- 6. Background prose */
+
 #background p {
   max-width: 62ch;
   margin: 0 auto 14px;
   color: var(--parchment);
 }
-/* --------------------------------------------- 7. Artifact grid */
+
 #project-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
   padding-bottom: 8px;
 }
-/* --------------------------------------------- 8. Artifact cards */
+
 .project-card {
   position: relative;
   display: flex;
@@ -164,7 +172,7 @@ section h2::after  { content: " ✦"; color: var(--ember); }
   border: 1px solid var(--border);
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
-/* scroll-edge highlight: a faint parchment sheen along the card top */
+
 .project-card::before {
   content: "";
   position: absolute;
@@ -215,7 +223,7 @@ section h2::after  { content: " ✦"; color: var(--ember); }
   border-bottom: 1px dotted var(--border);
 }
 .project-card a:hover { color: var(--parchment); border-bottom-color: var(--ember); }
-/* --------------------------------------------- 9. Rarity tiers */
+
 .rarity-uncommon { border-color: var(--steel); }
 .rarity-rare     { border-color: var(--ember); box-shadow: 0 0 12px var(--ember-soft); }
 .rarity-epic     { border-color: var(--gold); box-shadow: 0 0 14px var(--gold-soft); }
@@ -226,7 +234,7 @@ section h2::after  { content: " ✦"; color: var(--ember); }
 .rarity-rare h3     { color: var(--parchment); }
 .rarity-epic h3     { color: var(--gold-bright); }
 .rarity-legendary h3 { color: var(--gold-bright); text-shadow: 0 0 12px var(--gold-soft); }
-/* --------------------------------------------- 10. Ability scores */
+
 #ability-list {
   max-width: 660px;
   margin: 0 auto;
@@ -253,13 +261,13 @@ section h2::after  { content: " ✦"; color: var(--ember); }
 .bar-fill {
   display: block;
   height: 100%;
-  width: 0; /* set inline by JS (value/55 * 100%) */
+  width: 0;
   background: linear-gradient(90deg, var(--ember), var(--gold));
   box-shadow:
     inset 0 1px 0 rgba(232, 213, 163, 0.25),
     0 0 10px rgba(212, 160, 23, 0.35);
 }
-/* --------------------------------------------- 11. Quest log */
+
 #quest-log ul {
   list-style: none;
   max-width: 640px;
@@ -295,7 +303,7 @@ section h2::after  { content: " ✦"; color: var(--ember); }
   letter-spacing: 0.12em;
   font-size: 0.92rem;
 }
-/* --------------------------------------------- 12. Campfire footer */
+
 #campfire {
   position: relative;
   max-width: 980px;
@@ -326,7 +334,7 @@ section h2::after  { content: " ✦"; color: var(--ember); }
   border-color: var(--gold);
   border-bottom-color: var(--gold);
 }
-/* --------------------------------------------- 13. Responsive */
+
 @media (max-width: 720px) {
   body { font-size: 16px; }
   #hero { padding: 18px 14px 14px; }

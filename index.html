@@ -22,28 +22,26 @@
   <script type="module" src="assets/js/main.js" defer></script>
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
   <noscript>
     <p>This page requires JavaScript — enable it to view the site.</p>
   </noscript>
-  <section id="hero">
-    <img id="avatar" alt="">
+  <header id="hero">
+    <img id="avatar" src="https://avatars.githubusercontent.com/u/110136195?v=4" alt="YuGiMob" width="108" height="108" decoding="async" fetchpriority="high">
     <h1 id="display-name"></h1>
     <p id="class-title"></p>
     <p id="tagline"></p>
-  </section>
-
-  <section id="background"></section>
-
-  <section id="artifacts">
-    <div id="project-grid"></div>
-  </section>
-
-  <section id="quest-log"></section>
-
-  <section id="ability-scores">
-    <dl id="ability-list"></dl>
-  </section>
-
+  </header>
+  <main id="main-content" tabindex="-1">
+    <section id="background"></section>
+    <section id="artifacts">
+      <div id="project-grid"></div>
+    </section>
+    <section id="quest-log"></section>
+    <section id="ability-scores">
+      <dl id="ability-list"></dl>
+    </section>
+  </main>
   <footer id="campfire">
     <a id="github-link"></a>
   </footer>
