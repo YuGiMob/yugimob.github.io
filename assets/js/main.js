@@ -20,6 +20,7 @@ const MONTHS = [
 ];
 
 function rarityFor(stars) {
+  if (typeof stars !== 'number' || Number.isNaN(stars)) return RARITY_TIERS[RARITY_TIERS.length - 1];
   for (const tier of RARITY_TIERS) {
     if (stars >= tier.min) return tier;
   }
@@ -76,6 +77,7 @@ function renderIdentity(identity) {
 
 function renderBackground(about) {
   const section = document.getElementById('background');
+  section.replaceChildren();
   appendText(section, 'h2', null, 'Background');
   for (const paragraph of about.paragraphs) {
     appendText(section, 'p', null, paragraph);
@@ -84,8 +86,9 @@ function renderBackground(about) {
 
 function renderProjects(projects) {
   const grid = document.getElementById('project-grid');
+  grid.replaceChildren();
   const sorted = [...projects].sort(
-    (a, b) => (b.stars ?? 0) - (a.stars ?? 0) || a.name.localeCompare(b.name),
+    (a, b) => (b.stars ?? 0) - (a.stars ?? 0) || String(a.name ?? '').localeCompare(String(b.name ?? '')),
   );
 
   for (const project of sorted) {
@@ -135,6 +138,7 @@ function renderProjects(projects) {
 
 function renderAbilityScores(stats) {
   const list = document.getElementById('ability-list');
+  list.replaceChildren();
   for (const [key, label] of ABILITY_ORDER) {
     const value = Number.isFinite(stats?.[key]) ? stats[key] : 0;
 
@@ -142,7 +146,7 @@ function renderAbilityScores(stats) {
 
     const dd = el('dd');
     const bar = el('div', 'bar-fill');
-    bar.style.width = `${Math.min((value / 55) * 100, 100)}%`;
+    bar.style.width = `${Math.max(0, Math.min((value / 55) * 100, 100))}%`;
     dd.appendChild(bar);
     appendText(dd, 'span', null, value);
     list.appendChild(dd);
@@ -151,6 +155,7 @@ function renderAbilityScores(stats) {
 
 function renderQuestLog(activity) {
   const section = document.getElementById('quest-log');
+  section.replaceChildren();
   appendText(section, 'h2', null, 'Quest Log');
 
   const line = el('p');
@@ -178,25 +183,34 @@ function renderFooter(identity) {
   const githubLink = document.getElementById('github-link');
   githubLink.href = identity.links.github;
   githubLink.textContent = identity.displayName || 'GitHub';
-
+  const campfire = document.getElementById('campfire');
+  const existingYear = document.getElementById('campfire-year');
+  if (existingYear) existingYear.remove();
   const year = document.createElement('span');
+  year.id = 'campfire-year';
   year.textContent = `© ${new Date().getFullYear()} YuGiMob`;
-  document.getElementById('campfire').appendChild(year);
+  campfire.appendChild(year);
 }
 
 function applyVisibility(sections) {
-  setHidden('background', !sections.showBackground);
-  setHidden('artifacts', !sections.showArtifacts);
-  setHidden('quest-log', !sections.showQuestLog);
-  setHidden('ability-scores', !sections.showAbilityScores);
-  setHidden('campfire', !sections.showCampfire);
+  setHidden('background', !(sections?.showBackground ?? true));
+  setHidden('artifacts', !(sections?.showArtifacts ?? true));
+  setHidden('quest-log', !(sections?.showQuestLog ?? true));
+  setHidden('ability-scores', !(sections?.showAbilityScores ?? true));
+  setHidden('campfire', !(sections?.showCampfire ?? true));
+}
+
+function isValidSiteData(data) {
+  return Boolean(data && typeof data === 'object' && !Array.isArray(data) && data.identity && typeof data.identity === 'object' && !Array.isArray(data.identity) && data.about && typeof data.about === 'object' && !Array.isArray(data.about) && Array.isArray(data.about.paragraphs) && Array.isArray(data.projects) && data.stats && typeof data.stats === 'object' && !Array.isArray(data.stats) && data.activity && typeof data.activity === 'object' && !Array.isArray(data.activity) && data.sections && typeof data.sections === 'object' && !Array.isArray(data.sections));
 }
 
 async function init() {
-  const response = await fetch('data/site-data.json', { cache: 'no-cache' });
+  const fetchOptions = { cache: 'no-cache' };
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') fetchOptions.signal = AbortSignal.timeout(5000);
+  const response = await fetch('data/site-data.json', fetchOptions);
   if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
   const data = await response.json();
-
+  if (!isValidSiteData(data)) throw new Error('invalid data');
   renderIdentity(data.identity);
   renderBackground(data.about);
   renderProjects(data.projects);

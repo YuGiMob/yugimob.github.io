@@ -118,12 +118,19 @@ h1, h2, h3, h4 {
   font-size: 0.98rem;
 }
 
-#background, #artifacts, #quest-log, #ability-scores {
+#background, #artifacts, #quest-log, #ability-scores, #campfire {
   position: relative;
   max-width: 980px;
   margin: 64px auto 0;
-  padding: 10px 24px 0;
   border-top: 1px double var(--border);
+}
+#background, #artifacts, #quest-log, #ability-scores {
+  padding: 10px 24px 0;
+}
+#campfire {
+  padding: 44px 24px 52px;
+  text-align: center;
+  background: linear-gradient(to top, rgba(192, 74, 31, 0.07), transparent 70%);
 }
 #background::before, #artifacts::before, #quest-log::before, #ability-scores::before, #campfire::before {
   content: "✦";
@@ -134,10 +141,10 @@ h1, h2, h3, h4 {
   padding: 0 14px;
   background: var(--ink);
   font-size: 1rem;
+  line-height: 1.4;
 }
 #background::before, #artifacts::before, #quest-log::before, #ability-scores::before {
   color: var(--gold);
-  line-height: 1.4;
   text-shadow: 0 0 10px var(--gold-soft);
 }
 section h2 {
@@ -304,15 +311,6 @@ section h2::after  { content: " ✦"; color: var(--ember); }
   font-size: 0.92rem;
 }
 
-#campfire {
-  position: relative;
-  max-width: 980px;
-  margin: 64px auto 0;
-  padding: 44px 24px 52px;
-  text-align: center;
-  border-top: 1px double var(--border);
-  background: linear-gradient(to top, rgba(192, 74, 31, 0.07), transparent 70%);
-}
 #campfire::before {
   color: var(--ember);
   text-shadow: 0 0 12px var(--ember-soft);

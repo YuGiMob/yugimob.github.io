@@ -1,17 +1,6 @@
 #!/usr/bin/env node
-// scripts/refresh-data.mjs — zero-dependency data refresh for the YuGiMob site.
-//
-// Fetches GitHub (user, repos, events) and npm weekly downloads, then MERGES
-// the results into data/site-data.json, preserving all curated fields
-// (descriptions, npm links, about paragraphs, identity displayName/classTitle/
-// tagline, email, stats.starsGiven). Writes atomically and always exits 0 —
-// any API failure degrades to a warning and reuses the existing data. If the
-// existing file is unusable (unparseable or missing required sections), the
-// refresh warns and exits 0 without writing, preserving the curated content.
-//
-// Node >= 22, global fetch, no dependencies.
 
-import { readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, existsSync, unlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,13 +16,10 @@ const GITHUB_HEADERS = {
 const ACCOUNT_CREATED_YEAR = 2022;
 const MAX_HIGHLIGHTS = 5;
 const FETCH_TIMEOUT_MS = 15000;
-
-// ---------------------------------------------------------------------------
-// Load the existing (curated) data file, if present.
-// ---------------------------------------------------------------------------
 let data = null;
 let fileUnusable = false;
-if (existsSync(DATA_FILE)) {
+const fileExists = existsSync(DATA_FILE);
+if (fileExists) {
   try {
     data = JSON.parse(readFileSync(DATA_FILE, 'utf8'));
   } catch (err) {
@@ -54,7 +40,7 @@ if (
   !data.activity ||
   typeof data.activity !== 'object'
 ) {
-  fileUnusable = fileUnusable || existsSync(DATA_FILE);
+  fileUnusable = fileUnusable || fileExists;
   data = {
     identity: { links: {} },
     about: { paragraphs: [] },
@@ -68,11 +54,10 @@ if (fileUnusable) {
   console.warn('data/site-data.json is unusable; write skipped to preserve the existing file');
   process.exit(0);
 }
-
-// Deep copy of the loaded state, used to diff before/after for the summary.
 const existing = JSON.parse(JSON.stringify(data));
 
 const npmPackages = data.projects.filter((p) => p.npm).map((p) => p.npm);
+const projectByNpm = new Map(data.projects.filter((p) => p.npm).map((p) => [p.npm, p]));
 const show = (v) => (v === undefined ? '(none)' : JSON.stringify(v));
 const summary = [];
 const report = (path, oldVal, newVal) => {
@@ -82,11 +67,6 @@ const report = (path, oldVal, newVal) => {
     summary.push(`${path}: ${show(oldVal)} -> ${show(newVal)}`);
   }
 };
-
-// ---------------------------------------------------------------------------
-// Fetch helper: never throws, warns and returns null on any failure.
-// Retries once on transient network errors / 5xx; 404s and 4xx fail fast.
-// ---------------------------------------------------------------------------
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function getJson(url, headers, warnPrefix) {
@@ -123,10 +103,6 @@ async function getJson(url, headers, warnPrefix) {
   }
   return null;
 }
-
-// ---------------------------------------------------------------------------
-// 1. GitHub API: user, repos, events. Each failure is isolated.
-// ---------------------------------------------------------------------------
 const [user, reposRaw, events] = await Promise.all([
   getJson('https://api.github.com/users/YuGiMob', GITHUB_HEADERS, 'GitHub API error for /users/YuGiMob'),
   getJson('https://api.github.com/users/YuGiMob/repos?per_page=100', GITHUB_HEADERS, 'GitHub API error for /repos'),
@@ -148,15 +124,10 @@ if (Array.isArray(reposRaw)) {
     }
   }
 }
-
-// identity.links.github — refreshed from the user API login.
 if (user && user.login) {
   data.identity.links.github = `https://github.com/${user.login}`;
 }
 report('identity.links.github', existing.identity.links.github, data.identity.links.github);
-
-// stats — recomputed from the APIs, except starsGiven which the GitHub user
-// API does not expose (preserved as curated; no invented source).
 if (repos.length > 0) {
   const totalStars = repos.reduce((s, r) => s + (r.stargazers_count ?? 0), 0);
   const forksReceived = repos.reduce((s, r) => s + (r.forks_count ?? 0), 0);
@@ -174,36 +145,25 @@ report('stats.npmPackages', existing.stats.npmPackages, data.stats.npmPackages);
 data.stats.accountYears = new Date().getFullYear() - ACCOUNT_CREATED_YEAR;
 report('stats.accountYears', existing.stats.accountYears, data.stats.accountYears);
 
-// per-project stars/forks/language refreshed from the repos API; description
-// only filled when the curated value is empty/missing (curated prose wins).
 const repoByName = new Map(repos.map((r) => [r.name, r]));
+const existingByName = new Map(existing.projects.map((p) => [p.name, p]));
 for (const project of data.projects) {
   const repo = repoByName.get(project.name);
   if (!repo) continue;
-  const prev = existing.projects.find((p) => p.name === project.name);
-  if (typeof repo.stargazers_count === 'number') {
-    report(`projects.${project.name}.stars`, prev?.stars, repo.stargazers_count);
-    project.stars = repo.stargazers_count;
-  }
-  if (typeof repo.forks_count === 'number') {
-    report(`projects.${project.name}.forks`, prev?.forks, repo.forks_count);
-    project.forks = repo.forks_count;
-  }
-  if (repo.language) {
-    report(`projects.${project.name}.language`, prev?.language, repo.language);
-    project.language = repo.language;
-  }
-  if (typeof repo.pushed_at === 'string') {
-    report(`projects.${project.name}.pushedAt`, prev?.pushedAt, repo.pushed_at);
-    project.pushedAt = repo.pushed_at;
-  }
-  if (repo.description && (project.description === null || project.description === undefined || project.description === '')) {
-    report(`projects.${project.name}.description`, prev?.description, repo.description);
-    project.description = repo.description;
-  }
+  const prev = existingByName.get(project.name);
+  const sync = (repoKey, projKey, pred) => {
+    const val = repo[repoKey];
+    if (!pred(val)) return;
+    if (projKey === 'description' && project.description !== null && project.description !== undefined && project.description !== '') return;
+    report(`projects.${project.name}.${projKey}`, prev?.[projKey], val);
+    project[projKey] = val;
+  };
+  sync('stargazers_count', 'stars', (v) => typeof v === 'number');
+  sync('forks_count', 'forks', (v) => typeof v === 'number');
+  sync('language', 'language', (v) => Boolean(v));
+  sync('pushed_at', 'pushedAt', (v) => typeof v === 'string');
+  sync('description', 'description', (v) => Boolean(v));
 }
-
-// activity — pushes (PushEvent count), highlights from events, window, fetchedAt.
 const today = new Date().toISOString().slice(0, 10);
 if (Array.isArray(events)) {
   const pushes = events.filter((e) => e.type === 'PushEvent').length;
@@ -237,11 +197,6 @@ if (Array.isArray(events)) {
   }
   report('activity.window', existing.activity.window, data.activity.window);
 }
-
-// ---------------------------------------------------------------------------
-// 2. npm weekly downloads for the published pi packages (skip on failure).
-//    Fetched sequentially with a small pause to avoid connection flakiness.
-// ---------------------------------------------------------------------------
 let anyNpmSuccess = false;
 for (const pkg of npmPackages) {
   const json = await getJson(
@@ -249,10 +204,10 @@ for (const pkg of npmPackages) {
     { Accept: 'application/json' },
     `npm API error for ${pkg}`,
   );
-  const project = data.projects.find((p) => p.npm === pkg);
+  const project = projectByNpm.get(pkg);
   if (project && json && typeof json.downloads === 'number') {
     anyNpmSuccess = true;
-    const prev = existing.projects.find((p) => p.name === project.name);
+    const prev = existingByName.get(project.name);
     report(
       `projects.${project.name}.npmWeeklyDownloads`,
       prev?.npmWeeklyDownloads,
@@ -272,16 +227,13 @@ if (
   data.activity.fetchedAt = today;
   report('activity.fetchedAt', existing.activity.fetchedAt, data.activity.fetchedAt);
 }
-
-// ---------------------------------------------------------------------------
-// 4. Atomic write: tmp file + rename.
-// ---------------------------------------------------------------------------
-writeFileSync(TMP_FILE, `${JSON.stringify(data, null, 2)}\n`);
-renameSync(TMP_FILE, DATA_FILE);
-
-// ---------------------------------------------------------------------------
-// 5. Change summary.
-// ---------------------------------------------------------------------------
+try {
+  writeFileSync(TMP_FILE, `${JSON.stringify(data, null, 2)}\n`);
+  renameSync(TMP_FILE, DATA_FILE);
+} catch (err) {
+  try { if (existsSync(TMP_FILE)) unlinkSync(TMP_FILE); } catch {}
+  throw err;
+}
 console.log('Refresh complete. Changes:');
 for (const line of summary) {
   console.log(`  ${line}`);
