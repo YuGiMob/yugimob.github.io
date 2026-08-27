@@ -37,6 +37,12 @@ function el(tag, className) {
   return node;
 }
 
+function appendText(parent, tag, className, text) {
+  const node = el(tag, className);
+  node.textContent = text;
+  parent.appendChild(node);
+}
+
 function link(href, text) {
   const a = el('a');
   a.href = href;
@@ -63,52 +69,43 @@ function renderIdentity(identity) {
 
 function renderBackground(about) {
   const section = document.getElementById('background');
-  section.appendChild(el('h2')).textContent = 'Background';
+  appendText(section, 'h2', null, 'Background');
   for (const paragraph of about.paragraphs) {
-    section.appendChild(el('p')).textContent = paragraph;
+    appendText(section, 'p', null, paragraph);
   }
 }
 
 function renderProjects(projects) {
   const grid = document.getElementById('project-grid');
-  const sorted = [...projects].sort((a, b) =>
-    b.stars - a.stars || a.name.localeCompare(b.name),
+  const sorted = [...projects].sort(
+    (a, b) => (b.stars ?? 0) - (a.stars ?? 0) || a.name.localeCompare(b.name),
   );
 
   for (const project of sorted) {
-    const card = el('div', `project-card rarity-${rarityFor(project.stars).cls}`);
+    const stars = project.stars ?? 0;
+    const forks = project.forks ?? 0;
+    const card = el('div', `project-card rarity-${rarityFor(stars).cls}`);
 
-    const name = el('h3');
-    name.textContent = project.name;
-    card.appendChild(name);
+    appendText(card, 'h3', null, project.name);
 
-    const language = el('span', 'language');
-    language.textContent = project.language || 'Unknown';
-    card.appendChild(language);
+    appendText(card, 'span', 'language', project.language || 'Unknown');
 
     if (project.license) {
-      const license = el('span', 'license');
-      license.textContent = project.license;
-      card.appendChild(license);
+      appendText(card, 'span', 'license', project.license);
     }
 
     const meta = el('span', 'meta');
-    const stars = el('span', 'stars');
-    stars.textContent = `★ ${project.stars}`;
-    const forks = el('span', 'forks');
-    forks.textContent = `⑂ ${project.forks}`;
-    meta.append(stars, forks);
+    appendText(meta, 'span', 'stars', `★ ${stars}`);
+    appendText(meta, 'span', 'forks', `⑂ ${forks}`);
 
     const downloadsLabel = formatDownloads(project.npmWeeklyDownloads);
     if (downloadsLabel) {
-      const downloads = el('span', 'downloads');
-      downloads.textContent = `↓ ${downloadsLabel}/wk`;
-      meta.append(downloads);
+      appendText(meta, 'span', 'downloads', `↓ ${downloadsLabel}/wk`);
     }
     card.appendChild(meta);
 
     if (project.description) {
-      card.appendChild(el('p', 'description')).textContent = project.description;
+      appendText(card, 'p', 'description', project.description);
     }
 
     const actions = el('p', 'actions');
@@ -129,44 +126,38 @@ function renderAbilityScores(stats) {
   for (const [key, label] of ABILITY_ORDER) {
     const value = Number.isFinite(stats?.[key]) ? stats[key] : 0;
 
-    const dt = el('dt');
-    dt.textContent = label;
-    list.appendChild(dt);
+    appendText(list, 'dt', null, label);
 
     const dd = el('dd');
     const bar = el('div', 'bar-fill');
     bar.style.width = `${Math.min((value / 55) * 100, 100)}%`;
-    const score = el('span');
-    score.textContent = value;
-    dd.append(bar, score);
+    dd.appendChild(bar);
+    appendText(dd, 'span', null, value);
     list.appendChild(dd);
   }
 }
 
 function renderQuestLog(activity) {
   const section = document.getElementById('quest-log');
-  section.appendChild(el('h2')).textContent = 'Quest Log';
+  appendText(section, 'h2', null, 'Quest Log');
 
-  const windowSpan = el('span', 'window');
-  windowSpan.textContent = `Quest log — ${activity.window}`;
-  const pushes = el('span', 'pushes');
-  pushes.textContent = `${activity.pushes} pushes`;
   const line = el('p');
-  line.append(windowSpan, ' · ', pushes);
+  appendText(line, 'span', 'window', `Quest log — ${activity.window}`);
+  line.append(' · ');
+  appendText(line, 'span', 'pushes', `${activity.pushes} pushes`);
   if (activity.fetchedAt) {
-    const fetched = el('span', 'fetched');
-    fetched.textContent = `updated ${activity.fetchedAt}`;
-    line.append(' · ', fetched);
+    line.append(' · ');
+    appendText(line, 'span', 'fetched', `updated ${activity.fetchedAt}`);
   }
   section.appendChild(line);
 
   const ul = el('ul');
   if (activity.highlights && activity.highlights.length > 0) {
     for (const highlight of activity.highlights) {
-      ul.appendChild(el('li')).textContent = highlight;
+      appendText(ul, 'li', null, highlight);
     }
   } else {
-    ul.appendChild(el('li', 'empty')).textContent = 'No notable deeds this window.';
+    appendText(ul, 'li', 'empty', 'No notable deeds this window.');
   }
   section.appendChild(ul);
 }

@@ -117,7 +117,7 @@ h1, h2, h3, h4 {
   padding: 10px 24px 0;
   border-top: 1px double var(--border);
 }
-#background::before, #artifacts::before, #quest-log::before, #ability-scores::before {
+#background::before, #artifacts::before, #quest-log::before, #ability-scores::before, #campfire::before {
   content: "✦";
   position: absolute;
   top: -12px;
@@ -125,8 +125,10 @@ h1, h2, h3, h4 {
   transform: translateX(-50%);
   padding: 0 14px;
   background: var(--ink);
-  color: var(--gold);
   font-size: 1rem;
+}
+#background::before, #artifacts::before, #quest-log::before, #ability-scores::before {
+  color: var(--gold);
   line-height: 1.4;
   text-shadow: 0 0 10px var(--gold-soft);
 }
@@ -176,7 +178,7 @@ section h2::after  { content: " ✦"; color: var(--ember); }
   transform: translateY(-3px);
   border-color: var(--gold);
 }
-.project-card h3, .project-card .name {
+.project-card h3 {
   font-size: 1.12rem;
   letter-spacing: 0.06em;
   color: var(--parchment);
@@ -214,7 +216,6 @@ section h2::after  { content: " ✦"; color: var(--ember); }
 }
 .project-card a:hover { color: var(--parchment); border-bottom-color: var(--ember); }
 /* --------------------------------------------- 9. Rarity tiers */
-.rarity-common   { border-color: var(--border); }
 .rarity-uncommon { border-color: var(--steel); }
 .rarity-rare     { border-color: var(--ember); box-shadow: 0 0 12px var(--ember-soft); }
 .rarity-epic     { border-color: var(--gold); box-shadow: 0 0 14px var(--gold-soft); }
@@ -305,15 +306,7 @@ section h2::after  { content: " ✦"; color: var(--ember); }
   background: linear-gradient(to top, rgba(192, 74, 31, 0.07), transparent 70%);
 }
 #campfire::before {
-  content: "✦";
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0 14px;
-  background: var(--ink);
   color: var(--ember);
-  font-size: 1rem;
   text-shadow: 0 0 12px var(--ember-soft);
 }
 #github-link {
