@@ -32,6 +32,11 @@ All content lives in `data/site-data.json`. Edit it by hand, then commit.
 - `links.email`: leave `null` (privacy default). The site shows no email
   address unless you choose to add one.
 
+The `<head>` of `index.html` also hardcodes the display name, class title, and
+tagline in its meta tags (description, title, Open Graph, Twitter) for search
+engines and link previews, which do not run JavaScript — update those tags
+whenever you change the identity fields.
+
 ### about
 
 - `about.paragraphs`: an array of strings rendered as prose paragraphs.
@@ -81,6 +86,11 @@ This re-fetches the GitHub API (user, repos, events) and npm weekly downloads
 for the nine published pi packages, then updates the numbers: stars, forks,
 pushes, downloads. It requires Node >= 22, needs no install, and makes no
 authenticated requests, so no credentials are needed.
+
+The site also refreshes itself daily via a scheduled GitHub Actions workflow
+(`.github/workflows/refresh-data.yml`, 06:00 UTC) that runs the same script and
+commits the result only when the data actually changed. It can be triggered
+manually from the Actions tab as well.
 
 Curated prose is preserved: descriptions, about paragraphs, the identity block,
 and anything you wrote are never overwritten, only numbers and machine-fetched

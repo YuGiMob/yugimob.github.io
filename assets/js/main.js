@@ -40,6 +40,7 @@ function renderIdentity(identity) {
   const avatar = document.getElementById('avatar');
   avatar.src = identity.avatarUrl;
   avatar.alt = identity.displayName;
+  document.title = `${identity.displayName} — ${identity.classTitle}`;
   document.getElementById('display-name').textContent = identity.displayName;
   document.getElementById('class-title').textContent = identity.classTitle;
   document.getElementById('tagline').textContent = identity.tagline;

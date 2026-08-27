@@ -52,6 +52,11 @@ a {
 }
 ::selection { background: var(--ember-soft); color: var(--parchment); }
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+noscript p {
+  padding: 24px 20px;
+  text-align: center;
+  color: var(--gold);
+}
 /* --------------------------------------------- 3. Fantasy headings */
 h1, h2, h3, h4 {
   font-family: var(--serif);
