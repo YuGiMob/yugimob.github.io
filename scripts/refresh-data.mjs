@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, renameSync, existsSync, unlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,6 +8,23 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_FILE = join(ROOT, 'data', 'site-data.json');
 const TMP_FILE = `${DATA_FILE}.${process.pid}.tmp`;
 
+function safeUnlink(path) {
+  try {
+    unlinkSync(path);
+  } catch {}
+}
+
+function cleanupStaleTmpFiles() {
+  try {
+    for (const entry of readdirSync(join(ROOT, 'data'))) {
+      if (entry.startsWith('site-data.json.') && entry.endsWith('.tmp')) {
+        safeUnlink(join(ROOT, 'data', entry));
+      }
+    }
+  } catch {}
+}
+
+cleanupStaleTmpFiles();
 const GITHUB_HEADERS = {
   Accept: 'application/vnd.github+json',
   'User-Agent': 'yugimob-refresh',
@@ -290,7 +307,7 @@ try {
   writeFileSync(TMP_FILE, `${JSON.stringify(data, null, 2)}\n`);
   renameSync(TMP_FILE, DATA_FILE);
 } catch (err) {
-  try { if (existsSync(TMP_FILE)) unlinkSync(TMP_FILE); } catch {}
+  safeUnlink(TMP_FILE);
   throw err;
 }
 console.log('Refresh complete. Changes:');
