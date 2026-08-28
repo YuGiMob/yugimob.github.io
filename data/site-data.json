@@ -19,13 +19,13 @@
       "name": "pi-hashline-edit-pro",
       "description": "Hash-anchored read/replace/undo tools for the pi coding agent; every line gets a unique 3-char hash",
       "language": "TypeScript",
-      "stars": 69,
-      "forks": 18,
+      "stars": 70,
+      "forks": 20,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
-      "npmWeeklyDownloads": 3961,
-      "pushedAt": "2026-08-27T08:52:50Z"
+      "npmWeeklyDownloads": 4154,
+      "pushedAt": "2026-08-28T13:58:37Z"
     },
     {
       "name": "pi-tor-proxy",
@@ -36,8 +36,8 @@
       "url": "https://github.com/YuGiMob/pi-tor-proxy",
       "npm": "pi-tor-proxy",
       "license": "MIT",
-      "npmWeeklyDownloads": 867,
-      "pushedAt": "2026-08-26T06:22:40Z"
+      "npmWeeklyDownloads": 888,
+      "pushedAt": "2026-08-28T06:40:51Z"
     },
     {
       "name": "pi-jina-webtools",
@@ -48,7 +48,7 @@
       "url": "https://github.com/YuGiMob/pi-jina-webtools",
       "npm": "pi-jina-webtools",
       "license": "MIT",
-      "npmWeeklyDownloads": 42,
+      "npmWeeklyDownloads": 37,
       "pushedAt": "2026-08-15T07:25:47Z"
     },
     {
@@ -60,7 +60,7 @@
       "url": "https://github.com/YuGiMob/pi-context-inspector",
       "npm": "pi-context-inspector",
       "license": "MIT",
-      "npmWeeklyDownloads": 69,
+      "npmWeeklyDownloads": 64,
       "pushedAt": "2026-08-13T20:15:56Z"
     },
     {
@@ -72,7 +72,7 @@
       "url": "https://github.com/YuGiMob/pi-git-commit",
       "npm": "pi-git-commit",
       "license": "MIT",
-      "npmWeeklyDownloads": 368,
+      "npmWeeklyDownloads": 355,
       "pushedAt": "2026-08-24T12:24:45Z"
     },
     {
@@ -84,7 +84,7 @@
       "url": "https://github.com/YuGiMob/pi-msg-queue",
       "npm": "pi-msg-queue",
       "license": "MIT",
-      "npmWeeklyDownloads": 40,
+      "npmWeeklyDownloads": 33,
       "pushedAt": "2026-08-13T21:20:18Z"
     },
     {
@@ -96,8 +96,8 @@
       "url": "https://github.com/YuGiMob/pi-msg-workflow",
       "npm": "pi-msg-workflow",
       "license": "MIT",
-      "npmWeeklyDownloads": 696,
-      "pushedAt": "2026-08-25T18:41:22Z"
+      "npmWeeklyDownloads": 694,
+      "pushedAt": "2026-08-28T09:12:13Z"
     },
     {
       "name": "pi-unsloth-webtools",
@@ -108,8 +108,8 @@
       "url": "https://github.com/YuGiMob/pi-unsloth-webtools",
       "npm": "pi-unsloth-webtools",
       "license": "AGPL-3.0",
-      "npmWeeklyDownloads": 1379,
-      "pushedAt": "2026-08-26T06:26:53Z"
+      "npmWeeklyDownloads": 1425,
+      "pushedAt": "2026-08-28T06:07:27Z"
     },
     {
       "name": "pi-tps-status",
@@ -120,7 +120,7 @@
       "url": "https://github.com/YuGiMob/pi-tps-status",
       "npm": "pi-tps-status",
       "license": "MIT",
-      "npmWeeklyDownloads": 267,
+      "npmWeeklyDownloads": 271,
       "pushedAt": "2026-08-24T06:01:25Z"
     },
     {
@@ -136,22 +136,22 @@
     }
   ],
   "stats": {
-    "totalStars": 77,
+    "totalStars": 78,
     "npmPackages": 9,
     "publicRepos": 11,
     "starsGiven": 16,
-    "forksReceived": 18,
+    "forksReceived": 20,
     "accountYears": 4
   },
   "activity": {
-    "window": "2026-08-14..27",
-    "pushes": 64,
+    "window": "2026-08-16..28",
+    "pushes": 61,
     "highlights": [
       "closed issue #29 on YuGiMob/pi-hashline-edit-pro",
       "starred Haxnstuff/PiTech",
       "starred Rianico/pi-better-edit"
     ],
-    "fetchedAt": "2026-08-27"
+    "fetchedAt": "2026-08-28"
   },
   "sections": {
     "showBackground": true,
