@@ -24,8 +24,8 @@
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
-      "npmWeeklyDownloads": 4154,
-      "pushedAt": "2026-08-28T13:58:37Z"
+      "npmWeeklyDownloads": 4904,
+      "pushedAt": "2026-08-28T22:15:41Z"
     },
     {
       "name": "pi-tor-proxy",
@@ -36,7 +36,7 @@
       "url": "https://github.com/YuGiMob/pi-tor-proxy",
       "npm": "pi-tor-proxy",
       "license": "MIT",
-      "npmWeeklyDownloads": 888,
+      "npmWeeklyDownloads": 804,
       "pushedAt": "2026-08-28T06:40:51Z"
     },
     {
@@ -48,7 +48,7 @@
       "url": "https://github.com/YuGiMob/pi-jina-webtools",
       "npm": "pi-jina-webtools",
       "license": "MIT",
-      "npmWeeklyDownloads": 37,
+      "npmWeeklyDownloads": 40,
       "pushedAt": "2026-08-15T07:25:47Z"
     },
     {
@@ -60,7 +60,7 @@
       "url": "https://github.com/YuGiMob/pi-context-inspector",
       "npm": "pi-context-inspector",
       "license": "MIT",
-      "npmWeeklyDownloads": 64,
+      "npmWeeklyDownloads": 46,
       "pushedAt": "2026-08-13T20:15:56Z"
     },
     {
@@ -72,7 +72,7 @@
       "url": "https://github.com/YuGiMob/pi-git-commit",
       "npm": "pi-git-commit",
       "license": "MIT",
-      "npmWeeklyDownloads": 355,
+      "npmWeeklyDownloads": 219,
       "pushedAt": "2026-08-24T12:24:45Z"
     },
     {
@@ -96,7 +96,7 @@
       "url": "https://github.com/YuGiMob/pi-msg-workflow",
       "npm": "pi-msg-workflow",
       "license": "MIT",
-      "npmWeeklyDownloads": 694,
+      "npmWeeklyDownloads": 728,
       "pushedAt": "2026-08-28T09:12:13Z"
     },
     {
@@ -108,7 +108,7 @@
       "url": "https://github.com/YuGiMob/pi-unsloth-webtools",
       "npm": "pi-unsloth-webtools",
       "license": "AGPL-3.0",
-      "npmWeeklyDownloads": 1425,
+      "npmWeeklyDownloads": 1601,
       "pushedAt": "2026-08-28T06:07:27Z"
     },
     {
@@ -120,7 +120,7 @@
       "url": "https://github.com/YuGiMob/pi-tps-status",
       "npm": "pi-tps-status",
       "license": "MIT",
-      "npmWeeklyDownloads": 271,
+      "npmWeeklyDownloads": 263,
       "pushedAt": "2026-08-24T06:01:25Z"
     },
     {
@@ -144,14 +144,13 @@
     "accountYears": 4
   },
   "activity": {
-    "window": "2026-08-16..28",
-    "pushes": 61,
+    "window": "2026-08-17..28",
+    "pushes": 68,
     "highlights": [
       "closed issue #29 on YuGiMob/pi-hashline-edit-pro",
-      "starred Haxnstuff/PiTech",
-      "starred Rianico/pi-better-edit"
+      "starred Haxnstuff/PiTech"
     ],
-    "fetchedAt": "2026-08-28"
+    "fetchedAt": "2026-08-29"
   },
   "sections": {
     "showBackground": true,
