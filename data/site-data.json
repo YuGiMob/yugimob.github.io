@@ -24,8 +24,8 @@
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
-      "npmWeeklyDownloads": 4904,
-      "pushedAt": "2026-08-28T22:15:41Z"
+      "npmWeeklyDownloads": 5023,
+      "pushedAt": "2026-08-29T14:29:59Z"
     },
     {
       "name": "pi-tor-proxy",
@@ -36,7 +36,7 @@
       "url": "https://github.com/YuGiMob/pi-tor-proxy",
       "npm": "pi-tor-proxy",
       "license": "MIT",
-      "npmWeeklyDownloads": 804,
+      "npmWeeklyDownloads": 802,
       "pushedAt": "2026-08-28T06:40:51Z"
     },
     {
@@ -48,7 +48,7 @@
       "url": "https://github.com/YuGiMob/pi-jina-webtools",
       "npm": "pi-jina-webtools",
       "license": "MIT",
-      "npmWeeklyDownloads": 40,
+      "npmWeeklyDownloads": 36,
       "pushedAt": "2026-08-15T07:25:47Z"
     },
     {
@@ -60,7 +60,7 @@
       "url": "https://github.com/YuGiMob/pi-context-inspector",
       "npm": "pi-context-inspector",
       "license": "MIT",
-      "npmWeeklyDownloads": 46,
+      "npmWeeklyDownloads": 56,
       "pushedAt": "2026-08-13T20:15:56Z"
     },
     {
@@ -72,7 +72,7 @@
       "url": "https://github.com/YuGiMob/pi-git-commit",
       "npm": "pi-git-commit",
       "license": "MIT",
-      "npmWeeklyDownloads": 219,
+      "npmWeeklyDownloads": 202,
       "pushedAt": "2026-08-24T12:24:45Z"
     },
     {
@@ -84,7 +84,7 @@
       "url": "https://github.com/YuGiMob/pi-msg-queue",
       "npm": "pi-msg-queue",
       "license": "MIT",
-      "npmWeeklyDownloads": 33,
+      "npmWeeklyDownloads": 29,
       "pushedAt": "2026-08-13T21:20:18Z"
     },
     {
@@ -96,7 +96,7 @@
       "url": "https://github.com/YuGiMob/pi-msg-workflow",
       "npm": "pi-msg-workflow",
       "license": "MIT",
-      "npmWeeklyDownloads": 728,
+      "npmWeeklyDownloads": 701,
       "pushedAt": "2026-08-28T09:12:13Z"
     },
     {
@@ -108,7 +108,7 @@
       "url": "https://github.com/YuGiMob/pi-unsloth-webtools",
       "npm": "pi-unsloth-webtools",
       "license": "AGPL-3.0",
-      "npmWeeklyDownloads": 1601,
+      "npmWeeklyDownloads": 1236,
       "pushedAt": "2026-08-28T06:07:27Z"
     },
     {
@@ -120,7 +120,7 @@
       "url": "https://github.com/YuGiMob/pi-tps-status",
       "npm": "pi-tps-status",
       "license": "MIT",
-      "npmWeeklyDownloads": 263,
+      "npmWeeklyDownloads": 267,
       "pushedAt": "2026-08-24T06:01:25Z"
     },
     {
@@ -139,18 +139,20 @@
     "totalStars": 78,
     "npmPackages": 9,
     "publicRepos": 11,
-    "starsGiven": 16,
+    "starsGiven": 17,
     "forksReceived": 20,
     "accountYears": 4
   },
   "activity": {
-    "window": "2026-08-17..28",
-    "pushes": 68,
+    "window": "2026-08-21..29",
+    "pushes": 69,
     "highlights": [
+      "starred obalado/pi-hashline-context-edit",
+      "closed issue #32 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #29 on YuGiMob/pi-hashline-edit-pro",
       "starred Haxnstuff/PiTech"
     ],
-    "fetchedAt": "2026-08-29"
+    "fetchedAt": "2026-08-30"
   },
   "sections": {
     "showBackground": true,
