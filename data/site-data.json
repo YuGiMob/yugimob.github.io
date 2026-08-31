@@ -19,8 +19,8 @@
       "name": "pi-hashline-edit-pro",
       "description": "Hash-anchored read/replace/undo tools for the pi coding agent; every line gets a unique 3-char hash",
       "language": "TypeScript",
-      "stars": 70,
-      "forks": 20,
+      "stars": 71,
+      "forks": 21,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
@@ -136,11 +136,11 @@
     }
   ],
   "stats": {
-    "totalStars": 78,
+    "totalStars": 79,
     "npmPackages": 9,
     "publicRepos": 11,
-    "starsGiven": 17,
-    "forksReceived": 20,
+    "starsGiven": 16,
+    "forksReceived": 21,
     "accountYears": 4
   },
   "activity": {
@@ -152,7 +152,7 @@
       "closed issue #29 on YuGiMob/pi-hashline-edit-pro",
       "starred Haxnstuff/PiTech"
     ],
-    "fetchedAt": "2026-08-30"
+    "fetchedAt": "2026-08-31"
   },
   "sections": {
     "showBackground": true,
