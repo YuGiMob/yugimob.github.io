@@ -19,8 +19,8 @@
       "name": "pi-hashline-edit-pro",
       "description": "Hash-anchored read/replace/undo tools for the pi coding agent; every line gets a unique 3-char hash",
       "language": "TypeScript",
-      "stars": 72,
-      "forks": 21,
+      "stars": 73,
+      "forks": 22,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
@@ -49,7 +49,7 @@
       "npm": "pi-jina-webtools",
       "license": "MIT",
       "npmWeeklyDownloads": 36,
-      "pushedAt": "2026-08-15T07:25:47Z"
+      "pushedAt": "2026-09-01T17:10:48Z"
     },
     {
       "name": "pi-context-inspector",
@@ -73,7 +73,7 @@
       "npm": "pi-git-commit",
       "license": "MIT",
       "npmWeeklyDownloads": 202,
-      "pushedAt": "2026-08-24T12:24:45Z"
+      "pushedAt": "2026-09-01T19:44:27Z"
     },
     {
       "name": "pi-msg-queue",
@@ -97,7 +97,7 @@
       "npm": "pi-msg-workflow",
       "license": "MIT",
       "npmWeeklyDownloads": 701,
-      "pushedAt": "2026-08-28T09:12:13Z"
+      "pushedAt": "2026-09-01T21:01:20Z"
     },
     {
       "name": "pi-unsloth-webtools",
@@ -109,7 +109,7 @@
       "npm": "pi-unsloth-webtools",
       "license": "AGPL-3.0",
       "npmWeeklyDownloads": 1236,
-      "pushedAt": "2026-08-28T06:07:27Z"
+      "pushedAt": "2026-09-02T06:27:40Z"
     },
     {
       "name": "pi-tps-status",
@@ -132,19 +132,19 @@
       "url": "https://github.com/YuGiMob/mypi",
       "npm": null,
       "license": null,
-      "pushedAt": "2026-08-26T07:26:49Z"
+      "pushedAt": "2026-09-02T06:48:03Z"
     }
   ],
   "stats": {
-    "totalStars": 80,
+    "totalStars": 81,
     "npmPackages": 9,
     "publicRepos": 11,
     "starsGiven": 16,
-    "forksReceived": 21,
+    "forksReceived": 22,
     "accountYears": 4
   },
   "activity": {
-    "window": "2026-08-21..29",
+    "window": "2026-08-21..2026-09-01",
     "pushes": 69,
     "highlights": [
       "starred obalado/pi-hashline-context-edit",
@@ -152,7 +152,7 @@
       "closed issue #29 on YuGiMob/pi-hashline-edit-pro",
       "starred Haxnstuff/PiTech"
     ],
-    "fetchedAt": "2026-09-01"
+    "fetchedAt": "2026-09-02"
   },
   "sections": {
     "showBackground": true,
