@@ -19,13 +19,13 @@
       "name": "pi-hashline-edit-pro",
       "description": "Hash-anchored read/replace/undo tools for the pi coding agent; every line gets a unique 3-char hash",
       "language": "TypeScript",
-      "stars": 73,
+      "stars": 74,
       "forks": 22,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
       "npmWeeklyDownloads": 5023,
-      "pushedAt": "2026-08-29T14:29:59Z"
+      "pushedAt": "2026-09-03T08:49:40Z"
     },
     {
       "name": "pi-tor-proxy",
@@ -97,7 +97,7 @@
       "npm": "pi-msg-workflow",
       "license": "MIT",
       "npmWeeklyDownloads": 701,
-      "pushedAt": "2026-09-01T21:01:20Z"
+      "pushedAt": "2026-09-02T13:44:14Z"
     },
     {
       "name": "pi-unsloth-webtools",
@@ -136,7 +136,7 @@
     }
   ],
   "stats": {
-    "totalStars": 81,
+    "totalStars": 82,
     "npmPackages": 9,
     "publicRepos": 11,
     "starsGiven": 16,
@@ -144,15 +144,15 @@
     "accountYears": 4
   },
   "activity": {
-    "window": "2026-08-21..2026-09-01",
-    "pushes": 69,
+    "window": "2026-08-22..2026-09-02",
+    "pushes": 71,
     "highlights": [
       "starred obalado/pi-hashline-context-edit",
       "closed issue #32 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #29 on YuGiMob/pi-hashline-edit-pro",
       "starred Haxnstuff/PiTech"
     ],
-    "fetchedAt": "2026-09-02"
+    "fetchedAt": "2026-09-03"
   },
   "sections": {
     "showBackground": true,
