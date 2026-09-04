@@ -19,13 +19,13 @@
       "name": "pi-hashline-edit-pro",
       "description": "Hash-anchored read/replace/undo tools for the pi coding agent; every line gets a unique 3-char hash",
       "language": "TypeScript",
-      "stars": 74,
+      "stars": 75,
       "forks": 22,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
       "npmWeeklyDownloads": 5023,
-      "pushedAt": "2026-09-03T08:49:40Z"
+      "pushedAt": "2026-09-03T19:43:07Z"
     },
     {
       "name": "pi-tor-proxy",
@@ -73,7 +73,7 @@
       "npm": "pi-git-commit",
       "license": "MIT",
       "npmWeeklyDownloads": 202,
-      "pushedAt": "2026-09-01T19:44:27Z"
+      "pushedAt": "2026-09-03T14:26:41Z"
     },
     {
       "name": "pi-msg-queue",
@@ -97,7 +97,7 @@
       "npm": "pi-msg-workflow",
       "license": "MIT",
       "npmWeeklyDownloads": 701,
-      "pushedAt": "2026-09-02T13:44:14Z"
+      "pushedAt": "2026-09-03T17:34:42Z"
     },
     {
       "name": "pi-unsloth-webtools",
@@ -109,7 +109,7 @@
       "npm": "pi-unsloth-webtools",
       "license": "AGPL-3.0",
       "npmWeeklyDownloads": 1236,
-      "pushedAt": "2026-09-02T06:27:40Z"
+      "pushedAt": "2026-09-03T18:41:59Z"
     },
     {
       "name": "pi-tps-status",
@@ -132,11 +132,11 @@
       "url": "https://github.com/YuGiMob/mypi",
       "npm": null,
       "license": null,
-      "pushedAt": "2026-09-02T06:48:03Z"
+      "pushedAt": "2026-09-03T14:29:40Z"
     }
   ],
   "stats": {
-    "totalStars": 82,
+    "totalStars": 83,
     "npmPackages": 9,
     "publicRepos": 11,
     "starsGiven": 16,
@@ -144,15 +144,15 @@
     "accountYears": 4
   },
   "activity": {
-    "window": "2026-08-22..2026-09-02",
-    "pushes": 71,
+    "window": "2026-08-22..2026-09-03",
+    "pushes": 72,
     "highlights": [
       "starred obalado/pi-hashline-context-edit",
       "closed issue #32 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #29 on YuGiMob/pi-hashline-edit-pro",
       "starred Haxnstuff/PiTech"
     ],
-    "fetchedAt": "2026-09-03"
+    "fetchedAt": "2026-09-04"
   },
   "sections": {
     "showBackground": true,
