@@ -25,7 +25,7 @@
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
       "npmWeeklyDownloads": 5023,
-      "pushedAt": "2026-09-03T19:43:07Z"
+      "pushedAt": "2026-09-05T06:55:46Z"
     },
     {
       "name": "pi-tor-proxy",
@@ -138,21 +138,21 @@
   "stats": {
     "totalStars": 83,
     "npmPackages": 9,
-    "publicRepos": 11,
+    "publicRepos": 13,
     "starsGiven": 16,
     "forksReceived": 22,
     "accountYears": 4
   },
   "activity": {
-    "window": "2026-08-22..2026-09-03",
-    "pushes": 72,
+    "window": "2026-08-23..2026-09-04",
+    "pushes": 70,
     "highlights": [
       "starred obalado/pi-hashline-context-edit",
       "closed issue #32 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #29 on YuGiMob/pi-hashline-edit-pro",
       "starred Haxnstuff/PiTech"
     ],
-    "fetchedAt": "2026-09-04"
+    "fetchedAt": "2026-09-05"
   },
   "sections": {
     "showBackground": true,
