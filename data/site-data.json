@@ -19,19 +19,19 @@
       "name": "pi-hashline-edit-pro",
       "description": "Hash-anchored read/replace/undo tools for the pi coding agent; every line gets a unique 3-char hash",
       "language": "TypeScript",
-      "stars": 76,
-      "forks": 23,
+      "stars": 78,
+      "forks": 24,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
       "npmWeeklyDownloads": 3148,
-      "pushedAt": "2026-09-07T10:56:56Z"
+      "pushedAt": "2026-09-08T09:39:18Z"
     },
     {
       "name": "pi-tor-proxy",
       "description": "Self-contained Pi extension to route all requests through Tor",
       "language": "TypeScript",
-      "stars": 2,
+      "stars": 3,
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-tor-proxy",
       "npm": "pi-tor-proxy",
@@ -136,16 +136,16 @@
     }
   ],
   "stats": {
-    "totalStars": 84,
+    "totalStars": 87,
     "npmPackages": 9,
     "publicRepos": 13,
     "starsGiven": 17,
-    "forksReceived": 23,
+    "forksReceived": 24,
     "accountYears": 4
   },
   "activity": {
-    "window": "2026-08-24..2026-09-07",
-    "pushes": 69,
+    "window": "2026-08-25..2026-09-08",
+    "pushes": 74,
     "highlights": [
       "starred kunkun9527/pi-hashline-edit-pro-lean",
       "starred obalado/pi-hashline-context-edit",
@@ -153,7 +153,7 @@
       "closed issue #29 on YuGiMob/pi-hashline-edit-pro",
       "starred Haxnstuff/PiTech"
     ],
-    "fetchedAt": "2026-09-07"
+    "fetchedAt": "2026-09-08"
   },
   "sections": {
     "showBackground": true,
