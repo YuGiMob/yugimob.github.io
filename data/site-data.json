@@ -2,7 +2,7 @@
   "identity": {
     "displayName": "YuGiMob",
     "classTitle": "Artificer of Agent Tools",
-    "tagline": "Crafts pi-coding-agent extensions - hash-anchored edits, Tor-wrapped requests, cloud models.",
+    "tagline": "Coding agents with safety rails: hash-anchored edits, Tor-wrapped requests, and benchmarks that tell the truth.",
     "avatarUrl": "https://avatars.githubusercontent.com/u/110136195?s=216&v=4",
     "links": {
       "github": "https://github.com/YuGiMob",
@@ -11,33 +11,33 @@
   },
   "about": {
     "paragraphs": [
-      "Author of pi-coding-agent extensions (9 published TypeScript packages on npm) and a personal pi configuration repo. All repos are MIT- or AGPL-3.0-licensed where licensed, and the account has been active since 2022."
+      "Author of nine published pi-coding-agent extensions on npm, plus a benchmark that keeps them honest. Building agent tooling since 2022."
     ]
   },
   "projects": [
     {
       "name": "pi-hashline-edit-pro",
-      "description": "Hash-anchored read/replace/undo tools for the pi coding agent; every line gets a unique 3-char hash",
+      "description": "Hash-anchored read/replace/undo tools for the pi coding agent; every line gets a unique 4-character anchor",
       "language": "TypeScript",
-      "stars": 69,
-      "forks": 18,
+      "stars": 86,
+      "forks": 28,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
-      "npmWeeklyDownloads": 3961,
-      "pushedAt": "2026-08-27T08:52:50Z"
+      "npmWeeklyDownloads": 4607,
+      "pushedAt": "2026-09-17T20:24:02Z"
     },
     {
       "name": "pi-tor-proxy",
       "description": "Self-contained Pi extension to route all requests through Tor",
       "language": "TypeScript",
-      "stars": 2,
+      "stars": 3,
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-tor-proxy",
       "npm": "pi-tor-proxy",
       "license": "MIT",
-      "npmWeeklyDownloads": 867,
-      "pushedAt": "2026-08-26T06:22:40Z"
+      "npmWeeklyDownloads": 28,
+      "pushedAt": "2026-08-28T06:40:51Z"
     },
     {
       "name": "pi-jina-webtools",
@@ -48,8 +48,8 @@
       "url": "https://github.com/YuGiMob/pi-jina-webtools",
       "npm": "pi-jina-webtools",
       "license": "MIT",
-      "npmWeeklyDownloads": 42,
-      "pushedAt": "2026-08-15T07:25:47Z"
+      "npmWeeklyDownloads": 32,
+      "pushedAt": "2026-09-01T17:10:48Z"
     },
     {
       "name": "pi-context-inspector",
@@ -60,7 +60,7 @@
       "url": "https://github.com/YuGiMob/pi-context-inspector",
       "npm": "pi-context-inspector",
       "license": "MIT",
-      "npmWeeklyDownloads": 69,
+      "npmWeeklyDownloads": 37,
       "pushedAt": "2026-08-13T20:15:56Z"
     },
     {
@@ -68,12 +68,12 @@
       "description": "Safe commit flow for pi: bash git guard + git_commit tool + /commit",
       "language": "TypeScript",
       "stars": 1,
-      "forks": 0,
+      "forks": 1,
       "url": "https://github.com/YuGiMob/pi-git-commit",
       "npm": "pi-git-commit",
       "license": "MIT",
-      "npmWeeklyDownloads": 368,
-      "pushedAt": "2026-08-24T12:24:45Z"
+      "npmWeeklyDownloads": 41,
+      "pushedAt": "2026-09-03T14:26:41Z"
     },
     {
       "name": "pi-msg-queue",
@@ -84,7 +84,7 @@
       "url": "https://github.com/YuGiMob/pi-msg-queue",
       "npm": "pi-msg-queue",
       "license": "MIT",
-      "npmWeeklyDownloads": 40,
+      "npmWeeklyDownloads": 10,
       "pushedAt": "2026-08-13T21:20:18Z"
     },
     {
@@ -96,8 +96,8 @@
       "url": "https://github.com/YuGiMob/pi-msg-workflow",
       "npm": "pi-msg-workflow",
       "license": "MIT",
-      "npmWeeklyDownloads": 696,
-      "pushedAt": "2026-08-25T18:41:22Z"
+      "npmWeeklyDownloads": 154,
+      "pushedAt": "2026-09-17T19:29:16Z"
     },
     {
       "name": "pi-unsloth-webtools",
@@ -108,8 +108,8 @@
       "url": "https://github.com/YuGiMob/pi-unsloth-webtools",
       "npm": "pi-unsloth-webtools",
       "license": "AGPL-3.0",
-      "npmWeeklyDownloads": 1379,
-      "pushedAt": "2026-08-26T06:26:53Z"
+      "npmWeeklyDownloads": 314,
+      "pushedAt": "2026-09-17T19:44:39Z"
     },
     {
       "name": "pi-tps-status",
@@ -120,7 +120,7 @@
       "url": "https://github.com/YuGiMob/pi-tps-status",
       "npm": "pi-tps-status",
       "license": "MIT",
-      "npmWeeklyDownloads": 267,
+      "npmWeeklyDownloads": 73,
       "pushedAt": "2026-08-24T06:01:25Z"
     },
     {
@@ -132,26 +132,116 @@
       "url": "https://github.com/YuGiMob/mypi",
       "npm": null,
       "license": null,
-      "pushedAt": "2026-08-26T07:26:49Z"
+      "pushedAt": "2026-09-05T15:57:58Z"
+    },
+    {
+      "name": "pi-edit-benchmark",
+      "description": "Deterministic tool-level benchmark comparing file-editing extensions for pi, with real-LLM runs and full traces",
+      "language": "TypeScript",
+      "stars": 0,
+      "forks": 0,
+      "url": "https://github.com/YuGiMob/pi-edit-benchmark",
+      "npm": null,
+      "license": null,
+      "pushedAt": "2026-09-04T13:48:31Z"
     }
   ],
   "stats": {
-    "totalStars": 77,
+    "totalStars": 94,
     "npmPackages": 9,
-    "publicRepos": 11,
-    "starsGiven": 16,
-    "forksReceived": 18,
+    "publicRepos": 12,
+    "starsGiven": 17,
+    "forksReceived": 29,
     "accountYears": 4
   },
   "activity": {
-    "window": "2026-08-14..27",
-    "pushes": 64,
+    "window": "2026-09-03..17",
+    "pushes": 63,
     "highlights": [
-      "closed issue #29 on YuGiMob/pi-hashline-edit-pro",
-      "starred Haxnstuff/PiTech",
-      "starred Rianico/pi-better-edit"
+      "closed issue #45 on YuGiMob/pi-hashline-edit-pro",
+      "closed issue #44 on YuGiMob/pi-hashline-edit-pro",
+      "closed issue #46 on YuGiMob/pi-hashline-edit-pro",
+      "closed issue #41 on YuGiMob/pi-hashline-edit-pro",
+      "closed issue #38 on YuGiMob/pi-hashline-edit-pro"
     ],
-    "fetchedAt": "2026-08-27"
+    "fetchedAt": "2026-09-17",
+    "daily": [
+      {
+        "date": "2026-09-03",
+        "events": 5,
+        "pushes": 5
+      },
+      {
+        "date": "2026-09-04",
+        "events": 3,
+        "pushes": 3
+      },
+      {
+        "date": "2026-09-05",
+        "events": 11,
+        "pushes": 11
+      },
+      {
+        "date": "2026-09-06",
+        "events": 1,
+        "pushes": 1
+      },
+      {
+        "date": "2026-09-07",
+        "events": 9,
+        "pushes": 6
+      },
+      {
+        "date": "2026-09-08",
+        "events": 5,
+        "pushes": 4
+      },
+      {
+        "date": "2026-09-09",
+        "events": 8,
+        "pushes": 2
+      },
+      {
+        "date": "2026-09-10",
+        "events": 6,
+        "pushes": 3
+      },
+      {
+        "date": "2026-09-11",
+        "events": 12,
+        "pushes": 2
+      },
+      {
+        "date": "2026-09-12",
+        "events": 6,
+        "pushes": 1
+      },
+      {
+        "date": "2026-09-13",
+        "events": 3,
+        "pushes": 1
+      },
+      {
+        "date": "2026-09-14",
+        "events": 7,
+        "pushes": 4
+      },
+      {
+        "date": "2026-09-15",
+        "events": 14,
+        "pushes": 12
+      },
+      {
+        "date": "2026-09-16",
+        "events": 7,
+        "pushes": 7
+      },
+      {
+        "date": "2026-09-17",
+        "events": 3,
+        "pushes": 1
+      }
+    ]
   },
   "sections": {
     "showBackground": true,
@@ -159,5 +249,13 @@
     "showQuestLog": true,
     "showAbilityScores": true,
     "showCampfire": true
-  }
+  },
+  "history": [
+    {
+      "date": "2026-09-17",
+      "totalStars": 94,
+      "totalDownloads": 5296,
+      "pushes": 63
+    }
+  ]
 }

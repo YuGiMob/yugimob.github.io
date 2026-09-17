@@ -1,129 +1,125 @@
 # YuGiMob
 
-This is the source for [yugimob.github.io](https://yugimob.github.io), a static
-single-page profile site for the GitHub account YuGiMob: plain HTML, CSS, and
-JavaScript with a Dungeons & Dragons theme. It has a hero header, a short
-background, artifact cards (one per curated public repo), a quest log of recent
-activity, ability-score stat bars, and a campfire footer with a GitHub link.
+Source for [yugimob.github.io](https://yugimob.github.io): a hand-written static
+showcase for the pi-coding-agent extensions and tools built by YuGiMob.
+Plain HTML, CSS, and JavaScript — no build step, no framework, no runtime
+dependencies. GitHub Pages serves the files directly.
 
-Everything renders from one data file, `data/site-data.json`, with no build
-step and no framework. GitHub Pages serves these files directly.
+The page is a showcase, not a list: the flagship gets a live, interactive
+playground, every other artifact gets a demo of its actual interaction pattern,
+and a data lab charts the numbers behind the work.
 
-## Sections
+## Page sections
 
-- **Hero** (`#hero`): avatar, display name, class title, tagline
-- **Background** (`#background`): prose paragraphs
-- **Artifacts** (`#artifacts`): cards for the curated public repos
-- **Quest log** (`#quest-log`): recent activity snapshot
-- **Ability scores** (`#ability-scores`): stat bars
-- **Campfire** (`#campfire`): footer with GitHub link
+- **Hero** (`#hero`): avatar, rotating one-liners, live counters for stars,
+  weekly installs, packages, and years.
+- **Flagship** (`#featured`): pi-hashline-edit-pro, with an interactive
+  hashline playground — real FNV-1a anchors, a real served-row record, real
+  `[E_RANGE_STALE]` refusals, and a scripted tour that runs the whole loop.
+- **The Forge** (`#forge`): ten cards, each with a live demo:
+  search results (pi-unsloth-webtools, pi-jina-webtools), a Tor circuit
+  (pi-tor-proxy), a context-window breakdown (pi-context-inspector), a live
+  tokens-per-second widget (pi-tps-status), a workflow pipeline
+  (pi-msg-workflow), a guarded commit transcript (pi-git-commit), a message
+  queue (pi-msg-queue), a config tree (mypi), and a benchmark run trace
+  (pi-edit-benchmark).
+- **Evidence Lab** (`#lab`): benchmark pass rates, weekly npm installs, the
+  download history that grows one snapshot per day, an 18-week activity
+  heatmap, and a "last shipped" freshness chart.
+- **About** (`#about`): prose and the principles behind the tools.
+- **Campfire** (`#campfire`): footer with the GitHub link.
 
-## Editing content
+## Files
 
-All content lives in `data/site-data.json`. Edit it by hand, then commit.
+```
+index.html                      page shell, meta tags, JSON-LD
+404.html                        themed not-found page
+assets/css/style.css            the entire stylesheet
+assets/js/main.js               fetch, render, wire everything
+assets/js/ui.js                 DOM, formatting, copy, runtime helpers
+assets/js/hashline.js           anchor allocation + edit session model
+assets/js/playground.js         the flagship interactive demo
+assets/js/demos.js              all ten card demos
+assets/js/charts.js             the five lab charts
+assets/js/avatar.js             avatar srcset hydration
+data/site-data.json             machine-refreshed data
+data/site-data.schema.json      schema for the above
+data/showcase.json              curated narrative and demo wiring
+data/showcase.schema.json       schema for the above
+scripts/refresh-data.mjs        daily GitHub + npm refresh
+scripts/validate-data.mjs       offline validation for both data files
+```
 
-### identity
+## Data model
 
-- `displayName`: name shown in the hero
-- `classTitle`: D&D-flavored subtitle
-- `tagline`: one-line description
-- `avatarUrl`: avatar image URL
-- `links.github`: GitHub profile link
-- `links.email`: leave `null` (privacy default). The site shows no email
-  address unless you choose to add one.
+Two files, with a clean split:
 
-The `<head>` of `index.html` also hardcodes the display name, class title, and
-tagline in its meta tags (description, title, Open Graph, Twitter) for search
-engines and link previews, which do not run JavaScript — update those tags
-whenever you change the identity fields.
+**`data/site-data.json`** is owned by the refresh workflow. It holds the
+identity block, the curated project manifest (name, URL, npm package, curated
+description), and machine numbers: stars, forks, languages, last push,
+weekly npm downloads, stats, activity (window, pushes, highlights, per-day
+events), and `history` — one snapshot per day with total stars, total weekly
+downloads, and pushes.
 
-### about
-
-- `about.paragraphs`: an array of strings rendered as prose paragraphs.
-
-### projects
-
-An array of entries, one per curated public repo, each with `name`, `description`,
-`language`, `stars`, `forks`, `url`, `npm`, `license`, `npmWeeklyDownloads`,
-and `pushedAt` (`npm` and `license` are `null` when not applicable;
-`npmWeeklyDownloads` is absent for non-npm projects; `pushedAt` is the last
-push date from the GitHub API). Cards sort by `stars` descending, show the
-license when present, the weekly npm download count when positive, and the
-last push date as "updated <month year>"; the rarity tier comes from the star
-count:
-
-| Stars | Rarity |
-| --- | --- |
-| 0 | common |
-| 1-9 | uncommon |
-| 10-29 | rare |
-| 30-49 | epic |
-| 50+ | legendary |
-
-### stats
-
-Six numbers mapped to the D&D ability bars: `totalStars` = Strength,
-`npmPackages` = Dexterity, `publicRepos` = Intelligence, `starsGiven` = Wisdom,
-`forksReceived` = Charisma, `accountYears` = Constitution.
-
-### activity
-
-- `window`: date range covered
-- `pushes`: push count in that window
-- `highlights`: notable events
-- `fetchedAt`: when the data was last fetched (shown in the quest log header)
-
-### sections
-
-- `showBackground`, `showArtifacts`, `showQuestLog`, `showAbilityScores`,
-  `showCampfire`: set one to `false` to hide that section.
+**`data/showcase.json`** is curated by hand. It holds the hero one-liners, the
+featured project narrative, one entry per showcased project (kicker, tagline,
+highlights, demo id, size), the benchmark snapshot, the principles, the about
+prose, and the lab intro. The two files are joined by project name; the
+validator fails if a showcased name is missing from the manifest, duplicated,
+or if the featured project is repeated in the grid.
 
 ## Refreshing data
-
-Run:
 
 ```
 node scripts/refresh-data.mjs
 ```
 
-This re-fetches the GitHub API (user, repos, events) and npm weekly downloads
-for the nine published pi packages, then updates the numbers: stars, forks,
-last-push dates, pushes, downloads. It requires Node >= 22, needs no install,
-and makes no authenticated requests, so no credentials are needed.
+The script fetches the GitHub user, repos, and public events, plus npm weekly
+downloads for every package in the manifest, then updates only the machine
+fields. It requires Node >= 22, needs no install, and makes no authenticated
+requests.
 
-The site also refreshes itself daily via a scheduled GitHub Actions workflow
-(`.github/workflows/refresh-data.yml`, 06:00 UTC) that runs the same script and
-commits the result only when the data actually changed. It can be triggered
-manually from the Actions tab as well.
+What it preserves: curated prose, descriptions, identity, and the showcase
+file are never touched. Forks and the site repo are skipped. The file is
+written atomically (temp file then rename) with a change summary. If the
+existing file is present but unusable, the refresh warns and exits without
+writing, so a corrupt file cannot wipe curated content.
 
-Curated prose is preserved: descriptions, about paragraphs, the identity block,
-and anything you wrote are never overwritten, only numbers and machine-fetched
-fields change. The file is written atomically (temp file then rename), and a
-change summary is printed. If the existing data file is present but unusable
-(unparseable or missing required sections), the refresh warns and exits
-without writing, so a corrupt file can never wipe the curated content.
-Repos on GitHub that are not yet curated in the
-manifest, and curated projects that no longer exist on GitHub, are reported
-as warnings.
+Each run also appends a `history` snapshot for the day (replacing an existing
+snapshot for the same date, capped at 120 entries) and rebuilds
+`activity.daily` from the last 120 days of public events. Those two fields are
+what the history chart and heatmap read.
+
+The site refreshes itself daily through
+`.github/workflows/refresh-data.yml` (06:00 UTC), which runs the script,
+validates both data files, and commits `data/site-data.json` only when it
+changed. It can also be triggered manually from the Actions tab.
+
+## Validating
+
+```
+node scripts/validate-data.mjs
+```
+
+Checks both JSON files against their schemas and the structural rules,
+cross-references showcase names with the manifest, and prints
+`validate: ok`. The workflow runs it on every refresh.
 
 ## Serving locally
-
-From this directory:
 
 ```
 python3 -m http.server 8123
 ```
 
-Then open http://localhost:8123/ in a browser.
+Then open <http://localhost:8123/>.
 
 ## Deploying
 
-The site is served from the `main` branch of the `yugimob.github.io` repo, so a
-deploy is a normal push:
+The site is served from the `main` branch, so a deploy is a normal push.
 
 ```
-git add README.md
-git commit -m "docs(site): update site"
+git add -A
+git commit -m "feat(site): ..."
 git push
 ```
 

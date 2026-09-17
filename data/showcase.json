@@ -1,0 +1,193 @@
+{
+  "intro": [
+    "Coding agents, with safety rails.",
+    "Hash-anchored edits. Tor-wrapped requests. Live benchmarks."
+  ],
+  "featured": {
+    "name": "pi-hashline-edit-pro",
+    "kicker": "Flagship artifact",
+    "headline": "Edits that land on the line you meant",
+    "summary": [
+      "Line numbers drift the moment anything above them changes, and fuzzy matching quietly does the worst possible thing when it half-matches. pi-hashline-edit-pro removes both failure modes: every line gets a unique 4-character anchor, and the anchor is the only address an edit can use.",
+      "It registers read, replace, insert, anchor_grep, and undo_last_change, and disables the built-in edit tool. In its own benchmark it leads the field at 86% overall correctness and 96.3% on stale-and-drift scenarios."
+    ],
+    "points": [
+      {
+        "title": "Anchors survive edits",
+        "body": "Anchors are content-addressed, so inserting or deleting lines never renumbers the ones you did not touch. Follow-up edits keep working without a re-read."
+      },
+      {
+        "title": "Stale edits are refused",
+        "body": "Every served row is remembered. If the file changed underneath, the tool answers [E_RANGE_STALE] with the current range and fresh anchors instead of silently editing a neighbor."
+      },
+      {
+        "title": "Undo is byte-exact",
+        "body": "The last replace or insert on a file reverts with BOM and line endings intact, and the history survives a session restart."
+      },
+      {
+        "title": "Batches are atomic",
+        "body": "Multiple edits group per file into one batch with a combined diff and a single undo. Overlaps, or one stale member, abort the whole batch unwritten."
+      }
+    ],
+    "demo": "hashline"
+  },
+  "projects": [
+    {
+      "name": "pi-unsloth-webtools",
+      "kicker": "Search & fetch",
+      "tagline": "Web search and page fetch with no API key and no SSRF: DuckDuckGo results plus an HTML-to-Markdown extractor ported from the Unsloth Studio codebase.",
+      "highlights": [
+        "Zero-key DuckDuckGo search",
+        "Private and loopback addresses refused",
+        "Readable Markdown instead of raw soup"
+      ],
+      "demo": "search",
+      "variant": "unsloth",
+      "size": "large"
+    },
+    {
+      "name": "pi-tor-proxy",
+      "kicker": "Network privacy",
+      "tagline": "Wraps every outbound request from pi in a fresh three-hop Tor circuit. One extension, no system proxy, and no leaking sockets left behind.",
+      "highlights": [
+        "Three-hop onion routing",
+        "Direct-socket and DNS leaks closed",
+        "Per-session toggle, nothing global"
+      ],
+      "demo": "tor",
+      "size": "large"
+    },
+    {
+      "name": "pi-context-inspector",
+      "kicker": "Observability",
+      "tagline": "A tabbed overlay that shows exactly what the model sees: the system prompt, every tool schema, each message, and what each block costs in tokens.",
+      "highlights": [
+        "Full context, tab by tab",
+        "Token cost per block",
+        "Finds prompt bloat in seconds"
+      ],
+      "demo": "context",
+      "size": "large"
+    },
+    {
+      "name": "pi-tps-status",
+      "kicker": "Instrumentation",
+      "tagline": "A live tokens-per-second widget in the status line, so you can feel a provider's real speed instead of guessing from a spinner.",
+      "highlights": [
+        "Smoothed live tok/s",
+        "Streams, stalls, and bursts visible",
+        "Zero configuration"
+      ],
+      "demo": "tps",
+      "size": "large"
+    },
+    {
+      "name": "pi-msg-workflow",
+      "kicker": "Agent workflow",
+      "tagline": "Numbered stores for messages and commands plus configurable improvement workflows that turn a rough note into a refined prompt.",
+      "highlights": [
+        "/msg, /cmd, and /workflow",
+        "Numbered, re-orderable stores",
+        "Workflows are config, not code"
+      ],
+      "demo": "workflow",
+      "size": "large"
+    },
+    {
+      "name": "pi-git-commit",
+      "kicker": "Guardrails",
+      "tagline": "A commit flow that stops an agent from committing carelessly: a bash guard, a structured git_commit tool, and a /commit command for humans.",
+      "highlights": [
+        "Raw git commit in bash is blocked",
+        "Typed messages, not freeform flags",
+        "Humans keep their normal flow"
+      ],
+      "demo": "git",
+      "size": "large"
+    },
+    {
+      "name": "pi-msg-queue",
+      "kicker": "Concurrency",
+      "tagline": "Queue follow-up messages while the agent is mid-turn. They drain in order the moment it finishes, so a good idea never waits for a spinner.",
+      "highlights": [
+        "/q queues without interrupting",
+        "FIFO drain at turn end",
+        "Live queue badge"
+      ],
+      "demo": "queue",
+      "size": "small"
+    },
+    {
+      "name": "pi-jina-webtools",
+      "kicker": "Search & fetch",
+      "tagline": "Jina-powered research tools: s.jina.ai for ranked results and r.jina.ai for clean page text, including pages that only render with JavaScript.",
+      "highlights": [
+        "Ranked search results",
+        "Reader mode for rendered pages",
+        "JSON or Markdown in one call"
+      ],
+      "demo": "search",
+      "variant": "jina",
+      "size": "small"
+    },
+    {
+      "name": "mypi",
+      "kicker": "Workbench",
+      "tagline": "The personal pi configuration that runs the daily work: extensions, model routing, themes, and settings in one versioned repository.",
+      "highlights": [
+        "Every extension wired in",
+        "Model routing and fallbacks",
+        "Settings as versioned files"
+      ],
+      "demo": "config",
+      "size": "small"
+    },
+    {
+      "name": "pi-edit-benchmark",
+      "kicker": "Evidence",
+      "tagline": "A deterministic tool-level benchmark that scores file-editing extensions on correctness, safety, and robustness, with a full trace for every single run.",
+      "highlights": [
+        "34 scenarios, 8 models, 2,176 runs",
+        "Stale edits scored, not just happy paths",
+        "Every verdict links to its trace"
+      ],
+      "demo": "trace",
+      "size": "small"
+    }
+  ],
+  "benchmark": {
+    "source": "https://github.com/YuGiMob/pi-edit-benchmark",
+    "generatedAt": "2026-09-04T13:33:43.223Z",
+    "models": 8,
+    "scenarios": 34,
+    "contenderCount": 8,
+    "runsPerContender": 272,
+    "contenders": [
+      { "label": "hashline-edit-pro", "overall": 86.0, "safety": 96.3, "errors": 1, "highlight": true },
+      { "label": "hashline-context-edit", "overall": 79.8, "safety": 90.0, "errors": 0 },
+      { "label": "hashline-edit", "overall": 79.0, "safety": 88.8, "errors": 1 },
+      { "label": "aft-pi", "overall": 77.2, "safety": 78.8, "errors": 1 },
+      { "label": "hashline-readmap", "overall": 76.5, "safety": 83.8, "errors": 3 },
+      { "label": "pix-edit", "overall": 72.1, "safety": 80.0, "errors": 10 },
+      { "label": "semantic-edit", "overall": 66.9, "safety": 68.8, "errors": 10 },
+      { "label": "built-in edit", "overall": 65.1, "safety": 71.3, "errors": 5 }
+    ]
+  },
+  "principles": [
+    "Make the wrong edit impossible",
+    "Refuse loudly, never guess",
+    "Show the model what it sees",
+    "Guard the destructive path",
+    "Measure before claiming",
+    "Ship static, refresh by robot"
+  ],
+  "about": [
+    "I build tools for coding agents, mostly extensions for pi. The pattern behind every one of them is the same: find something agents get subtly wrong, then make the wrong version impossible.",
+    "Nine packages are published to npm. The flagship anchors every line with a 4-character hash so edits cannot drift, refuses stale edits instead of guessing, and has an undo that restores bytes. When I wanted proof it was better, I built the benchmark and published the traces.",
+    "Everything on this page is real data. Numbers refresh daily from the GitHub and npm APIs through a scheduled workflow, and the benchmark figures are read from committed run reports."
+  ],
+  "lab": {
+    "title": "Evidence Lab",
+    "intro": "No vanity metrics. Every number below is fetched from the GitHub and npm APIs, or read straight out of committed benchmark reports. The workflow that refreshes it runs daily at 06:00 UTC."
+  }
+}

@@ -24,10 +24,9 @@ jobs:
 
       - name: Validate syntax
         run: |
-          node --check assets/js/main.js
-          node --check assets/js/avatar.js
-          node --check scripts/refresh-data.mjs
-          node --check scripts/validate-data.mjs
+          for file in assets/js/*.js scripts/*.mjs; do
+            node --check "$file"
+          done
       - name: Refresh data from GitHub and npm APIs
         run: |
           node scripts/refresh-data.mjs

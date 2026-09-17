@@ -1,355 +1,476 @@
 import { hydrateAvatar } from './avatar.js';
-const ABILITY_ORDER = [
-  ['totalStars', 'Strength'],
-  ['npmPackages', 'Dexterity'],
-  ['publicRepos', 'Intelligence'],
-  ['starsGiven', 'Wisdom'],
-  ['forksReceived', 'Charisma'],
-  ['accountYears', 'Constitution'],
-];
+import { el, append, link, copyButton, reducedMotion, formatNumber, createRuntime, typeText, animateValue } from './ui.js';
+import { buildDemo } from './demos.js';
+import { buildPlayground } from './playground.js';
+import { benchmarkChart, downloadsChart, historyChart, heatmapChart, freshnessChart } from './charts.js';
 
-const RARITY_TIERS = [
-  { min: 50, cls: 'legendary' },
-  { min: 30, cls: 'epic' },
-  { min: 10, cls: 'rare' },
-  { min: 1, cls: 'uncommon' },
-  { min: 0, cls: 'common' },
-];
-const MONTHS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
-const ANNOUNCE_DELAY = 20;
-let announceTimer = null;
-function rarityFor(stars) {
-  if (typeof stars !== 'number' || Number.isNaN(stars)) return RARITY_TIERS[RARITY_TIERS.length - 1];
-  for (const tier of RARITY_TIERS) {
-    if (stars >= tier.min) return tier;
-  }
-  return RARITY_TIERS[RARITY_TIERS.length - 1];
-}
-
-function formatDownloads(count) {
-  if (!Number.isFinite(count) || count <= 0) return null;
-  if (count >= 1000) return `${Math.round((count / 1000) * 10) / 10}k`;
-  return String(count);
-}
-
-function formatUpdated(iso) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
-}
-
-function sortedProjects(projects) {
-  return [...projects].sort((a, b) => (b.stars ?? 0) - (a.stars ?? 0) || String(a.name ?? '').localeCompare(String(b.name ?? '')));
-}
-
-function el(tag, className) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  return node;
-}
-
-function appendText(parent, tag, className, text) {
-  const node = el(tag, className);
-  node.textContent = text;
-  parent.appendChild(node);
-}
-
-function link(href, text) {
-  const a = el('a');
-  a.href = href;
-  a.target = '_blank';
-  a.rel = 'noopener noreferrer';
-  a.textContent = text;
-  return a;
-}
-
-function announce(message) {
-  const region = document.getElementById('live-region');
-  if (!region) return;
-  region.textContent = '';
-  if (announceTimer) clearTimeout(announceTimer);
-  announceTimer = setTimeout(() => {
-    announceTimer = null;
-    region.textContent = message;
-  }, ANNOUNCE_DELAY);
-}
-
-function setSectionHeading(section, headingId, headingText) {
-  if (!section) return;
-  section.setAttribute('aria-labelledby', headingId);
-  section.replaceChildren();
-  const heading = el('h2');
-  heading.id = headingId;
-  heading.textContent = headingText;
-  section.appendChild(heading);
-}
-
-function copyText(value) {
-  if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') return navigator.clipboard.writeText(value);
-  const element = document.createElement('textarea');
-  element.value = value;
-  element.setAttribute('readonly', '');
-  element.style.position = 'fixed';
-  element.style.top = '-9999px';
-  element.style.opacity = '0';
-  document.body.appendChild(element);
-  element.focus();
-  element.select();
-  if (typeof element.setSelectionRange === 'function') element.setSelectionRange(0, element.value.length);
-  let copied = false;
-  try {
-    copied = document.execCommand('copy');
-  } finally {
-    element.remove();
-  }
-  return copied ? Promise.resolve() : Promise.reject(new Error('copy failed'));
-}
-
-function copyButton(pkg) {
-  const button = el('button', 'copy-btn');
-  button.type = 'button';
-  const idleText = 'copy install';
-  button.textContent = idleText;
-  button.setAttribute('aria-label', `copy npm install ${pkg}`);
-  let resetTimer = null;
-  const resetDelay = 1400;
-  const scheduleReset = () => {
-    resetTimer = setTimeout(() => {
-      button.textContent = idleText;
-      button.classList.remove('copied');
-    }, resetDelay);
-  };
-  button.addEventListener('click', async () => {
-    if (resetTimer) clearTimeout(resetTimer);
-    try {
-      await copyText(`npm i ${pkg}`);
-      button.textContent = 'copied';
-      button.classList.add('copied');
-      announce(`copied npm i ${pkg}`);
-      scheduleReset();
-    } catch {
-      button.textContent = 'copy failed';
-      button.classList.remove('copied');
-      announce(`copy failed for ${pkg}`);
-      scheduleReset();
-    }
-  });
-  return button;
-}
-
-function setHidden(id, isHidden) {
-  const section = document.getElementById(id);
-  if (section) section.hidden = isHidden;
-}
-
-function renderIdentity(identity) {
-  hydrateAvatar(document.getElementById('avatar'), identity.avatarUrl, identity.displayName);
-  document.title = `${identity.displayName} — ${identity.classTitle}`;
-  const displayNameEl = document.getElementById('display-name');
-  if (displayNameEl) displayNameEl.textContent = identity.displayName;
-  const classTitleEl = document.getElementById('class-title');
-  if (classTitleEl) classTitleEl.textContent = identity.classTitle;
-  const taglineEl = document.getElementById('tagline');
-  if (taglineEl) taglineEl.textContent = identity.tagline;
-}
-
-function renderBackground(about) {
-  const section = document.getElementById('background');
-  if (!section) return;
-  setSectionHeading(section, 'background-heading', 'Background');
-  for (const paragraph of about.paragraphs) {
-    appendText(section, 'p', null, paragraph);
-  }
-}
-
-function renderProjects(projects) {
-  const section = document.getElementById('artifacts');
-  const grid = document.getElementById('project-grid');
-  if (!section || !grid) return;
-  setSectionHeading(section, 'artifacts-heading', 'Artifacts');
-  section.appendChild(grid);
-  grid.replaceChildren();
-  const sorted = sortedProjects(projects);
-  for (const project of sorted) {
-    const stars = project.stars ?? 0;
-    const forks = project.forks ?? 0;
-    const card = el('div', `project-card rarity-${rarityFor(stars).cls}`);
-    appendText(card, 'h3', null, project.name);
-    appendText(card, 'span', 'language', project.language || 'Unknown');
-    if (project.license) {
-      appendText(card, 'span', 'license', project.license);
-    }
-    const meta = el('span', 'meta');
-    appendText(meta, 'span', 'stars', `★ ${stars}`);
-    appendText(meta, 'span', 'forks', `⑂ ${forks}`);
-    const downloadsLabel = formatDownloads(project.npmWeeklyDownloads);
-    if (downloadsLabel) {
-      appendText(meta, 'span', 'downloads', `↓ ${downloadsLabel}/wk`);
-    }
-    const updatedLabel = formatUpdated(project.pushedAt);
-    if (updatedLabel) {
-      const updatedNode = el('span', 'updated');
-      updatedNode.textContent = `updated ${updatedLabel}`;
-      if (project.pushedAt) updatedNode.title = project.pushedAt;
-      meta.appendChild(updatedNode);
-    }
-    card.appendChild(meta);
-    if (project.description) {
-      appendText(card, 'p', 'description', project.description);
-    }
-    const actions = el('p', 'actions');
-    if (project.npm) {
-      actions.appendChild(
-        link(`https://www.npmjs.com/package/${project.npm}`, `npm · ${project.npm}`),
-      );
-      actions.appendChild(copyButton(project.npm));
-    }
-    actions.appendChild(link(project.url, 'GitHub'));
-    card.appendChild(actions);
-    grid.appendChild(card);
-  }
-}
-
-function renderAbilityScores(stats) {
-  const section = document.getElementById('ability-scores');
-  const list = document.getElementById('ability-list');
-  if (!section || !list) return;
-  setSectionHeading(section, 'ability-heading', 'Ability Scores');
-  section.appendChild(list);
-  list.replaceChildren();
-  const max = Math.max(55, ...ABILITY_ORDER.map(([key]) => Number.isFinite(stats?.[key]) ? stats[key] : 0));
-  for (const [key, label] of ABILITY_ORDER) {
-    const value = Number.isFinite(stats?.[key]) ? stats[key] : 0;
-    const dt = el('dt');
-    dt.id = `ability-${key}`;
-    dt.textContent = label;
-    list.appendChild(dt);
-    const dd = el('dd');
-    dd.setAttribute('role', 'progressbar');
-    dd.setAttribute('aria-valuemin', '0');
-    dd.setAttribute('aria-valuemax', String(max));
-    dd.setAttribute('aria-valuenow', String(value));
-    dd.setAttribute('aria-labelledby', dt.id);
-    const bar = el('div', 'bar-fill');
-    bar.setAttribute('aria-hidden', 'true');
-    bar.style.width = `${Math.max(0, Math.min((value / max) * 100, 100))}%`;
-    dd.appendChild(bar);
-    appendText(dd, 'span', null, value);
-    list.appendChild(dd);
-  }
-}
-
-function renderQuestLog(activity) {
-  const section = document.getElementById('quest-log');
-  if (!section) return;
-  setSectionHeading(section, 'quest-heading', 'Quest Log');
-  const line = el('p');
-  appendText(line, 'span', 'window', `Quest log — ${activity.window}`);
-  line.append(' · ');
-  appendText(line, 'span', 'pushes', `${activity.pushes} pushes`);
-  if (activity.fetchedAt) {
-    line.append(' · ');
-    appendText(line, 'span', 'fetched', `updated ${activity.fetchedAt}`);
-  }
-  section.appendChild(line);
-  const ul = el('ul');
-  if (activity.highlights && activity.highlights.length > 0) {
-    for (const highlight of activity.highlights) {
-      appendText(ul, 'li', null, highlight);
-    }
-  } else {
-    appendText(ul, 'li', 'empty', 'No notable deeds this window.');
-  }
-  section.appendChild(ul);
-}
-
-function renderFooter(identity) {
-  const githubLink = document.getElementById('github-link');
-  if (githubLink) {
-    githubLink.href = identity.links.github;
-    githubLink.textContent = identity.displayName || 'GitHub';
-  }
-  const campfire = document.getElementById('campfire');
-  if (!campfire) return;
-  const existingYear = document.getElementById('campfire-year');
-  if (existingYear) existingYear.remove();
-  const year = document.createElement('span');
-  year.id = 'campfire-year';
-  year.textContent = `© ${new Date().getFullYear()} YuGiMob`;
-  campfire.appendChild(year);
-}
-
-function applyVisibility(sections) {
-  setHidden('background', !(sections?.showBackground ?? true));
-  setHidden('artifacts', !(sections?.showArtifacts ?? true));
-  setHidden('quest-log', !(sections?.showQuestLog ?? true));
-  setHidden('ability-scores', !(sections?.showAbilityScores ?? true));
-  setHidden('campfire', !(sections?.showCampfire ?? true));
-}
-
-function renderStructuredData(data) {
-  const target = document.getElementById('structured-data');
-  if (!target) return;
-  const items = sortedProjects(data.projects).map((project, index) => ({
-    '@type': 'SoftwareSourceCode',
-    position: index + 1,
-    name: project.name,
-    description: project.description || undefined,
-    codeRepository: project.url,
-    programmingLanguage: project.language || undefined,
-    license: project.license ? `https://spdx.org/licenses/${project.license}` : undefined,
-    url: project.url
-  }));
-  const graph = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: `${data.identity.displayName} artifacts`,
-    itemListElement: items.map((item) => ({
-      '@type': 'ListItem',
-      position: item.position,
-      item
-    }))
-  };
-  target.textContent = JSON.stringify(graph);
-}
+const DATA_URL = 'data/site-data.json';
+const SHOWCASE_URL = 'data/showcase.json';
 
 function isValidSiteData(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
-  const required = ['identity', 'about', 'projects', 'stats', 'activity', 'sections'];
-  for (const key of required) {
+  for (const key of ['identity', 'projects', 'stats', 'activity', 'sections']) {
     if (!(key in data)) return false;
   }
   if (!data.identity || typeof data.identity !== 'object' || Array.isArray(data.identity)) return false;
-  if (!data.about || typeof data.about !== 'object' || Array.isArray(data.about) || !Array.isArray(data.about.paragraphs)) return false;
-  if (!Array.isArray(data.projects)) return false;
+  if (!Array.isArray(data.projects) || data.projects.length === 0) return false;
   if (!data.stats || typeof data.stats !== 'object' || Array.isArray(data.stats)) return false;
   if (!data.activity || typeof data.activity !== 'object' || Array.isArray(data.activity)) return false;
   if (!data.sections || typeof data.sections !== 'object' || Array.isArray(data.sections)) return false;
   return true;
 }
 
-async function init() {
-  const fetchOptions = { cache: 'no-cache' };
-  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') fetchOptions.signal = AbortSignal.timeout(5000);
-  const response = await fetch('/data/site-data.json', fetchOptions);
-  if (!response.ok) throw new Error(`fetch failed: ${response.status}`);
-  const data = await response.json();
-  if (!isValidSiteData(data)) throw new Error('invalid data');
-  renderIdentity(data.identity);
-  renderBackground(data.about);
-  renderProjects(data.projects);
-  renderAbilityScores(data.stats);
-  renderQuestLog(data.activity);
-  renderFooter(data.identity);
-  renderStructuredData(data);
-  applyVisibility(data.sections);
+async function fetchJson(url) {
+  const options = { cache: 'no-cache' };
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') options.signal = AbortSignal.timeout(6000);
+  const response = await fetch(url, options);
+  if (!response.ok) throw new Error(`${url}: ${response.status}`);
+  return response.json();
 }
 
-init().catch(() => {
+function fallbackShowcase(data) {
+  return {
+    intro: [data.identity.tagline],
+    featured: null,
+    projects: data.projects.map((project) => ({
+      name: project.name,
+      kicker: project.language || 'Artifact',
+      tagline: project.description || 'Public repository',
+      highlights: ['Curated public repository'],
+      size: 'small',
+    })),
+    benchmark: null,
+    principles: [],
+    about: data.about?.paragraphs ?? [],
+    lab: { title: 'Evidence Lab', intro: 'Live figures from the GitHub and npm APIs.' },
+  };
+}
+
+function observeVisibility(element, onShow, onHide) {
+  if (typeof IntersectionObserver !== 'function') {
+    onShow();
+    return null;
+  }
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) onShow();
+      else onHide();
+    }
+  }, { rootMargin: '120px 0px', threshold: 0.12 });
+  observer.observe(element);
+  return observer;
+}
+
+function setupReveal() {
+  const targets = [...document.querySelectorAll('[data-reveal]')];
+  if (reducedMotion() || typeof IntersectionObserver !== 'function') {
+    for (const target of targets) target.classList.add('is-visible');
+    return;
+  }
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      entry.target.classList.add('is-visible');
+      observer.unobserve(entry.target);
+    }
+  }, { rootMargin: '-40px 0px', threshold: 0.1 });
+  for (const target of targets) observer.observe(target);
+}
+
+function setupNav() {
+  const links = [...document.querySelectorAll('[data-nav]')];
+  const sections = links.map((anchor) => document.getElementById(anchor.dataset.nav)).filter(Boolean);
+  if (sections.length === 0 || typeof IntersectionObserver !== 'function') return;
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      for (const anchor of links) anchor.classList.toggle('is-current', anchor.dataset.nav === entry.target.id);
+    }
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  for (const section of sections) observer.observe(section);
+}
+
+function setupChrome() {
+  const bar = document.getElementById('topbar');
+  if (!bar) return;
+  const update = () => bar.classList.toggle('is-scrolled', window.scrollY > 12);
+  update();
+  window.addEventListener('scroll', update, { passive: true });
+}
+
+function initHeroCanvas() {
+  const canvas = document.getElementById('hero-canvas');
+  if (!canvas || reducedMotion()) return;
+  const context = canvas.getContext('2d');
+  if (!context) return;
+  let width = 0;
+  let height = 0;
+  let frameId = 0;
+  let particles = [];
+
+  const resize = () => {
+    const ratio = Math.min(1.6, window.devicePixelRatio || 1);
+    width = canvas.clientWidth;
+    height = canvas.clientHeight;
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    const count = Math.min(90, Math.round((width * height) / 26000));
+    particles = Array.from({ length: count }, spawn);
+  };
+
+  function spawn() {
+    return {
+      x: Math.random() * width,
+      y: height + Math.random() * 40,
+      vx: (Math.random() - 0.5) * 0.16,
+      vy: -(0.18 + Math.random() * 0.5),
+      r: 0.6 + Math.random() * 1.5,
+      alpha: 0.1 + Math.random() * 0.32,
+      tone: Math.random() < 0.35 ? '192, 74, 31' : '212, 160, 23',
+    };
+  }
+
+  const step = () => {
+    context.clearRect(0, 0, width, height);
+    for (const particle of particles) {
+      particle.x += particle.vx;
+      particle.y += particle.vy;
+      if (particle.y < -20) Object.assign(particle, spawn(), { y: height + 10 });
+      context.beginPath();
+      context.arc(particle.x, particle.y, particle.r, 0, Math.PI * 2);
+      context.fillStyle = `rgba(${particle.tone}, ${particle.alpha})`;
+      context.fill();
+    }
+    frameId = requestAnimationFrame(step);
+  };
+
+  const start = () => {
+    if (frameId || document.hidden) return;
+    frameId = requestAnimationFrame(step);
+  };
+  const stop = () => {
+    if (frameId) cancelAnimationFrame(frameId);
+    frameId = 0;
+  };
+
+  resize();
+  window.addEventListener('resize', resize, { passive: true });
+  document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
+  start();
+}
+
+function renderIdentity(data, showcase) {
+  const identity = data.identity;
+  hydrateAvatar(document.getElementById('avatar'), identity.avatarUrl, identity.displayName);
+  document.title = `${identity.displayName} — ${identity.classTitle}`;
+  const set = (id, value) => {
+    const node = document.getElementById(id);
+    if (node && value) node.textContent = value;
+  };
+  set('display-name', identity.displayName);
+  set('class-title', identity.classTitle);
+  set('tagline', identity.tagline);
+  const navGithub = document.getElementById('nav-github');
+  if (navGithub) {
+    navGithub.href = identity.links?.github || navGithub.href;
+    navGithub.textContent = `${identity.displayName} on GitHub ↗`;
+  }
+  const heroGithub = document.getElementById('hero-github');
+  if (heroGithub && identity.links?.github) heroGithub.href = identity.links.github;
+
+  const typeNode = document.getElementById('hero-type');
+  const lines = showcase.intro.filter(Boolean);
+  if (typeNode) {
+    if (reducedMotion() || lines.length === 0) {
+      typeNode.textContent = lines[0] || identity.tagline;
+    } else {
+      const runtime = createRuntime();
+      let index = 0;
+      const cycle = () => {
+        const line = lines[index % lines.length];
+        index += 1;
+        typeText(typeNode, line, runtime, {
+          speed: 42,
+          onDone: () => runtime.after(() => {
+            typeNode.textContent = '';
+            runtime.after(cycle, 260);
+          }, 2600),
+        });
+      };
+      cycle();
+    }
+  }
+}
+
+function renderHeroStats(data) {
+  const list = document.getElementById('hero-stats');
+  if (!list) return;
+  const totalDownloads = data.projects.reduce((sum, project) => sum + (project.npmWeeklyDownloads || 0), 0);
+  const stats = [
+    ['GitHub stars', data.stats.totalStars ?? 0],
+    ['npm installs / week', totalDownloads],
+    ['published packages', data.stats.npmPackages ?? 0],
+    ['years shipping', data.stats.accountYears ?? 0],
+  ];
+  for (const [label, value] of stats) {
+    const item = el('div', 'stat');
+    const dt = el('dt', 'stat-label', label);
+    const dd = el('dd', 'stat-value', '0');
+    append(item, dt, dd);
+    list.appendChild(item);
+    let animated = false;
+    observeVisibility(dd, () => {
+      if (animated) return;
+      animated = true;
+      animateValue(dd, value);
+    }, () => {});
+  }
+}
+
+function metricChip(label, value, className) {
+  const chip = el('span', `chip ${className || ''}`);
+  append(chip, el('span', 'chip-label', label), el('span', 'chip-value', value));
+  return chip;
+}
+
+function installActions(project) {
+  const actions = el('div', 'actions');
+  if (project.npm) {
+    actions.appendChild(link(`https://www.npmjs.com/package/${project.npm}`, 'npm ↗', 'action-link'));
+    actions.appendChild(copyButton(`npm i ${project.npm}`, `npm i ${project.npm}`, `copy install command for ${project.npm}`));
+  }
+  actions.appendChild(link(project.url, 'GitHub ↗', 'action-link'));
+  return actions;
+}
+
+function projectChips(project) {
+  const chips = el('div', 'chips');
+  chips.appendChild(metricChip('stars', formatNumber(project.stars ?? 0)));
+  if (project.npmWeeklyDownloads) chips.appendChild(metricChip('installs/wk', formatNumber(project.npmWeeklyDownloads)));
+  if (project.license) chips.appendChild(metricChip('license', project.license));
+  if (project.language) chips.appendChild(metricChip('language', project.language));
+  return chips;
+}
+
+function renderFeatured(featured, project) {
+  const section = document.getElementById('featured');
+  const panel = document.getElementById('featured-panel');
+  if (!section || !panel) return;
+  if (!featured || !project) {
+    section.hidden = true;
+    return;
+  }
+  const kicker = document.getElementById('featured-kicker');
+  if (kicker) kicker.textContent = featured.kicker;
+  const heading = document.getElementById('featured-heading');
+  if (heading) heading.textContent = featured.headline;
+
+  const copy = el('div', 'feature-copy');
+  for (const paragraph of featured.summary) copy.appendChild(el('p', 'feature-summary', paragraph));
+  const points = el('dl', 'feature-points');
+  for (const point of featured.points) {
+    const item = el('div', 'feature-point');
+    append(item, el('dt', 'feature-point-title', point.title), el('dd', 'feature-point-body', point.body));
+    points.appendChild(item);
+  }
+  copy.appendChild(points);
+  copy.appendChild(projectChips(project));
+  copy.appendChild(installActions(project));
+
+  const demoBox = el('div', 'feature-demo');
+  const playground = buildPlayground();
+  append(demoBox, playground.node, playground.caption);
+  const controller = observeVisibility(playground.node, () => playground.start(), () => playground.stop());
+
+  const wrap = el('div', 'feature');
+  append(wrap, copy, demoBox);
+  panel.appendChild(wrap);
+  return () => {
+    if (controller) controller.disconnect();
+    playground.destroy();
+  };
+}
+
+function renderForge(entries, projects) {
+  const grid = document.getElementById('forge-grid');
+  if (!grid) return [];
+  const cleanups = [];
+  for (const entry of entries) {
+    const project = projects.get(entry.name);
+    if (!project) continue;
+    const card = el('article', `forge-card ${entry.size === 'large' ? 'is-large' : 'is-small'}`);
+    card.dataset.reveal = '';
+
+    const copy = el('div', 'forge-copy');
+    copy.appendChild(el('p', 'forge-kicker', entry.kicker));
+    const title = el('h3', 'forge-title');
+    title.appendChild(link(project.url, project.name));
+    copy.appendChild(title);
+    copy.appendChild(el('p', 'forge-tagline', entry.tagline));
+    const highlights = el('ul', 'forge-highlights');
+    for (const highlight of entry.highlights) highlights.appendChild(el('li', 'forge-highlight', highlight));
+    copy.appendChild(highlights);
+    copy.appendChild(projectChips(project));
+    copy.appendChild(installActions(project));
+
+    card.appendChild(copy);
+    if (entry.demo) {
+      const demo = buildDemo(entry.demo, { variant: entry.variant });
+      if (demo) {
+        const box = el('div', 'forge-demo');
+        box.appendChild(demo.node);
+        card.appendChild(box);
+        const observer = observeVisibility(demo.node, () => demo.start(), () => demo.stop());
+        cleanups.push(() => {
+          if (observer) observer.disconnect();
+          demo.destroy();
+        });
+      }
+    }
+    grid.appendChild(card);
+  }
+  return cleanups;
+}
+
+function renderLab(showcase, data, projectList, sections) {
+  const grid = document.getElementById('lab-grid');
+  if (!grid) return [];
+  const heading = document.getElementById('lab-heading');
+  if (heading) heading.textContent = showcase.lab.title;
+  const intro = document.getElementById('lab-intro');
+  if (intro) intro.textContent = showcase.lab.intro;
+
+  const charts = [];
+  if (showcase.benchmark) {
+    const chart = benchmarkChart(showcase.benchmark);
+    chart.node.classList.add('is-wide');
+    charts.push(chart);
+  }
+  charts.push(historyChart(data.history));
+  charts.push(downloadsChart(projectList));
+  if (sections.showQuestLog ?? true) charts.push(heatmapChart(data.activity));
+  charts.push(freshnessChart(projectList));
+
+  const cleanups = [];
+  for (const chart of charts) {
+    grid.appendChild(chart.node);
+    const observer = observeVisibility(chart.node, () => chart.start(), () => chart.stop());
+    cleanups.push(() => {
+      if (observer) observer.disconnect();
+      chart.stop();
+    });
+  }
+  return cleanups;
+}
+
+function renderAbout(showcase, data) {
+  const prose = document.getElementById('about-prose');
+  if (prose) {
+    for (const paragraph of showcase.about) prose.appendChild(el('p', 'about-paragraph', paragraph));
+  }
+  const principles = document.getElementById('principles');
+  if (principles) {
+    for (const principle of showcase.principles) principles.appendChild(el('li', 'principle', principle));
+  }
+}
+
+function renderFooter(identity) {
+  const githubLink = document.getElementById('github-link');
+  if (githubLink) {
+    githubLink.href = identity.links?.github || 'https://github.com/YuGiMob';
+    githubLink.textContent = `${identity.displayName} on GitHub ↗`;
+  }
+  const year = document.getElementById('campfire-year');
+  if (year) year.textContent = `© ${new Date().getFullYear()} ${identity.displayName}`;
+}
+
+function renderStructuredData(data, showcase) {
+  const target = document.getElementById('structured-data');
+  if (!target) return;
+  const projects = showcase.featured
+    ? [showcase.featured.name, ...showcase.projects.map((entry) => entry.name)]
+    : data.projects.map((project) => project.name);
+  const byName = new Map(data.projects.map((project) => [project.name, project]));
+  const items = projects
+    .map((name) => byName.get(name))
+    .filter(Boolean)
+    .map((project, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      item: {
+        '@type': 'SoftwareSourceCode',
+        name: project.name,
+        description: project.description || undefined,
+        codeRepository: project.url,
+        programmingLanguage: project.language || undefined,
+        license: project.license ? `https://spdx.org/licenses/${project.license}` : undefined,
+        url: project.url,
+      },
+    }));
+  const graph = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Person',
+        name: data.identity.displayName,
+        description: data.identity.tagline,
+        url: 'https://yugimob.github.io/',
+        image: data.identity.avatarUrl,
+        sameAs: [data.identity.links?.github].filter(Boolean),
+        knowsAbout: showcase.principles,
+      },
+      {
+        '@type': 'ItemList',
+        name: `${data.identity.displayName} artifacts`,
+        itemListElement: items,
+      },
+    ],
+  };
+  target.textContent = JSON.stringify(graph);
+}
+
+function applyVisibility(sections) {
+  const setHidden = (id, hidden) => {
+    const node = document.getElementById(id);
+    if (node) node.hidden = hidden;
+  };
+  setHidden('featured', !(sections.showArtifacts ?? true));
+  setHidden('forge', !(sections.showArtifacts ?? true));
+  setHidden('about', !(sections.showBackground ?? true));
+  setHidden('campfire', !(sections.showCampfire ?? true));
+  const stats = document.getElementById('hero-stats');
+  if (stats) stats.hidden = !(sections.showAbilityScores ?? true);
+}
+
+async function init() {
+  const [data, showcaseRaw] = await Promise.all([
+    fetchJson(DATA_URL),
+    fetchJson(SHOWCASE_URL).catch(() => null),
+  ]);
+  if (!isValidSiteData(data)) throw new Error('invalid site data');
+  const showcase = showcaseRaw || fallbackShowcase(data);
+  const projects = new Map(data.projects.map((project) => [project.name, project]));
+
+  renderIdentity(data, showcase);
+  renderHeroStats(data);
+  renderFeatured(showcase.featured, projects.get(showcase.featured?.name));
+  renderForge(showcase.projects, projects);
+  renderLab(showcase, data, data.projects, data.sections);
+  renderAbout(showcase, data);
+  renderFooter(data.identity);
+  renderStructuredData(data, showcase);
+  applyVisibility(data.sections);
+  setupReveal();
+  setupNav();
+  setupChrome();
+  initHeroCanvas();
+}
+
+init().catch((error) => {
+  console.warn('YuGiMob:', error);
   const fallback = document.getElementById('display-name');
-  if (fallback) fallback.textContent = 'Site data unavailable — check data/site-data.json';
-  console.warn('YuGiMob: could not load data/site-data.json');
+  if (fallback) fallback.textContent = 'Site data unavailable';
+  const type = document.getElementById('hero-type');
+  if (type) type.textContent = 'Check data/site-data.json and data/showcase.json';
 });

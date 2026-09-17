@@ -31,6 +31,8 @@ const GITHUB_HEADERS = {
 };
 
 const ACCOUNT_CREATED_YEAR = 2022;
+const HISTORY_LIMIT = 120;
+const MAX_ACTIVITY_DAYS = 120;
 const MAX_HIGHLIGHTS = 5;
 const FETCH_TIMEOUT_MS = 15000;
 let data = null;
@@ -71,6 +73,9 @@ if (fileUnusable) {
   console.warn('data/site-data.json is unusable; write skipped to preserve the existing file');
   process.exit(0);
 }
+if (!Array.isArray(data.history)) data.history = [];
+if (!Array.isArray(data.activity.daily)) data.activity.daily = [];
+
 const existing = JSON.parse(JSON.stringify(data));
 
 const npmPackages = data.projects.filter((p) => p.npm).map((p) => p.npm);
@@ -83,6 +88,11 @@ const report = (path, oldVal, newVal) => {
   } else {
     summary.push(`${path}: ${show(oldVal)} -> ${show(newVal)}`);
   }
+};
+const reportCount = (path, oldArray, newArray) => {
+  const before = Array.isArray(oldArray) ? oldArray.length : 0;
+  const after = Array.isArray(newArray) ? newArray.length : 0;
+  summary.push(before === after ? `${path}: ${after} entries (unchanged)` : `${path}: ${before} -> ${after} entries`);
 };
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 function retryDelayMs(response) {
@@ -185,6 +195,7 @@ if (Array.isArray(reposRaw)) {
   const repoNames = new Set(repos.map((r) => r.name));
   for (const repo of repos) {
     if (repo.name.endsWith('.github.io')) continue;
+    if (repo.fork) continue;
     if (!data.projects.some((p) => p.name === repo.name)) {
       console.warn(`repo not curated in data/site-data.json: ${repo.name}`);
     }
@@ -271,6 +282,22 @@ if (Array.isArray(events)) {
     data.activity.window = today;
   }
   report('activity.window', existing.activity.window, data.activity.window);
+
+  const byDay = new Map();
+  for (const event of events) {
+    if (!event.created_at) continue;
+    const date = String(event.created_at).slice(0, 10);
+    const entry = byDay.get(date) ?? { date, events: 0, pushes: 0 };
+    entry.events += 1;
+    if (event.type === 'PushEvent') entry.pushes += 1;
+    byDay.set(date, entry);
+  }
+  if (byDay.size > 0) {
+    data.activity.daily = [...byDay.values()]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-MAX_ACTIVITY_DAYS);
+  }
+  reportCount('activity.daily', existing.activity.daily, data.activity.daily);
 }
 let anyNpmSuccess = false;
 for (const pkg of npmPackages) {
@@ -302,6 +329,23 @@ if (
 ) {
   data.activity.fetchedAt = today;
   report('activity.fetchedAt', existing.activity.fetchedAt, data.activity.fetchedAt);
+  const totalDownloads = data.projects.reduce(
+    (sum, project) => sum + (Number.isFinite(project.npmWeeklyDownloads) ? project.npmWeeklyDownloads : 0),
+    0,
+  );
+  const snapshot = {
+    date: today,
+    totalStars: Number.isFinite(data.stats.totalStars) ? data.stats.totalStars : 0,
+    totalDownloads,
+    pushes: Number.isFinite(data.activity.pushes) ? data.activity.pushes : 0,
+  };
+  const history = data.history.filter((entry) => entry && typeof entry.date === 'string');
+  const snapshotIndex = history.findIndex((entry) => entry.date === snapshot.date);
+  if (snapshotIndex >= 0) history[snapshotIndex] = snapshot;
+  else history.push(snapshot);
+  history.sort((a, b) => a.date.localeCompare(b.date));
+  data.history = history.slice(-HISTORY_LIMIT);
+  reportCount('history', existing.history, data.history);
 }
 try {
   writeFileSync(TMP_FILE, `${JSON.stringify(data, null, 2)}\n`);

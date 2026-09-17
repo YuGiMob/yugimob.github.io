@@ -3,60 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Page not found — YuGiMob, Artificer of Agent Tools.">
+  <meta name="description" content="Page not found — YuGiMob, coding agents with safety rails.">
   <title>404 — YuGiMob</title>
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="YuGiMob">
   <meta property="og:title" content="404 — YuGiMob">
-  <meta property="og:description" content="Page not found — YuGiMob, Artificer of Agent Tools.">
+  <meta property="og:description" content="Page not found — YuGiMob, coding agents with safety rails.">
   <meta property="og:url" content="https://yugimob.github.io/404.html">
   <link rel="canonical" href="https://yugimob.github.io/404.html">
-  <meta property="og:image" content="https://yugimob.github.io/assets/og.png">
+  <meta property="og:image" content="https://yugimob.github.io/assets/og.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="YuGiMob — Artificer of Agent Tools">
+  <meta property="og:image:alt" content="YuGiMob — coding agents with safety rails">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="404 — YuGiMob">
-  <meta name="twitter:description" content="Page not found — YuGiMob, Artificer of Agent Tools.">
-  <meta name="twitter:image" content="https://yugimob.github.io/assets/og.png">
-  <meta name="theme-color" content="#0e0c0a">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230e0c0a'/%3E%3Cpath d='M50 6 C55 38 62 45 94 50 C62 55 55 62 50 94 C45 62 38 55 6 50 C38 45 45 38 50 6 Z' fill='%23d4a017'/%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://avatars.githubusercontent.com" crossorigin>
-  <link rel="preload" as="image" href="https://avatars.githubusercontent.com/u/110136195?s=216&v=4" imagesrcset="https://avatars.githubusercontent.com/u/110136195?s=108&v=4 1x, https://avatars.githubusercontent.com/u/110136195?s=216&v=4 2x" imagesizes="(max-width: 720px) 84px, 108px" fetchpriority="high">
+  <meta name="twitter:description" content="Page not found — YuGiMob, coding agents with safety rails.">
+  <meta name="twitter:image" content="https://yugimob.github.io/assets/og.jpg">
+  <meta name="theme-color" content="#0b0907">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230b0907'/%3E%3Cpath d='M50 6 C55 38 62 45 94 50 C62 55 55 62 50 94 C45 62 38 55 6 50 C38 45 45 38 50 6 Z' fill='%23e8b64c'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
-  <header id="hero">
-    <img id="avatar" src="https://avatars.githubusercontent.com/u/110136195?s=216&v=4" srcset="https://avatars.githubusercontent.com/u/110136195?s=108&v=4 1x, https://avatars.githubusercontent.com/u/110136195?s=216&v=4 2x" alt="YuGiMob" width="108" height="108" decoding="async" fetchpriority="high">
-    <h1 id="display-name">YuGiMob</h1>
-    <p id="class-title">Artificer of Agent Tools</p>
-    <p id="tagline">Crafts pi-coding-agent extensions - hash-anchored edits, Tor-wrapped requests, cloud models.</p>
-  </header>
-  <main id="main-content" tabindex="-1">
-    <section id="background">
-      <h2>Lost in the Dungeon</h2>
-      <p>The scroll you seek does not exist.</p>
-      <p><a href="/">Return to camp</a></p>
-    </section>
+  <main id="main-content" class="notfound">
+    <p class="notfound-kicker">✦ Error 404</p>
+    <h1 class="notfound-title">Lost in the dungeon</h1>
+    <p class="notfound-text">That scroll does not exist. The artificer has been notified, and the anchor resolved nowhere.</p>
+    <p><a class="btn btn-primary" href="/">Return to camp</a></p>
   </main>
-  <footer id="campfire">
-    <a id="github-link" href="https://github.com/YuGiMob">YuGiMob</a>
-  </footer>
-  <script type="module">
-    import { hydrateAvatar } from '/assets/js/avatar.js';
-    fetch('/data/site-data.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).then(d => {
-      if (!d?.identity) return
-      hydrateAvatar(document.getElementById('avatar'), d.identity.avatarUrl, d.identity.displayName);
-      const n = document.getElementById('display-name')
-      if (n) n.textContent = d.identity.displayName
-      const c = document.getElementById('class-title')
-      if (c) c.textContent = d.identity.classTitle
-      const t = document.getElementById('tagline')
-      if (t) t.textContent = d.identity.tagline
-      const g = document.getElementById('github-link')
-      if (g && d.identity.links?.github) { g.href = d.identity.links.github; g.textContent = d.identity.displayName }
-    }).catch(() => {})
-  </script>
 </body>
 </html>
