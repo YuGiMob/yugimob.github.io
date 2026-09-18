@@ -35,6 +35,7 @@ const HISTORY_LIMIT = 120;
 const MAX_ACTIVITY_DAYS = 120;
 const MAX_HIGHLIGHTS = 5;
 const FETCH_TIMEOUT_MS = 15000;
+const UNLISTED_REPOS = new Set(['pi-jina-webtools']);
 let data = null;
 let fileUnusable = false;
 const fileExists = existsSync(DATA_FILE);
@@ -196,7 +197,7 @@ if (Array.isArray(reposRaw)) {
   for (const repo of repos) {
     if (repo.name.endsWith('.github.io')) continue;
     if (repo.fork) continue;
-    if (!data.projects.some((p) => p.name === repo.name)) {
+    if (!UNLISTED_REPOS.has(repo.name) && !data.projects.some((p) => p.name === repo.name)) {
       console.warn(`repo not curated in data/site-data.json: ${repo.name}`);
     }
   }
