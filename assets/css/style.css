@@ -1019,6 +1019,10 @@ a {
   height: auto;
 }
 
+.flow-svg.is-tall {
+  display: none;
+}
+
 .flow-node {
   fill: var(--ink);
   stroke: rgba(232, 182, 76, 0.26);
@@ -1709,6 +1713,10 @@ a {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .hero-stats .stat:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
   .feature-points {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1866,16 +1874,28 @@ a {
   .tor-sub {
     font-size: 13px;
   }
+}
 
-  .flow-label {
-    font-size: 14px;
+@media (max-width: 640px) {
+  .flow-svg.is-wide {
+    display: none;
   }
 
-  .flow-sub {
-    font-size: 11px;
+  .flow-svg.is-tall {
+    display: block;
+    max-width: 300px;
+    margin: 0 auto;
   }
 
-  .flow-edge-label {
+  .flow-svg.is-tall .flow-label {
+    font-size: 15px;
+  }
+
+  .flow-svg.is-tall .flow-sub {
+    font-size: 12px;
+  }
+
+  .flow-svg.is-tall .flow-edge-label {
     font-size: 12px;
   }
 }

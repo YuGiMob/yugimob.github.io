@@ -43,52 +43,81 @@ function typeLines(container, lines, runtime, onDone) {
 function webToolsDemo() {
   const { root, stage } = frame('web_search · web_fetch · web_render', 'no api key');
 
-  const svgRoot = svg('svg', { viewBox: '0 0 520 240', class: 'flow-svg', role: 'img', 'aria-label': 'How the three webtools run internally: search fans out to seven engines and reranks the hrefs, fetch normalizes and pins the resolved address before extracting HTML or PDF text, and render sends JavaScript pages through the Jina Reader' });
-
-  const defs = svg('defs');
-  const arrow = svg('marker', { id: 'flow-arrow', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '6', markerHeight: '6', orient: 'auto' });
-  arrow.appendChild(svg('path', { d: 'M 0 1 L 9 5 L 0 9 Z', class: 'flow-arrow-head' }));
-  const warnArrow = svg('marker', { id: 'flow-arrow-warn', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '6', markerHeight: '6', orient: 'auto' });
-  warnArrow.appendChild(svg('path', { d: 'M 0 1 L 9 5 L 0 9 Z', class: 'flow-arrow-head is-warn' }));
-  append(defs, arrow, warnArrow);
-  svgRoot.appendChild(defs);
-
-  function text(x, y, className, content, anchor) {
-    const node = svg('text', { x, y, class: className, 'text-anchor': anchor || 'middle' });
-    node.textContent = content;
-    svgRoot.appendChild(node);
-  }
-
-  function box(x, y, label, sub) {
-    svgRoot.appendChild(svg('rect', { x, y, width: 118, height: 44, rx: '10', class: 'flow-node' }));
-    text(x + 59, y + 19, 'flow-label', label);
-    text(x + 59, y + 34, 'flow-sub', sub);
-  }
-
-  const columns = [126, 260, 394];
   const lanes = [
-    { y: 10, tool: 'web_search', stages: [['DDGS.text()', '7 engines'], ['dedupe + rank', 'SimpleFilterRanker'], ['results', 'Title · URL · Snippet']] },
-    { y: 98, tool: 'web_fetch', stages: [['normalize', 'http · https only'], ['resolve + pin', 'SSRF guard'], ['text + metadata', '512 KiB cap · 5 hops']] },
-    { y: 186, tool: 'web_render', stages: [['Jina Reader', 'third-party'], ['Markdown', 'JavaScript pages']] },
+    { tool: 'web_search', stages: [['DDGS.text()', '7 engines'], ['dedupe + rank', 'SimpleFilterRanker'], ['results', 'Title · URL · Snippet']] },
+    { tool: 'web_fetch', stages: [['normalize', 'http · https only'], ['resolve + pin', 'SSRF guard'], ['text + metadata', '512 KiB cap · 5 hops']] },
+    { tool: 'web_render', stages: [['Jina Reader', 'third-party'], ['Markdown', 'JavaScript pages']] },
   ];
 
-  for (const lane of lanes) {
-    svgRoot.appendChild(svg('rect', { x: 6, y: lane.y, width: 104, height: 44, rx: '10', class: 'flow-node is-tool' }));
-    text(58, lane.y + 26, 'flow-label is-tool', lane.tool);
-    lane.stages.forEach((stage, index) => {
-      box(columns[index], lane.y, stage[0], stage[1]);
-      const from = index === 0 ? 114 : columns[index - 1] + 118;
-      svgRoot.appendChild(svg('path', { d: `M ${from} ${lane.y + 22} L ${columns[index] - 6} ${lane.y + 22}`, class: 'flow-edge', 'marker-end': 'url(#flow-arrow)' }));
-    });
+  function diagram(prefix) {
+    const svgRoot = svg('svg', { class: 'flow-svg', role: 'img', 'aria-label': 'How the three webtools run internally: search fans out to seven engines and reranks the hrefs, fetch normalizes and pins the resolved address before extracting HTML or PDF text, and render sends JavaScript pages through the Jina Reader' });
+    const defs = svg('defs');
+    const arrowId = `${prefix}-arrow`;
+    const warnId = `${prefix}-arrow-warn`;
+    for (const [id, warn] of [[arrowId, false], [warnId, true]]) {
+      const marker = svg('marker', { id, viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '6', markerHeight: '6', orient: 'auto' });
+      marker.appendChild(svg('path', { d: 'M 0 1 L 9 5 L 0 9 Z', class: warn ? 'flow-arrow-head is-warn' : 'flow-arrow-head' }));
+      defs.appendChild(marker);
+    }
+    svgRoot.appendChild(defs);
+
+    function text(x, y, className, content, anchor) {
+      const node = svg('text', { x, y, class: className, 'text-anchor': anchor || 'middle' });
+      node.textContent = content;
+      svgRoot.appendChild(node);
+    }
+
+    function plate(x, y, width, height, className) {
+      svgRoot.appendChild(svg('rect', { x, y, width, height, rx: '10', class: className ? `flow-node ${className}` : 'flow-node' }));
+    }
+
+    function wire(d, warn) {
+      svgRoot.appendChild(svg('path', { d, class: warn ? 'flow-edge is-warn' : 'flow-edge', 'marker-end': `url(#${warn ? warnId : arrowId})` }));
+    }
+
+    return { svgRoot, text, plate, wire };
   }
 
-  text(260, 68, 'flow-sub', 'duckduckgo · brave · google · mojeek · yahoo · yandex · wikipedia');
+  const wide = diagram('flow-wide');
+  wide.svgRoot.setAttribute('viewBox', '0 0 520 240');
+  wide.svgRoot.classList.add('is-wide');
+  const columns = [126, 260, 394];
+  lanes.forEach((lane, index) => {
+    const y = 10 + index * 88;
+    wide.plate(6, y, 104, 44, 'is-tool');
+    wide.text(58, y + 26, 'flow-label is-tool', lane.tool);
+    lane.stages.forEach((stage, stageIndex) => {
+      wide.plate(columns[stageIndex], y, 118, 44);
+      wide.text(columns[stageIndex] + 59, y + 19, 'flow-label', stage[0]);
+      wide.text(columns[stageIndex] + 59, y + 34, 'flow-sub', stage[1]);
+      const from = stageIndex === 0 ? 114 : columns[stageIndex - 1] + 118;
+      wide.wire(`M ${from} ${y + 22} L ${columns[stageIndex] - 6} ${y + 22}`);
+    });
+  });
+  wide.text(260, 68, 'flow-sub', 'duckduckgo · brave · google · mojeek · yahoo · yandex · wikipedia');
+  wide.wire('M 319 142 L 319 180', true);
+  wide.text(327, 166, 'flow-edge-label', '403 · JS page', 'start');
 
-  svgRoot.appendChild(svg('path', { d: 'M 319 142 L 319 180', class: 'flow-edge is-warn', 'marker-end': 'url(#flow-arrow-warn)' }));
-  text(327, 166, 'flow-edge-label', '403 · JS page', 'start');
+  const tall = diagram('flow-tall');
+  tall.svgRoot.setAttribute('viewBox', '0 0 280 620');
+  tall.svgRoot.classList.add('is-tall');
+  let top = 32;
+  for (const lane of lanes) {
+    tall.text(12, top - 8, 'flow-label is-tool', lane.tool, 'start');
+    lane.stages.forEach((stage, index) => {
+      const y = top + index * 66;
+      tall.plate(10, y, 260, 48);
+      tall.text(140, y + 21, 'flow-label', stage[0]);
+      tall.text(140, y + 38, 'flow-sub', stage[1]);
+      if (index < lane.stages.length - 1) tall.wire(`M 140 ${y + 48} L 140 ${y + 62}`);
+    });
+    top += lane.stages.length * 66 + 30;
+  }
+  tall.wire('M 140 440 L 140 484', true);
+  tall.text(148, 466, 'flow-edge-label', '403 · JS page', 'start');
 
   const note = el('p', 'flow-note', 'web_fetch · local files and private addresses allowed by default');
-  append(stage, svgRoot, note);
+  append(stage, wide.svgRoot, tall.svgRoot, note);
 
   return controller(root, () => {});
 }
