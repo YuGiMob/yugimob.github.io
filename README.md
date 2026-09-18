@@ -11,18 +11,17 @@ and a data lab charts the numbers behind the work.
 
 ## Page sections
 
-- **Hero** (`#hero`): avatar, rotating one-liners, live counters for stars,
+- **Hero** (`#hero`): avatar, name and tagline, live counters for stars,
   weekly installs, packages, and years.
 - **Flagship** (`#featured`): pi-hashline-edit-pro, with an interactive
   hashline playground — real FNV-1a anchors, a real served-row record, real
   `[E_RANGE_STALE]` refusals, and a scripted tour that runs the whole loop.
-- **The Forge** (`#forge`): ten cards, each with a live demo:
+- **The Forge** (`#forge`): nine cards, each with a live demo:
   search results (pi-unsloth-webtools, pi-jina-webtools), a Tor circuit
-  (pi-tor-proxy), a context-window breakdown (pi-context-inspector), a live
-  tokens-per-second widget (pi-tps-status), a workflow pipeline
-  (pi-msg-workflow), a guarded commit transcript (pi-git-commit), a message
-  queue (pi-msg-queue), a config tree (mypi), and a benchmark run trace
-  (pi-edit-benchmark).
+  (pi-tor-proxy), a live tokens-per-second widget (pi-tps-status), a workflow
+  pipeline (pi-msg-workflow), a guarded commit transcript (pi-git-commit), a
+  message queue (pi-msg-queue), a config tree (mypi), and a benchmark run
+  trace (pi-edit-benchmark).
 - **Evidence Lab** (`#lab`): benchmark pass rates, weekly npm installs, the
   download history that grows one snapshot per day, an 18-week activity
   heatmap, and a "last shipped" freshness chart.
@@ -61,8 +60,8 @@ weekly npm downloads, stats, activity (window, pushes, highlights, per-day
 events), and `history` — one snapshot per day with total stars, total weekly
 downloads, and pushes.
 
-**`data/showcase.json`** is curated by hand. It holds the hero one-liners, the
-featured project narrative, one entry per showcased project (kicker, tagline,
+**`data/showcase.json`** is curated by hand. It holds the featured project
+narrative, one entry per showcased project (kicker, tagline,
 highlights, demo id, size), the benchmark snapshot, the principles, the about
 prose, and the lab intro. The two files are joined by project name; the
 validator fails if a showcased name is missing from the manifest, duplicated,

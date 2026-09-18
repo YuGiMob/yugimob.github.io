@@ -141,11 +141,9 @@ try {
 } catch (err) {
   fail(`data/showcase.schema.json unparsable: ${err.message}`);
 }
-const showcaseKeys = ['intro', 'featured', 'projects', 'benchmark', 'principles', 'about', 'lab'];
+const showcaseKeys = ['featured', 'projects', 'benchmark', 'principles', 'about', 'lab'];
 hasOnly(showcase, showcaseKeys);
 for (const key of showcaseKeys) if (!(key in showcase)) fail(`showcase missing ${key}`);
-if (!Array.isArray(showcase.intro) || showcase.intro.length === 0) fail('showcase.intro invalid');
-for (const line of showcase.intro) needString(line, 'showcase intro line');
 const featured = showcase.featured;
 needObject(featured, 'showcase.featured');
 hasOnly(featured, ['name', 'kicker', 'headline', 'summary', 'points', 'demo']);

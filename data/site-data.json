@@ -11,7 +11,7 @@
   },
   "about": {
     "paragraphs": [
-      "Author of nine published pi-coding-agent extensions on npm, plus a benchmark that keeps them honest. Building agent tooling since 2022."
+      "Author of published pi-coding-agent extensions on npm, plus a benchmark that keeps them honest. Building agent tooling since 2022."
     ]
   },
   "projects": [
@@ -24,7 +24,7 @@
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
-      "npmWeeklyDownloads": 4607,
+      "npmWeeklyDownloads": 6313,
       "pushedAt": "2026-09-17T20:24:02Z"
     },
     {
@@ -36,7 +36,7 @@
       "url": "https://github.com/YuGiMob/pi-tor-proxy",
       "npm": "pi-tor-proxy",
       "license": "MIT",
-      "npmWeeklyDownloads": 28,
+      "npmWeeklyDownloads": 38,
       "pushedAt": "2026-08-28T06:40:51Z"
     },
     {
@@ -48,20 +48,8 @@
       "url": "https://github.com/YuGiMob/pi-jina-webtools",
       "npm": "pi-jina-webtools",
       "license": "MIT",
-      "npmWeeklyDownloads": 32,
+      "npmWeeklyDownloads": 26,
       "pushedAt": "2026-09-01T17:10:48Z"
-    },
-    {
-      "name": "pi-context-inspector",
-      "description": "Tabbed overlay with the full LLM context of the current pi session",
-      "language": "TypeScript",
-      "stars": 1,
-      "forks": 0,
-      "url": "https://github.com/YuGiMob/pi-context-inspector",
-      "npm": "pi-context-inspector",
-      "license": "MIT",
-      "npmWeeklyDownloads": 37,
-      "pushedAt": "2026-08-13T20:15:56Z"
     },
     {
       "name": "pi-git-commit",
@@ -72,7 +60,7 @@
       "url": "https://github.com/YuGiMob/pi-git-commit",
       "npm": "pi-git-commit",
       "license": "MIT",
-      "npmWeeklyDownloads": 41,
+      "npmWeeklyDownloads": 43,
       "pushedAt": "2026-09-03T14:26:41Z"
     },
     {
@@ -84,7 +72,7 @@
       "url": "https://github.com/YuGiMob/pi-msg-queue",
       "npm": "pi-msg-queue",
       "license": "MIT",
-      "npmWeeklyDownloads": 10,
+      "npmWeeklyDownloads": 24,
       "pushedAt": "2026-08-13T21:20:18Z"
     },
     {
@@ -96,7 +84,7 @@
       "url": "https://github.com/YuGiMob/pi-msg-workflow",
       "npm": "pi-msg-workflow",
       "license": "MIT",
-      "npmWeeklyDownloads": 154,
+      "npmWeeklyDownloads": 74,
       "pushedAt": "2026-09-17T19:29:16Z"
     },
     {
@@ -108,7 +96,7 @@
       "url": "https://github.com/YuGiMob/pi-unsloth-webtools",
       "npm": "pi-unsloth-webtools",
       "license": "AGPL-3.0",
-      "npmWeeklyDownloads": 314,
+      "npmWeeklyDownloads": 550,
       "pushedAt": "2026-09-17T19:44:39Z"
     },
     {
@@ -120,7 +108,7 @@
       "url": "https://github.com/YuGiMob/pi-tps-status",
       "npm": "pi-tps-status",
       "license": "MIT",
-      "npmWeeklyDownloads": 73,
+      "npmWeeklyDownloads": 89,
       "pushedAt": "2026-08-24T06:01:25Z"
     },
     {
@@ -148,7 +136,7 @@
   ],
   "stats": {
     "totalStars": 94,
-    "npmPackages": 9,
+    "npmPackages": 8,
     "publicRepos": 12,
     "starsGiven": 17,
     "forksReceived": 29,
@@ -164,12 +152,12 @@
       "closed issue #41 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #38 on YuGiMob/pi-hashline-edit-pro"
     ],
-    "fetchedAt": "2026-09-17",
+    "fetchedAt": "2026-09-18",
     "daily": [
       {
         "date": "2026-09-03",
-        "events": 5,
-        "pushes": 5
+        "events": 3,
+        "pushes": 3
       },
       {
         "date": "2026-09-04",
@@ -178,8 +166,8 @@
       },
       {
         "date": "2026-09-05",
-        "events": 11,
-        "pushes": 11
+        "events": 10,
+        "pushes": 10
       },
       {
         "date": "2026-09-06",
@@ -238,8 +226,8 @@
       },
       {
         "date": "2026-09-17",
-        "events": 3,
-        "pushes": 1
+        "events": 6,
+        "pushes": 4
       }
     ]
   },
@@ -255,6 +243,12 @@
       "date": "2026-09-17",
       "totalStars": 94,
       "totalDownloads": 5296,
+      "pushes": 63
+    },
+    {
+      "date": "2026-09-18",
+      "totalStars": 94,
+      "totalDownloads": 7157,
       "pushes": 63
     }
   ]

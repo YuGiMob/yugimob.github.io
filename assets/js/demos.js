@@ -58,7 +58,7 @@ const SEARCH_DATA = {
       {
         q: 'tor proxy for coding agents',
         results: [
-          ['pi-tor-proxy — GitHub', 'github.com/YuGiMob/pi-tor-proxy', 'Self-contained pi extension that routes every outbound request through a fresh three-hop Tor circuit.'],
+          ['pi-tor-proxy — GitHub', 'github.com/YuGiMob/pi-tor-proxy', 'Routes pi agent requests through Tor with a bundled Tor binary, per-instance circuits, and a verified exit IP.'],
           ['How Tor circuits work', 'community.torproject.org', 'Three relays, layered encryption, and a new circuit per request.'],
           ['npm: pi-tor-proxy', 'npmjs.com/package/pi-tor-proxy', 'Install command, weekly downloads, and version history.'],
         ],
@@ -68,7 +68,7 @@ const SEARCH_DATA = {
         results: [
           ['pi — the coding agent', 'pi.dev', 'Extensions, tools, sessions, and a terminal UI built for real repositories.'],
           ['mypi — personal configuration', 'github.com/YuGiMob/mypi', 'Extensions, model routing, and settings in one versioned repository.'],
-          ['YuGiMob on GitHub', 'github.com/YuGiMob', 'Nine published pi extensions and a benchmark that keeps them honest.'],
+          ['YuGiMob on GitHub', 'github.com/YuGiMob', 'Published pi extensions and the benchmark that keeps them honest.'],
         ],
       },
     ],
@@ -96,11 +96,11 @@ const SEARCH_DATA = {
         ],
       },
       {
-        q: 'see the llm context',
+        q: 'benchmark editing tools',
         results: [
-          ['pi-context-inspector — GitHub', 'github.com/YuGiMob/pi-context-inspector', 'A tabbed overlay showing the system prompt, tool schemas, messages, and token costs.'],
-          ['pi-tps-status — GitHub', 'github.com/YuGiMob/pi-tps-status', 'Live tokens-per-second instrumentation for the status line.'],
-          ['Context window basics', 'pi.dev/docs', 'How system prompts, tools, and history share the window.'],
+          ['pi-edit-benchmark — GitHub', 'github.com/YuGiMob/pi-edit-benchmark', 'Deterministic tool-level benchmark scoring edit correctness, safety, and stale handling.'],
+          ['pi-hashline-edit-pro — GitHub', 'github.com/YuGiMob/pi-hashline-edit-pro', 'The reference hashline implementation, with 4-character anchors and stale-edit refusals.'],
+          ['YuGiMob on GitHub', 'github.com/YuGiMob', 'Published pi extensions and the benchmark that keeps them honest.'],
         ],
       },
     ],
@@ -436,78 +436,6 @@ function tpsDemo() {
   });
 }
 
-const CONTEXT_SEGMENTS = [
-  { key: 'system', label: 'System prompt', tokens: 1140, sample: 'You are pi, a coding agent…' },
-  { key: 'tools', label: 'Tool schemas', tokens: 4620, sample: 'read · replace · insert · anchor_grep · undo_last_change' },
-  { key: 'conversation', label: 'Conversation', tokens: 8420, sample: '34 messages · last: "make the diff show context lines"' },
-  { key: 'files', label: 'Retrieved files', tokens: 2310, sample: 'src/anchors.ts · test/anchors.test.ts · README.md' },
-];
-
-function contextDemo() {
-  const LIMIT = 32768;
-  const { root, stage } = frame('pi-context-inspector', 'overlay');
-  const bar = el('div', 'ctx-bar');
-  const legend = el('div', 'ctx-legend');
-  const detail = el('p', 'ctx-detail');
-  const readout = el('p', 'ctx-readout');
-  const actions = el('div', 'ctx-actions');
-  const addButton = press('+ message', 'ctx-add');
-  const compactButton = press('compact', 'ctx-compact');
-  append(actions, addButton, compactButton);
-  append(stage, bar, legend, detail, readout, actions);
-
-  let tokens = CONTEXT_SEGMENTS.map((segment) => segment.tokens);
-  let selected = 2;
-
-  function render() {
-    bar.replaceChildren();
-    const used = tokens.reduce((sum, entry) => sum + entry, 0);
-    CONTEXT_SEGMENTS.forEach((segment, index) => {
-      const cell = el('button', 'ctx-seg');
-      cell.type = 'button';
-      cell.style.flexGrow = String(tokens[index]);
-      cell.style.flexBasis = `${(tokens[index] / LIMIT) * 100}%`;
-      cell.classList.toggle('is-current', index === selected);
-      cell.dataset.key = segment.key;
-      cell.setAttribute('aria-label', `${segment.label}: ${tokens[index]} tokens`);
-      bar.appendChild(cell);
-    });
-    const free = el('span', 'ctx-free');
-    free.style.flexGrow = String(Math.max(1, LIMIT - used));
-    bar.appendChild(free);
-    bar.classList.toggle('is-pressure', used / LIMIT > 0.85);
-
-    legend.replaceChildren();
-    CONTEXT_SEGMENTS.forEach((segment, index) => {
-      const item = el('button', 'ctx-key');
-      item.type = 'button';
-      item.dataset.key = segment.key;
-      item.classList.toggle('is-current', index === selected);
-      append(item, el('span', `ctx-swatch swatch-${segment.key}`), el('span', 'ctx-key-label', segment.label), el('span', 'ctx-key-value', formatNumber(tokens[index])));
-      item.addEventListener('click', () => {
-        selected = index;
-        render();
-      });
-      legend.appendChild(item);
-    });
-
-    const segment = CONTEXT_SEGMENTS[selected];
-    detail.textContent = `${segment.label} · ${formatNumber(tokens[selected])} tokens · ${((tokens[selected] / LIMIT) * 100).toFixed(1)}% · ${segment.sample}`;
-    readout.textContent = `${formatNumber(used)} / ${formatNumber(LIMIT)} tokens · ${((used / LIMIT) * 100).toFixed(0)}% of window${used / LIMIT > 0.85 ? ' · pressure' : ''}`;
-  }
-
-  addButton.addEventListener('click', () => {
-    tokens = tokens.map((entry, index) => (index === 2 ? entry + 1400 : entry));
-    render();
-  });
-  compactButton.addEventListener('click', () => {
-    tokens = tokens.map((entry, index) => (index === 2 ? Math.round(entry * 0.55) : entry));
-    render();
-  });
-  render();
-
-  return controller(root, () => {});
-}
 
 function workflowDemo() {
   const { root, stage } = frame('/workflow improve', 'config');
@@ -794,27 +722,17 @@ function queueDemo() {
 
 const CONFIG_FILES = {
   'extensions/': {
-    title: 'extensions/ · 9 active',
-    content: [
-      'hashline-edit-pro.ts',
-      'tor-proxy.ts',
-      'jina-webtools.ts',
-      'unsloth-webtools.ts',
-      'git-commit.ts',
-      'msg-queue.ts',
-      'msg-workflow.ts',
-      'tps-status.ts',
-      'context-inspector.ts',
-    ].join('\n'),
+    title: 'extensions/ · 1 active',
+    content: ['sticky-autocomplete.ts'].join('\n'),
   },
-  'hashline-edit-pro.ts': {
-    title: 'extensions/hashline-edit-pro.ts',
+  'sticky-autocomplete.ts': {
+    title: 'extensions/sticky-autocomplete.ts',
     content: [
-      'export default function (pi) {',
-      "  pi.registerTool('replace', replaceTool)",
-      "  pi.registerTool('insert', insertTool)",
-      "  pi.registerTool('anchor_grep', anchorGrep)",
-      "  pi.registerTool('undo_last_change', undoLastChange)",
+      'export function parseSlashCommand(text) {',
+      "  if (!text.startsWith('/')) return null",
+      '  const space = text.indexOf(" ")',
+      '  if (space === -1) return null',
+      '  return { commandName: text.slice(1, space) }',
       '}',
     ].join('\n'),
   },
@@ -822,10 +740,11 @@ const CONFIG_FILES = {
     title: 'settings.json',
     content: [
       '{',
-      '  "theme": "forge",',
-      '  "autoRead": true,',
-      '  "diffContext": 1,',
-      '  "boundaryDedup": "on"',
+      '  "theme": "dark",',
+      '  "defaultThinkingLevel": "max",',
+      '  "enableInstallTelemetry": false,',
+      '  "compaction": { "enabled": false },',
+      '  "retry": { "baseDelayMs": 5000 }',
       '}',
     ].join('\n'),
   },
@@ -833,9 +752,11 @@ const CONFIG_FILES = {
     title: 'models-store.json',
     content: [
       '{',
-      '  "default": "glm-5.1",',
-      '  "providers": ["hyper", "ollama-cloud", "opencode-go"],',
-      '  "fallback": ["glm-5.3-flash", "qwen3.8-flash"]',
+      '  "opencode-go": {',
+      '    "models": [',
+      '      { "id": "deepseek-v4-flash", "name": "DeepSeek V4 Flash" }',
+      '    ]',
+      '  }',
       '}',
     ].join('\n'),
   },
@@ -861,15 +782,7 @@ function configDemo() {
 
   const treeData = [
     { key: 'extensions/', depth: 0 },
-    { key: 'hashline-edit-pro.ts', depth: 1 },
-    { key: 'tor-proxy.ts', depth: 1 },
-    { key: 'jina-webtools.ts', depth: 1 },
-    { key: 'unsloth-webtools.ts', depth: 1 },
-    { key: 'git-commit.ts', depth: 1 },
-    { key: 'msg-queue.ts', depth: 1 },
-    { key: 'msg-workflow.ts', depth: 1 },
-    { key: 'tps-status.ts', depth: 1 },
-    { key: 'context-inspector.ts', depth: 1 },
+    { key: 'sticky-autocomplete.ts', depth: 1 },
     { key: 'models-store.json', depth: 0 },
     { key: 'settings.json', depth: 0 },
   ];
@@ -947,7 +860,6 @@ const BUILDERS = {
   search: searchDemo,
   tor: torDemo,
   tps: tpsDemo,
-  context: contextDemo,
   workflow: workflowDemo,
   git: gitDemo,
   queue: queueDemo,

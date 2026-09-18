@@ -1,8 +1,4 @@
 {
-  "intro": [
-    "Coding agents, with safety rails.",
-    "Hash-anchored edits. Tor-wrapped requests. Live benchmarks."
-  ],
   "featured": {
     "name": "pi-hashline-edit-pro",
     "kicker": "Flagship artifact",
@@ -48,25 +44,13 @@
     {
       "name": "pi-tor-proxy",
       "kicker": "Network privacy",
-      "tagline": "Wraps every outbound request from pi in a fresh three-hop Tor circuit. One extension, no system proxy, and no leaking sockets left behind.",
+      "tagline": "Routes every request the pi agent makes through Tor. It bundles and verifies its own Tor binary, gives each pi instance its own circuit, and shows the exit IP in the footer.",
       "highlights": [
-        "Three-hop onion routing",
-        "Direct-socket and DNS leaks closed",
-        "Per-session toggle, nothing global"
+        "Bundles and manages its own Tor binary",
+        "Per-instance circuit via IsolateSOCKSAuth",
+        "Exit IP verified against check.torproject.org"
       ],
       "demo": "tor",
-      "size": "large"
-    },
-    {
-      "name": "pi-context-inspector",
-      "kicker": "Observability",
-      "tagline": "A tabbed overlay that shows exactly what the model sees: the system prompt, every tool schema, each message, and what each block costs in tokens.",
-      "highlights": [
-        "Full context, tab by tab",
-        "Token cost per block",
-        "Finds prompt bloat in seconds"
-      ],
-      "demo": "context",
       "size": "large"
     },
     {
@@ -133,11 +117,11 @@
     {
       "name": "mypi",
       "kicker": "Workbench",
-      "tagline": "The personal pi configuration that runs the daily work: extensions, model routing, themes, and settings in one versioned repository.",
+      "tagline": "The personal pi configuration that runs the daily work: a custom editor extension, model catalogs, themes, and settings in one versioned repository.",
       "highlights": [
-        "Every extension wired in",
-        "Model routing and fallbacks",
-        "Settings as versioned files"
+        "Slash-command autocomplete extension",
+        "Model catalog in models-store.json",
+        "Settings and API keys versioned"
       ],
       "demo": "config",
       "size": "small"
@@ -183,7 +167,7 @@
   ],
   "about": [
     "I build tools for coding agents, mostly extensions for pi. The pattern behind every one of them is the same: find something agents get subtly wrong, then make the wrong version impossible.",
-    "Nine packages are published to npm. The flagship anchors every line with a 4-character hash so edits cannot drift, refuses stale edits instead of guessing, and has an undo that restores bytes. When I wanted proof it was better, I built the benchmark and published the traces.",
+    "The packages are all on npm. The flagship anchors every line with a 4-character hash so edits cannot drift, refuses stale edits instead of guessing, and has an undo that restores bytes. When I wanted proof it was better, I built the benchmark and published the traces.",
     "Everything on this page is real data. Numbers refresh daily from the GitHub and npm APIs through a scheduled workflow, and the benchmark figures are read from committed run reports."
   ],
   "lab": {

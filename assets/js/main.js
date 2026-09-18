@@ -1,5 +1,5 @@
 import { hydrateAvatar } from './avatar.js';
-import { el, append, link, copyButton, reducedMotion, formatNumber, createRuntime, typeText, animateValue } from './ui.js';
+import { el, append, link, copyButton, reducedMotion, formatNumber, animateValue } from './ui.js';
 import { buildDemo } from './demos.js';
 import { buildPlayground } from './playground.js';
 import { benchmarkChart, downloadsChart, historyChart, heatmapChart, freshnessChart } from './charts.js';
@@ -30,7 +30,6 @@ async function fetchJson(url) {
 
 function fallbackShowcase(data) {
   return {
-    intro: [data.identity.tagline],
     featured: null,
     projects: data.projects.map((project) => ({
       name: project.name,
@@ -160,7 +159,7 @@ function initHeroCanvas() {
   start();
 }
 
-function renderIdentity(data, showcase) {
+function renderIdentity(data) {
   const identity = data.identity;
   hydrateAvatar(document.getElementById('avatar'), identity.avatarUrl, identity.displayName);
   document.title = `${identity.displayName} — ${identity.classTitle}`;
@@ -179,28 +178,6 @@ function renderIdentity(data, showcase) {
   const heroGithub = document.getElementById('hero-github');
   if (heroGithub && identity.links?.github) heroGithub.href = identity.links.github;
 
-  const typeNode = document.getElementById('hero-type');
-  const lines = showcase.intro.filter(Boolean);
-  if (typeNode) {
-    if (reducedMotion() || lines.length === 0) {
-      typeNode.textContent = lines[0] || identity.tagline;
-    } else {
-      const runtime = createRuntime();
-      let index = 0;
-      const cycle = () => {
-        const line = lines[index % lines.length];
-        index += 1;
-        typeText(typeNode, line, runtime, {
-          speed: 42,
-          onDone: () => runtime.after(() => {
-            typeNode.textContent = '';
-            runtime.after(cycle, 260);
-          }, 2600),
-        });
-      };
-      cycle();
-    }
-  }
 }
 
 function renderHeroStats(data) {
@@ -364,7 +341,7 @@ function renderLab(showcase, data, projectList, sections) {
   return cleanups;
 }
 
-function renderAbout(showcase, data) {
+function renderAbout(showcase) {
   const prose = document.getElementById('about-prose');
   if (prose) {
     for (const paragraph of showcase.about) prose.appendChild(el('p', 'about-paragraph', paragraph));
@@ -452,12 +429,12 @@ async function init() {
   const showcase = showcaseRaw || fallbackShowcase(data);
   const projects = new Map(data.projects.map((project) => [project.name, project]));
 
-  renderIdentity(data, showcase);
+  renderIdentity(data);
   renderHeroStats(data);
   renderFeatured(showcase.featured, projects.get(showcase.featured?.name));
   renderForge(showcase.projects, projects);
   renderLab(showcase, data, data.projects, data.sections);
-  renderAbout(showcase, data);
+  renderAbout(showcase);
   renderFooter(data.identity);
   renderStructuredData(data, showcase);
   applyVisibility(data.sections);
@@ -471,6 +448,6 @@ init().catch((error) => {
   console.warn('YuGiMob:', error);
   const fallback = document.getElementById('display-name');
   if (fallback) fallback.textContent = 'Site data unavailable';
-  const type = document.getElementById('hero-type');
-  if (type) type.textContent = 'Check data/site-data.json and data/showcase.json';
+  const tagline = document.getElementById('tagline');
+  if (tagline) tagline.textContent = 'Check data/site-data.json and data/showcase.json';
 });
