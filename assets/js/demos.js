@@ -40,77 +40,49 @@ function typeLines(container, lines, runtime, onDone) {
   next();
 }
 
-const SEARCH_DATA = {
-  unsloth: {
-    tool: 'web_search',
-    engine: 'DuckDuckGo',
-    note: 'SSRF guard · refused http://127.0.0.1:8080 — private address',
-    reader: null,
-    queries: [
-      {
-        q: 'hashline edit anchors',
-        results: [
-          ['pi-hashline-edit-pro — GitHub', 'github.com/YuGiMob/pi-hashline-edit-pro', 'Hash-anchored read, replace, and undo tools for the pi coding agent. Every line gets a unique 4-character anchor.'],
-          ['pi-hashline-edit — GitHub', 'github.com/RimuruW/pi-hashline-edit', 'The original hash-anchored editing extension for pi, with 3-character anchors.'],
-          ['pi-edit-benchmark — GitHub', 'github.com/YuGiMob/pi-edit-benchmark', 'Deterministic benchmark scoring edit tools on correctness, safety, and stale handling.'],
-        ],
-      },
-      {
-        q: 'tor proxy for coding agents',
-        results: [
-          ['pi-tor-proxy — GitHub', 'github.com/YuGiMob/pi-tor-proxy', 'Routes pi agent requests through Tor with a bundled Tor binary, per-instance circuits, and a verified exit IP.'],
-          ['How Tor circuits work', 'community.torproject.org', 'Three relays, layered encryption, and a new circuit per request.'],
-          ['npm: pi-tor-proxy', 'npmjs.com/package/pi-tor-proxy', 'Install command, weekly downloads, and version history.'],
-        ],
-      },
-      {
-        q: 'pi coding agent extensions',
-        results: [
-          ['pi — the coding agent', 'pi.dev', 'Extensions, tools, sessions, and a terminal UI built for real repositories.'],
-          ['mypi — personal configuration', 'github.com/YuGiMob/mypi', 'Extensions, model routing, and settings in one versioned repository.'],
-          ['YuGiMob on GitHub', 'github.com/YuGiMob', 'Published pi extensions and the benchmark that keeps them honest.'],
-        ],
-      },
-    ],
-  },
-  jina: {
-    tool: 'web_fetch',
-    engine: 'r.jina.ai',
-    note: 'reader · 12.4k chars → 1.8k tokens · rendered with JavaScript',
-    reader: ['# pi-hashline-edit-pro', '', 'Every line comes back as `anchor│content`, and you edit by anchor.', '', '## Installation', '', 'pi install npm:pi-hashline-edit-pro'],
-    queries: [
-      {
-        q: 'hashline edit anchors',
-        results: [
-          ['pi-hashline-edit-pro — GitHub', 'github.com/YuGiMob/pi-hashline-edit-pro', 'Anchor-addressed editing for the pi coding agent, with stale-edit refusal and byte-exact undo.'],
-          ['s.jina.ai search results', 's.jina.ai', 'Ranked results with clean snippets, no API key required.'],
-          ['r.jina.ai reader', 'r.jina.ai', 'JavaScript-rendered pages converted to readable Markdown.'],
-        ],
-      },
-      {
-        q: 'route pi through tor',
-        results: [
-          ['pi-tor-proxy — GitHub', 'github.com/YuGiMob/pi-tor-proxy', 'Route every request from the agent through Tor without touching system proxy settings.'],
-          ['Tor Project documentation', 'community.torproject.org', 'Circuit design, relays, and what Tor does and does not hide.'],
-          ['npm: pi-tor-proxy', 'npmjs.com/package/pi-tor-proxy', 'A self-contained extension with a per-session toggle.'],
-        ],
-      },
-      {
-        q: 'benchmark editing tools',
-        results: [
-          ['pi-edit-benchmark — GitHub', 'github.com/YuGiMob/pi-edit-benchmark', 'Deterministic tool-level benchmark scoring edit correctness, safety, and stale handling.'],
-          ['pi-hashline-edit-pro — GitHub', 'github.com/YuGiMob/pi-hashline-edit-pro', 'The reference hashline implementation, with 4-character anchors and stale-edit refusals.'],
-          ['YuGiMob on GitHub', 'github.com/YuGiMob', 'Published pi extensions and the benchmark that keeps them honest.'],
-        ],
-      },
-    ],
-  },
+const SEARCH = {
+  tool: 'web_search',
+  engine: 'DuckDuckGo',
+  note: 'SSRF guard · refused http://127.0.0.1:8080 — private address',
+  reader: [
+    '# pi-hashline-edit-pro',
+    '',
+    'Every line comes back as `anchor│content`, and you edit by anchor.',
+    '',
+    '## Installation',
+    '',
+    'pi install npm:pi-hashline-edit-pro',
+  ],
+  queries: [
+    {
+      q: 'hashline edit anchors',
+      results: [
+        ['pi-hashline-edit-pro — GitHub', 'github.com/YuGiMob/pi-hashline-edit-pro', 'Hash-anchored read, replace, and undo tools for the pi coding agent. Every line gets a unique 4-character anchor.'],
+        ['pi-hashline-edit — GitHub', 'github.com/RimuruW/pi-hashline-edit', 'The original hash-anchored editing extension for pi, with 3-character anchors.'],
+        ['pi-edit-benchmark — GitHub', 'github.com/YuGiMob/pi-edit-benchmark', 'Deterministic benchmark scoring edit tools on correctness, safety, and stale handling.'],
+      ],
+    },
+    {
+      q: 'tor proxy for coding agents',
+      results: [
+        ['pi-tor-proxy — GitHub', 'github.com/YuGiMob/pi-tor-proxy', 'Routes pi agent requests through Tor with a bundled Tor binary, per-instance circuits, and a verified exit IP.'],
+        ['How Tor circuits work', 'community.torproject.org', 'Three relays, layered encryption, and a new circuit per request.'],
+        ['npm: pi-tor-proxy', 'npmjs.com/package/pi-tor-proxy', 'Install command, weekly downloads, and version history.'],
+      ],
+    },
+    {
+      q: 'pi coding agent extensions',
+      results: [
+        ['pi — the coding agent', 'pi.dev', 'Extensions, tools, sessions, and a terminal UI built for real repositories.'],
+        ['mypi — personal configuration', 'github.com/YuGiMob/mypi', 'Extensions, model routing, and settings in one versioned repository.'],
+        ['YuGiMob on GitHub', 'github.com/YuGiMob', 'Published pi extensions and the benchmark that keeps them honest.'],
+      ],
+    },
+  ],
 };
 
-function searchDemo(options) {
-  const variant = options.variant === 'jina' ? 'jina' : 'unsloth';
-  const config = SEARCH_DATA[variant];
-  const { root, stage } = frame(config.tool, config.engine);
+function searchDemo() {
+  const { root, stage } = frame(SEARCH.tool, SEARCH.engine);
 
   const bar = el('div', 'search-bar');
   const prompt = el('span', 'search-prompt', '›');
@@ -126,7 +98,7 @@ function searchDemo(options) {
   let queryIndex = 0;
   let generation = 0;
 
-  for (const [index, entry] of config.queries.entries()) {
+  for (const [index, entry] of SEARCH.queries.entries()) {
     const chip = press(entry.q, 'search-chip');
     chip.addEventListener('click', () => {
       show(index, runtimeRef);
@@ -156,25 +128,23 @@ function searchDemo(options) {
       append(row, anchor, el('span', 'search-url', url), el('p', 'search-snippet', snippet));
       results.appendChild(row);
     });
-    meta.textContent = `${config.tool} · ${config.engine} · ${entry.results.length} results`;
+    meta.textContent = `${SEARCH.tool} · ${SEARCH.engine} · ${entry.results.length} results`;
   }
 
   function show(index, runtime) {
     queryIndex = index;
-    const entry = config.queries[index];
+    const entry = SEARCH.queries[index];
     generation += 1;
     const token = generation;
     for (const chip of chips.children) chip.classList.toggle('is-current', chip.dataset.index === String(index));
     tail.textContent = '';
     tail.classList.remove('is-visible');
-    meta.textContent = `${config.tool} · ${config.engine} · searching…`;
+    meta.textContent = `${SEARCH.tool} · ${SEARCH.engine} · searching…`;
     if (!runtime || reducedMotion()) {
       query.textContent = entry.q;
       renderResults(entry);
-      if (config.reader) {
-        tail.textContent = config.reader.join('\n');
-        tail.classList.add('is-visible');
-      }
+      tail.textContent = SEARCH.reader.join('\n');
+      tail.classList.add('is-visible');
       return;
     }
     skeleton();
@@ -185,19 +155,17 @@ function searchDemo(options) {
         runtime.after(() => {
           if (token !== generation) return;
           renderResults(entry);
-          if (config.reader) {
-            runtime.after(() => {
-              if (token !== generation) return;
-              tail.classList.add('is-visible');
-              typeText(tail, config.reader.join('\n'), runtime, { speed: 6 });
-            }, 350);
-          }
+          runtime.after(() => {
+            if (token !== generation) return;
+            tail.classList.add('is-visible');
+            typeText(tail, SEARCH.reader.join('\n'), runtime, { speed: 6 });
+          }, 350);
         }, 620);
       },
     });
   }
 
-  const note = el('p', 'search-note', config.note);
+  const note = el('p', 'search-note', SEARCH.note);
   stage.appendChild(note);
   show(0, null);
 
@@ -206,7 +174,7 @@ function searchDemo(options) {
     show(queryIndex, runtime);
     if (reducedMotion()) return;
     runtime.every(() => {
-      const next = (queryIndex + 1) % config.queries.length;
+      const next = (queryIndex + 1) % SEARCH.queries.length;
       show(next, runtime);
     }, 9000);
   });
@@ -867,8 +835,8 @@ const BUILDERS = {
   trace: traceDemo,
 };
 
-export function buildDemo(id, options) {
+export function buildDemo(id) {
   const builder = BUILDERS[id];
   if (!builder) return null;
-  return builder(options || {});
+  return builder();
 }

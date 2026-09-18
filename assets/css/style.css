@@ -48,6 +48,10 @@ body {
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 body::after {
@@ -217,16 +221,23 @@ a {
   background: var(--gold-soft);
 }
 
-.nav-links a.nav-cta {
+.nav-cta {
+  margin-left: 4px;
+  padding: 7px 12px;
   border: 1px solid var(--line-strong);
+  border-radius: 999px;
   color: var(--parchment);
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.2s ease, border-color 0.2s ease;
 }
 
-.nav-links a.nav-cta:hover,
-.nav-links a.nav-cta.is-current {
+.nav-cta:hover,
+.nav-cta.is-current {
   color: var(--gold-bright);
   border-color: var(--gold);
-  background: transparent;
 }
 
 .hero {
@@ -583,6 +594,7 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
   padding: 10px 14px;
   border-bottom: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.02);
@@ -708,6 +720,8 @@ a {
 .pg-request {
   max-height: 150px;
   overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -2135,16 +2149,16 @@ a {
 
 @media (max-width: 1080px) {
   .feature {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 30px;
   }
 
   .forge-card.is-large {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .pg-body {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .pg-code-pane {
@@ -2154,14 +2168,14 @@ a {
   }
 
   .about-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 900px) {
   .forge-grid,
   .lab-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .chart.is-wide {
@@ -2173,7 +2187,7 @@ a {
   }
 
   .feature-points {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -2217,14 +2231,15 @@ a {
   .fresh-label,
   .bench-label {
     white-space: normal;
+    padding: 8px 0;
   }
 
   .wf-lanes {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .demo-stage:has(> .cfg-tree) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .hero {
@@ -2234,6 +2249,140 @@ a {
   .hero-avatar img {
     width: 104px;
     height: 104px;
+  }
+
+  html {
+    scroll-padding-top: 116px;
+  }
+
+  body {
+    background-attachment: scroll;
+  }
+
+  .nav-cta {
+    order: 1;
+    margin-left: auto;
+  }
+
+  .nav-links {
+    order: 2;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .nav-links a {
+    padding: 8px 9px;
+    font-size: 0.72rem;
+  }
+
+  .brand {
+    padding: 6px 0;
+  }
+
+  .search-result {
+    padding: 10px;
+  }
+
+  .search-title {
+    padding: 8px 0;
+  }
+
+  .chart {
+    padding: 16px;
+  }
+
+  .forge-card {
+    padding: 20px 18px;
+  }
+
+  .campfire {
+    margin-top: 72px;
+    padding: 52px 18px 44px;
+  }
+
+  .pg-head {
+    gap: 6px;
+  }
+
+  .pg-head-spacer {
+    display: none;
+  }
+
+  .pg-line-btn {
+    min-height: 34px;
+    font-size: 0.8rem;
+  }
+
+  .demo-bar,
+  .demo-button,
+  .pg-file,
+  .pg-action,
+  .pg-feedback-msg,
+  .pg-request,
+  .pg-diff,
+  .copy-btn,
+  .action-link,
+  .search-bar,
+  .search-meta,
+  .search-url,
+  .search-note,
+  .search-chip,
+  .tor-readout,
+  .wf-item,
+  .wf-lane-title,
+  .wf-status,
+  .wf-output,
+  .term-body,
+  .cfg-node,
+  .cfg-view-body,
+  .tr-step,
+  .chart-note,
+  .chart-source,
+  .hm-legend,
+  .hm-deed,
+  .hm-deeds-title,
+  .q-badge,
+  .q-input,
+  .tps-foot,
+  .chip-label,
+  .chip-value,
+  .stat-label,
+  .dl-label,
+  .fresh-label,
+  .bench-label,
+  .bench-value,
+  .dl-value,
+  .fresh-value,
+  .section-kicker,
+  .forge-kicker,
+  .chart-kicker {
+    font-size: 0.78rem;
+  }
+
+  .pg-badge {
+    font-size: 0.72rem;
+  }
+
+  .demo-button,
+  .pg-action,
+  .copy-btn,
+  .action-link,
+  .search-chip,
+  .cfg-node {
+    min-height: 40px;
+  }
+
+  .bench-flag {
+    padding: 2px 6px;
+    font-size: 0.64rem;
+  }
+
+  .tor-label {
+    font-size: 17px;
+  }
+
+  .tor-sub {
+    font-size: 13px;
   }
 }
 

@@ -38,7 +38,6 @@
         "Readable Markdown instead of raw soup"
       ],
       "demo": "search",
-      "variant": "unsloth",
       "size": "large"
     },
     {
@@ -99,19 +98,6 @@
         "Live queue badge"
       ],
       "demo": "queue",
-      "size": "small"
-    },
-    {
-      "name": "pi-jina-webtools",
-      "kicker": "Search & fetch",
-      "tagline": "Jina-powered research tools: s.jina.ai for ranked results and r.jina.ai for clean page text, including pages that only render with JavaScript.",
-      "highlights": [
-        "Ranked search results",
-        "Reader mode for rendered pages",
-        "JSON or Markdown in one call"
-      ],
-      "demo": "search",
-      "variant": "jina",
       "size": "small"
     },
     {

@@ -89,6 +89,35 @@ function setupNav() {
   for (const section of sections) observer.observe(section);
 }
 
+function setupAnchorAlignment() {
+  let pending = null;
+  const align = () => {
+    const id = window.location.hash.replace('#', '');
+    if (!id) return;
+    const target = document.getElementById(id);
+    if (!target) return;
+    const padding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
+    const desired = Math.round(target.getBoundingClientRect().top + window.scrollY - padding);
+    if (Math.abs(desired - window.scrollY) < 6) return;
+    window.scrollTo({ top: desired });
+  };
+  const cancel = () => {
+    if (pending) clearTimeout(pending);
+    pending = null;
+  };
+  const schedule = () => {
+    cancel();
+    pending = setTimeout(() => {
+      pending = null;
+      align();
+    }, 1500);
+  };
+  window.addEventListener('hashchange', schedule);
+  for (const anchor of document.querySelectorAll('a[href^="#"]')) anchor.addEventListener('click', schedule);
+  for (const type of ['wheel', 'touchstart', 'keydown']) window.addEventListener(type, cancel, { passive: true });
+  if (window.location.hash) schedule();
+}
+
 function setupChrome() {
   const bar = document.getElementById('topbar');
   if (!bar) return;
@@ -293,7 +322,7 @@ function renderForge(entries, projects) {
 
     card.appendChild(copy);
     if (entry.demo) {
-      const demo = buildDemo(entry.demo, { variant: entry.variant });
+      const demo = buildDemo(entry.demo);
       if (demo) {
         const box = el('div', 'forge-demo');
         box.appendChild(demo.node);
@@ -440,6 +469,7 @@ async function init() {
   applyVisibility(data.sections);
   setupReveal();
   setupNav();
+  setupAnchorAlignment();
   setupChrome();
   initHeroCanvas();
 }

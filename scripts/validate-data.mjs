@@ -163,7 +163,7 @@ if (!Array.isArray(showcase.projects) || showcase.projects.length === 0) fail('s
 const showcaseNames = new Set();
 for (const item of showcase.projects) {
   needObject(item, 'showcase project');
-  hasOnly(item, ['name', 'kicker', 'tagline', 'highlights', 'demo', 'variant', 'size']);
+  hasOnly(item, ['name', 'kicker', 'tagline', 'highlights', 'demo', 'size']);
   for (const key of ['name', 'kicker', 'tagline', 'size']) needString(item[key], `showcase project ${item.name || '?'} ${key}`);
   if (!projectNames.has(item.name)) fail(`showcase project missing from site-data: ${item.name}`);
   if (item.name === featured.name) fail(`showcase project duplicates featured: ${item.name}`);
@@ -173,7 +173,6 @@ for (const item of showcase.projects) {
   for (const highlight of item.highlights) needString(highlight, `showcase project ${item.name} highlight`);
   if (item.size !== 'large' && item.size !== 'small') fail(`showcase project ${item.name} size invalid`);
   if ('demo' in item) needString(item.demo, `showcase project ${item.name} demo`);
-  if ('variant' in item) needString(item.variant, `showcase project ${item.name} variant`);
 }
 const bench = showcase.benchmark;
 needObject(bench, 'showcase.benchmark');
