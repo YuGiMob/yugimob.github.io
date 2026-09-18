@@ -12,7 +12,7 @@ and a data lab charts the numbers behind the work.
 ## Page sections
 
 - **Hero** (`#hero`): avatar, name and tagline, live counters for stars,
-  weekly installs, packages, and years.
+  weekly installs, and packages.
 - **Flagship** (`#featured`): pi-hashline-edit-pro, with an interactive
   hashline playground — real 4-letter anchor allocation, a real served-row record, real
   `[E_RANGE_STALE]` refusals, and a scripted tour that runs the whole loop.

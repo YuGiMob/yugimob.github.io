@@ -60,15 +60,14 @@
     },
     "stats": {
       "type": "object",
-      "required": ["totalStars", "npmPackages", "publicRepos", "starsGiven", "forksReceived", "accountYears"],
+      "required": ["totalStars", "npmPackages", "publicRepos", "starsGiven", "forksReceived"],
       "additionalProperties": false,
       "properties": {
         "totalStars": { "type": "integer", "minimum": 0 },
         "npmPackages": { "type": "integer", "minimum": 0 },
         "publicRepos": { "type": "integer", "minimum": 0 },
         "starsGiven": { "type": "integer", "minimum": 0 },
-        "forksReceived": { "type": "integer", "minimum": 0 },
-        "accountYears": { "type": "integer", "minimum": 0 }
+        "forksReceived": { "type": "integer", "minimum": 0 }
       }
     },
     "activity": {

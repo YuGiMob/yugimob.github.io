@@ -30,7 +30,6 @@ const GITHUB_HEADERS = {
   'User-Agent': 'yugimob-refresh',
 };
 
-const ACCOUNT_CREATED_YEAR = 2022;
 const HISTORY_LIMIT = 120;
 const MAX_ACTIVITY_DAYS = 120;
 const MAX_HIGHLIGHTS = 5;
@@ -225,8 +224,6 @@ if (user) {
 }
 data.stats.npmPackages = npmPackages.length;
 report('stats.npmPackages', existing.stats.npmPackages, data.stats.npmPackages);
-data.stats.accountYears = new Date().getFullYear() - ACCOUNT_CREATED_YEAR;
-report('stats.accountYears', existing.stats.accountYears, data.stats.accountYears);
 if (typeof starsGiven === 'number') {
   data.stats.starsGiven = starsGiven;
   report('stats.starsGiven', existing.stats.starsGiven, starsGiven);

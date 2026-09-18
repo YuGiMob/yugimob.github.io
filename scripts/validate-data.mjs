@@ -98,8 +98,8 @@ for (const proj of data.projects) {
   if (Number.isNaN(d.getTime())) fail(`project ${proj.name} pushedAt invalid`);
 }
 needObject(data.stats, 'stats');
-hasOnly(data.stats, ['totalStars', 'npmPackages', 'publicRepos', 'starsGiven', 'forksReceived', 'accountYears']);
-checkIntegers(data.stats, ['totalStars', 'npmPackages', 'publicRepos', 'starsGiven', 'forksReceived', 'accountYears'], 'stats.');
+hasOnly(data.stats, ['totalStars', 'npmPackages', 'publicRepos', 'starsGiven', 'forksReceived']);
+checkIntegers(data.stats, ['totalStars', 'npmPackages', 'publicRepos', 'starsGiven', 'forksReceived'], 'stats.');
 needObject(data.activity, 'activity');
 hasOnly(data.activity, ['window', 'pushes', 'highlights', 'fetchedAt', 'daily']);
 needString(data.activity.window, 'activity.window');

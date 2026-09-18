@@ -217,7 +217,6 @@ function renderHeroStats(data) {
     ['GitHub stars', data.stats.totalStars ?? 0],
     ['npm installs / week', totalDownloads],
     ['published packages', data.stats.npmPackages ?? 0],
-    ['years shipping', data.stats.accountYears ?? 0],
   ];
   for (const [label, value] of stats) {
     const item = el('div', 'stat');
