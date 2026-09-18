@@ -4,7 +4,7 @@
     "kicker": "Flagship artifact",
     "headline": "Edits that land on the line you meant",
     "summary": [
-      "Line numbers drift the moment anything above them changes, and fuzzy matching quietly does the worst possible thing when it half-matches. pi-hashline-edit-pro removes both failure modes: every served line gets a unique 4-letter anchor, and the anchor is the only address an edit can use.",
+      "Line numbers drift the moment anything above them changes, and fuzzy matching can land on the wrong occurrence without saying so. pi-hashline-edit-pro removes both failure modes: every served line gets a unique 4-letter anchor, and the anchor is the only address an edit can use.",
       "It registers read, replace, insert, anchor_grep, and undo_last_change, and disables the built-in edit tool. In its own benchmark it leads the field at 95% overall and 94% on stale-and-drift scenarios."
     ],
     "points": [
@@ -34,7 +34,7 @@
       "tagline": "Web search, fetch, and render with no API key: a multi-engine DDGS search plus HTML-to-Markdown and PDF extraction ported from the Unsloth Studio codebase, with a Jina Reader fallback for JavaScript pages.",
       "highlights": [
         "Zero-key search across seven engines",
-        "HTML → Markdown and PDF text extraction",
+        "HTML-to-Markdown and PDF text extraction",
         "Jina Reader fallback for JavaScript pages"
       ],
       "demo": "search",
@@ -142,10 +142,10 @@
   "about": [
     "I build tools for coding agents, mostly extensions for pi. The pattern behind every one of them is the same: find something agents get subtly wrong, then make the wrong version impossible.",
     "The extensions are all on npm. The flagship gives every served line a 4-letter anchor so edits cannot drift, refuses stale edits instead of guessing, and has an undo that restores bytes. When I wanted proof it was better, I built the benchmark and published the traces.",
-    "Everything on this page is real data. Numbers refresh daily from the GitHub and npm APIs through a scheduled workflow, and the benchmark figures are read from committed run reports."
+    "Numbers refresh daily from the GitHub and npm APIs through a scheduled workflow, and the benchmark figures come from committed run reports."
   ],
   "lab": {
     "title": "Evidence Lab",
-    "intro": "No vanity metrics. Every number below is fetched from the GitHub and npm APIs, or read straight out of committed benchmark reports. The workflow that refreshes it runs daily at 06:00 UTC."
+    "intro": "Every number below comes from the GitHub and npm APIs or from committed benchmark reports. The workflow that refreshes it runs daily at 06:00 UTC."
   }
 }

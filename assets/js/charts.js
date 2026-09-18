@@ -80,8 +80,8 @@ export function downloadsChart(projects) {
 export function historyChart(history) {
   const points = Array.isArray(history) ? [...history].sort((a, b) => a.date.localeCompare(b.date)) : [];
   const note = points.length > 1
-    ? `${points[0].date} → ${points[points.length - 1].date} · daily snapshots from the refresh workflow`
-    : 'collecting daily snapshots — this chart grows with every refresh';
+    ? `${points[0].date} to ${points[points.length - 1].date} · daily snapshots from the refresh workflow`
+    : 'collecting daily snapshots; this chart grows with every refresh';
   const { root, body } = chartFrame('Trajectory', 'Weekly installs over time', note);
   const width = 640;
   const height = 240;

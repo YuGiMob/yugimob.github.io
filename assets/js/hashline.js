@@ -112,7 +112,7 @@ export function replace(session, request) {
   for (const line of added) rows.push({ kind: 'added', anchor: line.anchor, text: line.text });
   if (after) rows.push({ kind: 'context', anchor: after.anchor, text: after.text });
   serveRows(session, rows);
-  return { ok: true, code: null, message: `replace('${removeFrom}'${removeTo === removeFrom ? '' : `, '${removeTo}'`}) → ${added.length} added, ${removed.length} removed`, rows };
+  return { ok: true, code: null, message: `replace('${removeFrom}'${removeTo === removeFrom ? '' : `, '${removeTo}'`}): ${added.length} added, ${removed.length} removed`, rows };
 }
 
 export function undo(session) {
@@ -126,7 +126,7 @@ export function undo(session) {
   session.served = new Map(restored.served);
   session.mintIndex = restored.mintIndex;
   session.undo = null;
-  return { ok: true, code: null, message: `undo_last_change → restored ${count} lines`, rows: readRows(session) };
+  return { ok: true, code: null, message: `undo_last_change restored ${count} lines`, rows: readRows(session) };
 }
 
 export function externalEdit(session, anchor, text) {

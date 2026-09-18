@@ -74,7 +74,7 @@ export function buildPlayground() {
   append(body, codePane, side);
   append(root, head, body);
 
-  const caption = el('p', 'pg-caption', 'A live simulation of the hashline protocol: 4-letter anchor allocation, a served-row record, real stale refusals. Nothing leaves this page.');
+  const caption = el('p', 'pg-caption', 'A live simulation of the hashline protocol: 4-letter anchor allocation, a served-row record, and real stale refusals. Everything runs in your browser.');
 
   function action(className, label) {
     const button = el('button', `pg-action ${className}`, label);
@@ -148,7 +148,7 @@ export function buildPlayground() {
     const stale = staleCount(session);
     ownedBadge.classList.toggle('is-warn', stale > 0);
     ownedBadge.textContent = stale > 0
-      ? `${stale} stale row${stale === 1 ? '' : 's'} — replace will refuse`
+      ? `${stale} stale row${stale === 1 ? '' : 's'}; replace will refuse`
       : `${session.anchors.size} anchors owned · served`;
     undoBadge.classList.toggle('is-ready', Boolean(session.undo));
     undoBadge.textContent = session.undo ? 'undo ready' : 'no undo';
@@ -191,7 +191,7 @@ export function buildPlayground() {
     const pick = candidates[Math.floor(Math.random() * candidates.length)];
     if (!pick) return;
     driftLine(pick.index, `${pick.line.text} // changed on disk`);
-    setFeedback('warn', `Another process edited line ${pick.index + 1} after it was served. Try to replace it and watch the refusal.`);
+    setFeedback('warn', `Another process edited the row at anchor ${session.lines[pick.index].anchor} after it was served. Try to replace it and watch the refusal.`);
   }
 
   function doUndo() {
@@ -231,12 +231,12 @@ export function buildPlayground() {
       { at: 2200, run: () => { selectLine(6); input.value = TOUR_REPLACEMENT; renderRequest(); setFeedback('info', "The request names anchors, not line numbers: replace('" + session.lines[6].anchor + "')."); } },
       { at: 3800, run: applyEdit },
       { at: 5400, run: () => setFeedback('info', 'The post-edit diff carries fresh anchors, so the next edit needs no re-read. Untouched lines keep theirs.') },
-      { at: 6800, run: () => { driftLine(3, TOUR_DRIFT); setFeedback('warn', 'Line 4 changed on disk after it was served. The session record is now stale.'); } },
+      { at: 6800, run: () => { driftLine(3, TOUR_DRIFT); setFeedback('warn', `The row at anchor ${session.lines[3].anchor} changed on disk after it was served. The session record is now stale.`); } },
       { at: 8600, run: () => { selectLine(3); input.value = TOUR_RETRY; renderRequest(); setFeedback('info', 'Try to replace the stale line anyway.'); } },
       { at: 10200, run: applyEdit },
       { at: 11800, run: () => setFeedback('info', '[E_RANGE_STALE] returned the current range with fresh anchors instead of editing a neighbor. Retrying with them works.') },
       { at: 13400, run: applyEdit },
-      { at: 15000, run: () => { doUndo(); setFeedback('ok', 'undo_last_change restored the bytes, BOM and line endings included. That is the whole loop.'); } },
+      { at: 15000, run: () => { doUndo(); setFeedback('ok', 'undo_last_change restored the bytes, BOM and line endings included.'); } },
       { at: 16800, run: () => { tourActive = false; tourButton.textContent = 'take the tour'; tourRuntime = null; } },
     ];
     for (const step of steps) tourRuntime.after(step.run, step.at);
@@ -264,7 +264,7 @@ export function buildPlayground() {
   renderCode();
   renderRequest();
   updateBadges();
-  setFeedback('info', 'read → every line arrives with an anchor. Pick a line and press replace.');
+  setFeedback('info', 'read gives every line an anchor. Pick a line and press replace.');
 
   return {
     node: root,

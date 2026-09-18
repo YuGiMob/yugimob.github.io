@@ -191,7 +191,7 @@ function initHeroCanvas() {
 function renderIdentity(data) {
   const identity = data.identity;
   hydrateAvatar(document.getElementById('avatar'), identity.avatarUrl, identity.displayName);
-  document.title = `${identity.displayName} — ${identity.classTitle}`;
+  document.title = `${identity.displayName} · ${identity.classTitle}`;
   const set = (id, value) => {
     const node = document.getElementById(id);
     if (node && value) node.textContent = value;

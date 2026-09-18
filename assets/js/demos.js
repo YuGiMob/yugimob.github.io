@@ -61,15 +61,15 @@ const SEARCH = {
     {
       q: 'hashline edit anchors',
       results: [
-        ['pi-hashline-edit-pro — GitHub', 'github.com/YuGiMob/pi-hashline-edit-pro', 'Hash-anchored read, replace, and undo tools for the pi coding agent. Every served line gets a unique 4-letter anchor.'],
-        ['pi-hashline-edit — GitHub', 'github.com/RimuruW/pi-hashline-edit', 'The original hash-anchored editing extension for pi, with line-hash contextual anchors.'],
-        ['pi-edit-benchmark — GitHub', 'github.com/YuGiMob/pi-edit-benchmark', 'Real-LLM benchmark scoring edit tools on correctness, safety, and stale handling, with a trace for every run.'],
+        ['pi-hashline-edit-pro · GitHub', 'github.com/YuGiMob/pi-hashline-edit-pro', 'Hash-anchored read, replace, and undo tools for the pi coding agent. Every served line gets a unique 4-letter anchor.'],
+        ['pi-hashline-edit · GitHub', 'github.com/RimuruW/pi-hashline-edit', 'The original hash-anchored editing extension for pi, with line-hash contextual anchors.'],
+        ['pi-edit-benchmark · GitHub', 'github.com/YuGiMob/pi-edit-benchmark', 'Real-LLM benchmark scoring edit tools on correctness, safety, and stale handling, with a trace for every run.'],
       ],
     },
     {
       q: 'tor proxy for coding agents',
       results: [
-        ['pi-tor-proxy — GitHub', 'github.com/YuGiMob/pi-tor-proxy', 'Routes pi agent requests through Tor with a self-managed Tor binary, per-instance circuits, and a verified exit IP.'],
+        ['pi-tor-proxy · GitHub', 'github.com/YuGiMob/pi-tor-proxy', 'Routes pi agent requests through Tor with a self-managed Tor binary, per-instance circuits, and a verified exit IP.'],
         ['How Tor circuits work', 'community.torproject.org', 'Three relays, layered encryption, and a new circuit per request.'],
         ['npm: pi-tor-proxy', 'npmjs.com/package/pi-tor-proxy', 'Install command, weekly downloads, and version history.'],
       ],
@@ -77,8 +77,8 @@ const SEARCH = {
     {
       q: 'pi coding agent extensions',
       results: [
-        ['pi — the coding agent', 'pi.dev', 'Extensions, tools, sessions, and a terminal UI built for real repositories.'],
-        ['mypi — personal configuration', 'github.com/YuGiMob/mypi', 'Extensions, model routing, and settings in one versioned repository.'],
+        ['pi · the coding agent', 'pi.dev', 'Extensions, tools, sessions, and a terminal UI built for real repositories.'],
+        ['mypi · personal configuration', 'github.com/YuGiMob/mypi', 'Extensions, model routing, and settings in one versioned repository.'],
         ['YuGiMob on GitHub', 'github.com/YuGiMob', 'Published pi extensions and the benchmark that keeps them honest.'],
       ],
     },
@@ -415,7 +415,7 @@ function workflowDemo() {
   const laneData = [
     { title: '/msg', items: ['1 · read the codebase', '2 · list improvements', '4 · implement', '5 · validate the diff'] },
     { title: '/cmd', items: ['1 · git add .', '2 · npm test'] },
-    { title: '/workflow 1', items: ['start · msgs 1 → 5', 'loop · tree 1 resets context', 'finally · msg 17 + commit'] },
+    { title: '/workflow 1', items: ['start · msgs 1 to 5', 'loop · tree 1 resets context', 'finally · msg 17 then commit'] },
   ];
   const itemNodes = [];
   for (const lane of laneData) {
@@ -465,9 +465,9 @@ function workflowDemo() {
       { index: 3, status: 'start · msg 5 · validate the diff' },
       { index: 6, status: 'loop 1/2 · tree 1 resets the context' },
       { index: 4, status: 'loop 1/2 · cmd 1 · git add .' },
-      { index: 7, status: 'loop 1/2 · msg 6 → msg 7 · review the changes' },
+      { index: 7, status: 'loop 1/2 · msg 6 then msg 7 · review the changes' },
       { index: 5, status: 'loop 1/2 · cmd 2 · npm test' },
-      { index: 8, status: 'finally · msg 17 → commit' },
+      { index: 8, status: 'finally · msg 17 then commit' },
     ];
     if (reducedMotion()) {
       for (const item of itemNodes) item.classList.add('is-done');
