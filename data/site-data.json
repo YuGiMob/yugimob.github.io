@@ -17,7 +17,7 @@
   "projects": [
     {
       "name": "pi-hashline-edit-pro",
-      "description": "Hash-anchored read/replace/undo tools for the pi coding agent; every line gets a unique 4-character anchor",
+      "description": "Hash-anchored read/replace/undo tools for the pi coding agent; every line gets a unique 4-letter anchor",
       "language": "TypeScript",
       "stars": 86,
       "forks": 28,
@@ -29,7 +29,7 @@
     },
     {
       "name": "pi-tor-proxy",
-      "description": "Self-contained Pi extension to route all requests through Tor",
+      "description": "Routes pi agent requests through Tor with a self-managed binary, per-instance circuits, and a verified exit IP",
       "language": "TypeScript",
       "stars": 3,
       "forks": 0,
@@ -52,20 +52,8 @@
       "pushedAt": "2026-09-03T14:26:41Z"
     },
     {
-      "name": "pi-msg-queue",
-      "description": "Queues follow-up messages in pi via /q",
-      "language": "TypeScript",
-      "stars": 1,
-      "forks": 0,
-      "url": "https://github.com/YuGiMob/pi-msg-queue",
-      "npm": "pi-msg-queue",
-      "license": "MIT",
-      "npmWeeklyDownloads": 24,
-      "pushedAt": "2026-08-13T21:20:18Z"
-    },
-    {
       "name": "pi-msg-workflow",
-      "description": "Numbered message and command stores plus configurable improvement workflows (/msg, /cmd, /workflow)",
+      "description": "Numbered message and command stores plus configurable multi-round review workflows (/msg, /cmd, /workflow)",
       "language": "TypeScript",
       "stars": 1,
       "forks": 0,
@@ -77,7 +65,7 @@
     },
     {
       "name": "pi-unsloth-webtools",
-      "description": "web_search and web_fetch tools ported from the Unsloth Studio codebase (DuckDuckGo search, SSRF-safe direct fetching, HTML-to-Markdown extraction)",
+      "description": "web_search, web_fetch, and web_render tools ported from the Unsloth Studio codebase (multi-engine DDGS search, HTML-to-Markdown and PDF extraction, Jina Reader rendering)",
       "language": "TypeScript",
       "stars": 1,
       "forks": 0,
@@ -112,7 +100,7 @@
     },
     {
       "name": "pi-edit-benchmark",
-      "description": "Deterministic tool-level benchmark comparing file-editing extensions for pi, with real-LLM runs and full traces",
+      "description": "Real-LLM tool-calling benchmark comparing file-editing extensions for pi, with full traces for every run",
       "language": "TypeScript",
       "stars": 0,
       "forks": 0,
@@ -124,7 +112,7 @@
   ],
   "stats": {
     "totalStars": 94,
-    "npmPackages": 7,
+    "npmPackages": 6,
     "publicRepos": 12,
     "starsGiven": 17,
     "forksReceived": 29,

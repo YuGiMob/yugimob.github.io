@@ -14,14 +14,13 @@ and a data lab charts the numbers behind the work.
 - **Hero** (`#hero`): avatar, name and tagline, live counters for stars,
   weekly installs, packages, and years.
 - **Flagship** (`#featured`): pi-hashline-edit-pro, with an interactive
-  hashline playground — real FNV-1a anchors, a real served-row record, real
+  hashline playground — real 4-letter anchor allocation, a real served-row record, real
   `[E_RANGE_STALE]` refusals, and a scripted tour that runs the whole loop.
-- **The Forge** (`#forge`): eight cards, each with a live demo:
+- **The Forge** (`#forge`): seven cards, each with a live demo:
   search results and a rendered page (pi-unsloth-webtools), a Tor circuit
   (pi-tor-proxy), a live tokens-per-second widget (pi-tps-status), a workflow
   pipeline (pi-msg-workflow), a guarded commit transcript (pi-git-commit), a
-  message queue (pi-msg-queue), a config tree (mypi), and a benchmark run
-  trace (pi-edit-benchmark).
+  config tree (mypi), and a benchmark run trace (pi-edit-benchmark).
 - **Evidence Lab** (`#lab`): benchmark pass rates, weekly npm installs, the
   download history that grows one snapshot per day, an 18-week activity
   heatmap, and a "last shipped" freshness chart.
@@ -38,7 +37,7 @@ assets/js/main.js               fetch, render, wire everything
 assets/js/ui.js                 DOM, formatting, copy, runtime helpers
 assets/js/hashline.js           anchor allocation + edit session model
 assets/js/playground.js         the flagship interactive demo
-assets/js/demos.js              all eight card demos
+assets/js/demos.js              all seven card demos
 assets/js/charts.js             the five lab charts
 assets/js/avatar.js             avatar srcset hydration
 data/site-data.json             machine-refreshed data

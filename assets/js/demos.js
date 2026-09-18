@@ -42,9 +42,13 @@ function typeLines(container, lines, runtime, onDone) {
 
 const SEARCH = {
   tool: 'web_search',
-  engine: 'DuckDuckGo',
-  note: 'SSRF guard · refused http://127.0.0.1:8080 — private address',
+  engine: 'DDGS (7 engines)',
+  note: 'web_fetch · local files and private addresses allowed by default',
   reader: [
+    'Title: pi-hashline-edit-pro',
+    'URL: https://github.com/YuGiMob/pi-hashline-edit-pro',
+    'Rendered via the Jina Reader',
+    '',
     '# pi-hashline-edit-pro',
     '',
     'Every line comes back as `anchor│content`, and you edit by anchor.',
@@ -57,15 +61,15 @@ const SEARCH = {
     {
       q: 'hashline edit anchors',
       results: [
-        ['pi-hashline-edit-pro — GitHub', 'github.com/YuGiMob/pi-hashline-edit-pro', 'Hash-anchored read, replace, and undo tools for the pi coding agent. Every line gets a unique 4-character anchor.'],
-        ['pi-hashline-edit — GitHub', 'github.com/RimuruW/pi-hashline-edit', 'The original hash-anchored editing extension for pi, with 3-character anchors.'],
-        ['pi-edit-benchmark — GitHub', 'github.com/YuGiMob/pi-edit-benchmark', 'Deterministic benchmark scoring edit tools on correctness, safety, and stale handling.'],
+        ['pi-hashline-edit-pro — GitHub', 'github.com/YuGiMob/pi-hashline-edit-pro', 'Hash-anchored read, replace, and undo tools for the pi coding agent. Every served line gets a unique 4-letter anchor.'],
+        ['pi-hashline-edit — GitHub', 'github.com/RimuruW/pi-hashline-edit', 'The original hash-anchored editing extension for pi, with line-hash contextual anchors.'],
+        ['pi-edit-benchmark — GitHub', 'github.com/YuGiMob/pi-edit-benchmark', 'Real-LLM benchmark scoring edit tools on correctness, safety, and stale handling, with a trace for every run.'],
       ],
     },
     {
       q: 'tor proxy for coding agents',
       results: [
-        ['pi-tor-proxy — GitHub', 'github.com/YuGiMob/pi-tor-proxy', 'Routes pi agent requests through Tor with a bundled Tor binary, per-instance circuits, and a verified exit IP.'],
+        ['pi-tor-proxy — GitHub', 'github.com/YuGiMob/pi-tor-proxy', 'Routes pi agent requests through Tor with a self-managed Tor binary, per-instance circuits, and a verified exit IP.'],
         ['How Tor circuits work', 'community.torproject.org', 'Three relays, layered encryption, and a new circuit per request.'],
         ['npm: pi-tor-proxy', 'npmjs.com/package/pi-tor-proxy', 'Install command, weekly downloads, and version history.'],
       ],
@@ -296,9 +300,9 @@ function torDemo() {
 function tpsDemo() {
   const { root, stage } = frame('status line', 'live');
   const top = el('div', 'tps-top');
-  const icon = el('span', 'tps-icon', '');
+  const icon = el('span', 'tps-icon', '⚡');
   const value = el('span', 'tps-value', '0.0');
-  const unit = el('span', 'tps-unit', 'tok/s');
+  const unit = el('span', 'tps-unit', 'tok/s [provider]');
   const pause = press('pause', 'tps-pause');
   append(top, icon, value, unit, pause);
   const canvas = document.createElement('canvas');
@@ -308,7 +312,7 @@ function tpsDemo() {
   const foot = el('p', 'tps-foot');
   const tokensLabel = el('span', 'tps-stat');
   const windowLabel = el('span', 'tps-stat');
-  const modelLabel = el('span', 'tps-stat tps-model', 'glm-5.1 · hyper');
+  const modelLabel = el('span', 'tps-stat tps-model', 'glm-5.3-flash · opencode-go');
   append(foot, tokensLabel, windowLabel, modelLabel);
   append(stage, top, canvas, foot);
 
@@ -406,12 +410,12 @@ function tpsDemo() {
 
 
 function workflowDemo() {
-  const { root, stage } = frame('/workflow improve', 'config');
+  const { root, stage } = frame('/workflow 1', 'config');
   const lanes = el('div', 'wf-lanes');
   const laneData = [
-    { title: '/msg', items: ['add retry to refresh-data', 'hash anchors in the diff view'] },
-    { title: '/cmd', items: ['node --check assets/js/*.js', 'node scripts/validate-data.mjs'] },
-    { title: '/workflow', items: ['collect', 'critique', 'rewrite', 'store as prompt'] },
+    { title: '/msg', items: ['1 · read the codebase', '2 · list improvements', '4 · implement', '5 · validate the diff'] },
+    { title: '/cmd', items: ['1 · git add .', '2 · npm test'] },
+    { title: '/workflow 1', items: ['start · msgs 1 → 5', 'loop · tree 1 resets context', 'finally · msg 17 + commit'] },
   ];
   const itemNodes = [];
   for (const lane of laneData) {
@@ -428,7 +432,7 @@ function workflowDemo() {
     lanes.appendChild(column);
   }
   const output = el('pre', 'wf-output');
-  const status = el('p', 'wf-status', 'idle · 3 stores loaded');
+  const status = el('p', 'wf-status', 'workflow 1 · 2 rounds · 6 workflows configured');
   const actions = el('div', 'wf-actions');
   const runButton = press('run workflow', 'wf-run');
   const resetButton = press('reset', 'wf-reset');
@@ -441,25 +445,35 @@ function workflowDemo() {
     for (const item of itemNodes) item.classList.remove('is-active', 'is-done');
     output.classList.remove('is-visible');
     output.textContent = '';
-    status.textContent = 'idle · 3 stores loaded';
+    status.textContent = 'workflow 1 · 2 rounds · 6 workflows configured';
   }
+
+  const plan = [
+    'workflow 1 · 2 rounds',
+    'start: msg 1, msg 2, msg 3, msg 4, msg 5',
+    'loop: tree 1, cmd 1, msg 6, msg 7, msg 5, cmd 1',
+    'finally: msg 17, commit',
+  ].join('\n');
 
   function run() {
     if (!runtimeRef) return;
     clear();
     const sequence = [
-      { index: 0, status: 'collecting /msg #1…' },
-      { index: 2, status: 'matching /cmd #1…' },
-      { index: 4, status: 'step 1/4 · collect' },
-      { index: 5, status: 'step 2/4 · critique' },
-      { index: 6, status: 'step 3/4 · rewrite' },
-      { index: 7, status: 'step 4/4 · store as prompt' },
+      { index: 0, status: 'start · msg 1 · read the codebase' },
+      { index: 1, status: 'start · msg 2 · list improvements' },
+      { index: 2, status: 'start · msg 4 · implement' },
+      { index: 3, status: 'start · msg 5 · validate the diff' },
+      { index: 6, status: 'loop 1/2 · tree 1 resets the context' },
+      { index: 4, status: 'loop 1/2 · cmd 1 · git add .' },
+      { index: 7, status: 'loop 1/2 · msg 6 → msg 7 · review the changes' },
+      { index: 5, status: 'loop 1/2 · cmd 2 · npm test' },
+      { index: 8, status: 'finally · msg 17 → commit' },
     ];
     if (reducedMotion()) {
       for (const item of itemNodes) item.classList.add('is-done');
-      output.textContent = 'before: add retry to refresh-data\nafter:  Add bounded retry with backoff to refresh-data.mjs so a transient npm 429 cannot fail the daily refresh.';
+      output.textContent = plan;
       output.classList.add('is-visible');
-      status.textContent = 'done · prompt stored as /msg #3';
+      status.textContent = 'done · 2 rounds · committed from msg 17';
       return;
     }
     sequence.forEach((step, index) => {
@@ -471,9 +485,9 @@ function workflowDemo() {
     });
     runtimeRef.after(() => {
       itemNodes[sequence[sequence.length - 1].index].classList.replace('is-active', 'is-done');
-      output.textContent = 'before: add retry to refresh-data\nafter:  Add bounded retry with backoff to refresh-data.mjs so a transient npm 429 cannot fail the daily refresh.';
+      output.textContent = plan;
       output.classList.add('is-visible');
-      status.textContent = 'done · prompt stored as /msg #3';
+      status.textContent = 'done · 2 rounds · committed from msg 17';
     }, 240 + sequence.length * 780);
   }
 
@@ -502,12 +516,12 @@ function gitDemo() {
 
   const lines = [
     { text: '$ git commit -am "quick fix"', cls: 'is-cmd', speed: 18 },
-    { text: '⛔ blocked by pi-git-commit: raw git commit is disabled', cls: 'is-err', speed: 14 },
-    { text: '   → use the git_commit tool so the change gets a type', cls: 'is-dim', speed: 14 },
-    { text: '$ pi › git_commit(type: FIX, message: "fix(site): guard the commit path")', cls: 'is-cmd', speed: 12, pause: 320 },
-    { text: '✓ staged 4 files · +128 −36', cls: 'is-ok', speed: 14 },
-    { text: '✓ commit 9c1f3a2  fix(site): guard the commit path', cls: 'is-ok', speed: 14 },
-    { text: '   humans can still run /commit directly', cls: 'is-dim', speed: 12 },
+    { text: '⛔ Mutative git commands are blocked. Ask the user to run /toggle-allow-git to allow them for this session.', cls: 'is-err', speed: 8 },
+    { text: '$ /commit', cls: 'is-cmd', speed: 18, pause: 320 },
+    { text: '✓ staged 4 files · diff summary in the transcript (ctrl+o to expand)', cls: 'is-ok', speed: 10 },
+    { text: '$ pi › git_commit(type: "FIX", message: "guard the commit path")', cls: 'is-cmd', speed: 12, pause: 320 },
+    { text: '✓ commit 9c1f3a2  FIX: guard the commit path', cls: 'is-ok', speed: 14 },
+    { text: '   git_commit refuses until /commit opens the flow', cls: 'is-dim', speed: 12 },
   ];
 
   function renderFinal() {
@@ -543,151 +557,6 @@ function gitDemo() {
   });
 }
 
-function queueDemo() {
-  const { root, stage } = frame('/q', 'concurrency');
-  const chat = el('div', 'q-chat');
-  const agent = el('div', 'q-bubble q-agent');
-  const agentText = el('span', 'q-text', 'Refactoring the anchor allocator…');
-  const agentBadge = el('span', 'q-badge', 'working');
-  append(agent, agentText, agentBadge);
-  const drained = el('div', 'q-drained');
-  const queueBox = el('div', 'q-queue');
-  const queueTitle = el('p', 'q-queue-title', 'queue · 0');
-  const queueList = el('div', 'q-queue-list');
-  append(queueBox, queueTitle, queueList);
-  append(chat, agent, drained, queueBox);
-
-  const inputRow = el('div', 'q-input-row');
-  const input = document.createElement('input');
-  input.className = 'q-input';
-  input.type = 'text';
-  input.placeholder = 'follow-up while the agent is busy…';
-  input.setAttribute('aria-label', 'queued follow-up message');
-  const queueButton = press('queue', 'q-add');
-  append(inputRow, input, queueButton);
-
-  const chipRow = el('div', 'q-chips');
-  const suggestions = ['also add a test', 'keep the API stable', 'benchmark before/after'];
-  for (const suggestion of suggestions) {
-    const chip = press(suggestion, 'q-chip');
-    chip.addEventListener('click', () => enqueue(suggestion));
-    chipRow.appendChild(chip);
-  }
-
-  const actions = el('div', 'q-actions');
-  const finishButton = press('finish turn', 'q-finish');
-  const resetButton = press('reset', 'q-reset');
-  append(actions, finishButton, resetButton);
-  append(stage, chat, inputRow, chipRow, actions);
-
-  const state = { queued: [], done: 0, working: true };
-  let runtimeRef = null;
-
-  function renderQueue() {
-    queueTitle.textContent = `queue · ${state.queued.length}`;
-    queueList.replaceChildren();
-    state.queued.forEach((message, index) => {
-      const bubble = el('div', 'q-bubble q-queued');
-      bubble.style.animationDelay = `${index * 40}ms`;
-      append(bubble, el('span', 'q-order', `#${index + 1}`), el('span', 'q-text', message));
-      queueList.appendChild(bubble);
-    });
-  }
-
-  function enqueue(message) {
-    if (!message.trim() || state.queued.length >= 4) return;
-    state.queued.push(message.trim());
-    input.value = '';
-    renderQueue();
-  }
-
-  function completeTurn() {
-    state.working = false;
-    agentText.textContent = 'Turn complete.';
-    agentBadge.textContent = 'idle';
-    agent.classList.remove('is-working');
-    renderQueue();
-    drainNext();
-  }
-
-  function drainNext() {
-    if (state.queued.length === 0) {
-      if (!runtimeRef) return;
-      runtimeRef.after(() => {
-        agentText.textContent = 'Queue empty. Ready.';
-        agentBadge.textContent = 'idle';
-      }, 600);
-      return;
-    }
-    if (!runtimeRef || reducedMotion()) {
-      while (state.queued.length > 0) {
-        const message = state.queued.shift();
-        const row = el('div', 'q-bubble q-user');
-        row.appendChild(el('span', 'q-text', message));
-        drained.appendChild(row);
-        state.done += 1;
-      }
-      renderQueue();
-      agentText.textContent = `Processed ${state.done} queued messages.`;
-      return;
-    }
-    const message = state.queued.shift();
-    renderQueue();
-    const row = el('div', 'q-bubble q-user');
-    row.appendChild(el('span', 'q-text', message));
-    drained.appendChild(row);
-    state.done += 1;
-    agentText.textContent = 'On it…';
-    agentBadge.textContent = 'working';
-    agent.classList.add('is-working');
-    runtimeRef.after(() => {
-      agent.classList.remove('is-working');
-      agentBadge.textContent = 'idle';
-      drainNext();
-    }, 850);
-  }
-
-  function reset() {
-    if (runtimeRef) runtimeRef.clear();
-    state.queued = [];
-    state.done = 0;
-    state.working = true;
-    drained.replaceChildren();
-    agentText.textContent = 'Refactoring the anchor allocator…';
-    agentBadge.textContent = 'working';
-    agent.classList.add('is-working');
-    renderQueue();
-    if (runtimeRef && !reducedMotion()) {
-      runtimeRef.after(() => enqueue(suggestions[0]), 600);
-      runtimeRef.after(() => enqueue(suggestions[1]), 1500);
-      runtimeRef.after(completeTurn, 3400);
-    }
-  }
-
-  queueButton.addEventListener('click', () => enqueue(input.value));
-  input.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') enqueue(input.value);
-  });
-  finishButton.addEventListener('click', completeTurn);
-  resetButton.addEventListener('click', reset);
-  renderQueue();
-
-  return controller(root, (runtime) => {
-    runtimeRef = runtime;
-    if (reducedMotion()) {
-      enqueue(suggestions[0]);
-      enqueue(suggestions[1]);
-      completeTurn();
-      return;
-    }
-    runtime.after(() => enqueue(suggestions[0]), 700);
-    runtime.after(() => enqueue(suggestions[1]), 1700);
-    runtime.after(completeTurn, 3800);
-  }, () => {
-    runtimeRef = null;
-  });
-}
-
 const CONFIG_FILES = {
   'extensions/': {
     title: 'extensions/ · 1 active',
@@ -696,11 +565,13 @@ const CONFIG_FILES = {
   'sticky-autocomplete.ts': {
     title: 'extensions/sticky-autocomplete.ts',
     content: [
-      'export function parseSlashCommand(text) {',
-      "  if (!text.startsWith('/')) return null",
-      '  const space = text.indexOf(" ")',
-      '  if (space === -1) return null',
-      '  return { commandName: text.slice(1, space) }',
+      'export function parseSlashCommand(textBeforeCursor) {',
+      "  if (!textBeforeCursor.startsWith('/')) return null",
+      "  const spaceIndex = textBeforeCursor.indexOf(' ')",
+      '  if (spaceIndex === -1) return null',
+      '  const commandName = textBeforeCursor.slice(1, spaceIndex)',
+      "  if (commandName === '') return null",
+      '  return { commandName, argumentText: textBeforeCursor.slice(spaceIndex + 1) }',
       '}',
     ].join('\n'),
   },
@@ -709,7 +580,9 @@ const CONFIG_FILES = {
     content: [
       '{',
       '  "theme": "dark",',
-      '  "defaultThinkingLevel": "max",',
+      '  "defaultThinkingLevel": "xhigh",',
+      '  "defaultProvider": "ollama-cloud",',
+      '  "defaultModel": "deepseek-v4.1-flash",',
       '  "enableInstallTelemetry": false,',
       '  "compaction": { "enabled": false },',
       '  "retry": { "baseDelayMs": 5000 }',
@@ -720,9 +593,9 @@ const CONFIG_FILES = {
     title: 'models-store.json',
     content: [
       '{',
-      '  "opencode-go": {',
+      '  "ollama-cloud": {',
       '    "models": [',
-      '      { "id": "deepseek-v4-flash", "name": "DeepSeek V4 Flash" }',
+      '      { "id": "deepseek-v4.1-flash", "name": "DeepSeek V4.1 Flash" }',
       '    ]',
       '  }',
       '}',
@@ -776,9 +649,9 @@ function traceDemo() {
   const list = el('ol', 'tr-steps');
   const steps = [
     { icon: '✓', cls: 'is-ok', name: 'read', detail: `${12} rows served · anchors owned` },
-    { icon: '✗', cls: 'is-bad', name: 'edit', detail: '[E_RANGE_STALE] line 7 changed on disk' },
+    { icon: '✗', cls: 'is-bad', name: 'edit', detail: '[E_RANGE_STALE] the served range changed on disk' },
     { icon: '✓', cls: 'is-ok', name: 'read (auto range)', detail: 'fresh anchors returned · no blind retry' },
-    { icon: '✓', cls: 'is-ok', name: 'edit', detail: 'landed on line 7 · verdict: recovered' },
+    { icon: '✓', cls: 'is-ok', name: 'edit', detail: 'landed on the anchor · verdict: recovered' },
   ];
   for (const step of steps) {
     const item = el('li', `tr-step ${step.cls}`);
@@ -830,7 +703,6 @@ const BUILDERS = {
   tps: tpsDemo,
   workflow: workflowDemo,
   git: gitDemo,
-  queue: queueDemo,
   config: configDemo,
   trace: traceDemo,
 };

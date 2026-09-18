@@ -4,13 +4,13 @@
     "kicker": "Flagship artifact",
     "headline": "Edits that land on the line you meant",
     "summary": [
-      "Line numbers drift the moment anything above them changes, and fuzzy matching quietly does the worst possible thing when it half-matches. pi-hashline-edit-pro removes both failure modes: every line gets a unique 4-character anchor, and the anchor is the only address an edit can use.",
-      "It registers read, replace, insert, anchor_grep, and undo_last_change, and disables the built-in edit tool. In its own benchmark it leads the field at 86% overall correctness and 96.3% on stale-and-drift scenarios."
+      "Line numbers drift the moment anything above them changes, and fuzzy matching quietly does the worst possible thing when it half-matches. pi-hashline-edit-pro removes both failure modes: every served line gets a unique 4-letter anchor, and the anchor is the only address an edit can use.",
+      "It registers read, replace, insert, anchor_grep, and undo_last_change, and disables the built-in edit tool. In its own benchmark it leads the field at 95% overall and 94% on stale-and-drift scenarios."
     ],
     "points": [
       {
         "title": "Anchors survive edits",
-        "body": "Anchors are content-addressed, so inserting or deleting lines never renumbers the ones you did not touch. Follow-up edits keep working without a re-read."
+        "body": "Anchors are allocated to each served line, so inserting or deleting lines never renumbers the ones you did not touch. Follow-up edits keep working without a re-read."
       },
       {
         "title": "Stale edits are refused",
@@ -30,12 +30,12 @@
   "projects": [
     {
       "name": "pi-unsloth-webtools",
-      "kicker": "Search & fetch",
-      "tagline": "Web search and page fetch with no API key and no SSRF: DuckDuckGo results plus an HTML-to-Markdown extractor ported from the Unsloth Studio codebase.",
+      "kicker": "Search, fetch & render",
+      "tagline": "Web search, fetch, and render with no API key: a multi-engine DDGS search plus HTML-to-Markdown and PDF extraction ported from the Unsloth Studio codebase, with a Jina Reader fallback for JavaScript pages.",
       "highlights": [
-        "Zero-key DuckDuckGo search",
-        "Private and loopback addresses refused",
-        "Readable Markdown instead of raw soup"
+        "Zero-key search across seven engines",
+        "HTML → Markdown and PDF text extraction",
+        "Jina Reader fallback for JavaScript pages"
       ],
       "demo": "search",
       "size": "large"
@@ -43,9 +43,9 @@
     {
       "name": "pi-tor-proxy",
       "kicker": "Network privacy",
-      "tagline": "Routes every request the pi agent makes through Tor. It bundles and verifies its own Tor binary, gives each pi instance its own circuit, and shows the exit IP in the footer.",
+      "tagline": "Routes every request the pi agent makes through Tor. It downloads and verifies its own Tor binary, gives each pi instance its own circuit, and shows the verified exit IP in the footer.",
       "highlights": [
-        "Bundles and manages its own Tor binary",
+        "Downloads and SHA-256-verifies its own Tor binary",
         "Per-instance circuit via IsolateSOCKSAuth",
         "Exit IP verified against check.torproject.org"
       ],
@@ -57,9 +57,9 @@
       "kicker": "Instrumentation",
       "tagline": "A live tokens-per-second widget in the status line, so you can feel a provider's real speed instead of guessing from a spinner.",
       "highlights": [
-        "Smoothed live tok/s",
-        "Streams, stalls, and bursts visible",
-        "Zero configuration"
+        "Live tok/s in the status bar",
+        "Provider-reported usage reconciled with estimates",
+        "Tool time excluded from the rate"
       ],
       "demo": "tps",
       "size": "large"
@@ -67,11 +67,11 @@
     {
       "name": "pi-msg-workflow",
       "kicker": "Agent workflow",
-      "tagline": "Numbered stores for messages and commands plus configurable improvement workflows that turn a rough note into a refined prompt.",
+      "tagline": "Numbered message and command stores plus configurable review workflows: a start phase, rounds that reset the context, and a final commit or summary.",
       "highlights": [
         "/msg, /cmd, and /workflow",
-        "Numbered, re-orderable stores",
-        "Workflows are config, not code"
+        "Numbered, editable stores",
+        "Rounds reset the context"
       ],
       "demo": "workflow",
       "size": "large"
@@ -81,33 +81,21 @@
       "kicker": "Guardrails",
       "tagline": "A commit flow that stops an agent from committing carelessly: a bash guard, a structured git_commit tool, and a /commit command for humans.",
       "highlights": [
-        "Raw git commit in bash is blocked",
-        "Typed messages, not freeform flags",
-        "Humans keep their normal flow"
+        "Mutative git in bash is blocked",
+        "FIX / IMPROVE / NEW typed commits",
+        "The flow is gated by /commit"
       ],
       "demo": "git",
       "size": "large"
-    },
-    {
-      "name": "pi-msg-queue",
-      "kicker": "Concurrency",
-      "tagline": "Queue follow-up messages while the agent is mid-turn. They drain in order the moment it finishes, so a good idea never waits for a spinner.",
-      "highlights": [
-        "/q queues without interrupting",
-        "FIFO drain at turn end",
-        "Live queue badge"
-      ],
-      "demo": "queue",
-      "size": "small"
     },
     {
       "name": "mypi",
       "kicker": "Workbench",
       "tagline": "The personal pi configuration that runs the daily work: a custom editor extension, model catalogs, themes, and settings in one versioned repository.",
       "highlights": [
-        "Slash-command autocomplete extension",
+        "Sticky Tab-completion editor extension",
         "Model catalog in models-store.json",
-        "Settings and API keys versioned"
+        "Settings versioned, secrets gitignored"
       ],
       "demo": "config",
       "size": "small"
@@ -115,7 +103,7 @@
     {
       "name": "pi-edit-benchmark",
       "kicker": "Evidence",
-      "tagline": "A deterministic tool-level benchmark that scores file-editing extensions on correctness, safety, and robustness, with a full trace for every single run.",
+      "tagline": "Drives real models through each editing tool's own tools and scores correctness, safety, and robustness, with a full trace for every run.",
       "highlights": [
         "34 scenarios, 8 models, 2,176 runs",
         "Stale edits scored, not just happy paths",
@@ -127,20 +115,20 @@
   ],
   "benchmark": {
     "source": "https://github.com/YuGiMob/pi-edit-benchmark",
-    "generatedAt": "2026-09-04T13:33:43.223Z",
+    "generatedAt": "2026-09-04T15:00:39.514Z",
     "models": 8,
     "scenarios": 34,
     "contenderCount": 8,
     "runsPerContender": 272,
     "contenders": [
-      { "label": "hashline-edit-pro", "overall": 86.0, "safety": 96.3, "errors": 1, "highlight": true },
-      { "label": "hashline-context-edit", "overall": 79.8, "safety": 90.0, "errors": 0 },
-      { "label": "hashline-edit", "overall": 79.0, "safety": 88.8, "errors": 1 },
-      { "label": "aft-pi", "overall": 77.2, "safety": 78.8, "errors": 1 },
-      { "label": "hashline-readmap", "overall": 76.5, "safety": 83.8, "errors": 3 },
-      { "label": "pix-edit", "overall": 72.1, "safety": 80.0, "errors": 10 },
-      { "label": "semantic-edit", "overall": 66.9, "safety": 68.8, "errors": 10 },
-      { "label": "built-in edit", "overall": 65.1, "safety": 71.3, "errors": 5 }
+      { "label": "hashline-edit-pro", "overall": 95.2, "safety": 94.3, "errors": 0, "highlight": true },
+      { "label": "hashline-context-edit", "overall": 79.8, "safety": 90.9, "errors": 0 },
+      { "label": "hashline-edit", "overall": 79.0, "safety": 89.8, "errors": 1 },
+      { "label": "aft-pi", "overall": 77.2, "safety": 78.4, "errors": 1 },
+      { "label": "hashline-readmap", "overall": 76.5, "safety": 81.8, "errors": 3 },
+      { "label": "pix-edit", "overall": 72.1, "safety": 80.7, "errors": 10 },
+      { "label": "semantic-edit", "overall": 66.9, "safety": 69.3, "errors": 10 },
+      { "label": "built-in edit", "overall": 65.1, "safety": 67.0, "errors": 5 }
     ]
   },
   "principles": [
@@ -153,7 +141,7 @@
   ],
   "about": [
     "I build tools for coding agents, mostly extensions for pi. The pattern behind every one of them is the same: find something agents get subtly wrong, then make the wrong version impossible.",
-    "The packages are all on npm. The flagship anchors every line with a 4-character hash so edits cannot drift, refuses stale edits instead of guessing, and has an undo that restores bytes. When I wanted proof it was better, I built the benchmark and published the traces.",
+    "The extensions are all on npm. The flagship gives every served line a 4-letter anchor so edits cannot drift, refuses stale edits instead of guessing, and has an undo that restores bytes. When I wanted proof it was better, I built the benchmark and published the traces.",
     "Everything on this page is real data. Numbers refresh daily from the GitHub and npm APIs through a scheduled workflow, and the benchmark figures are read from committed run reports."
   ],
   "lab": {

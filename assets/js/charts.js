@@ -45,7 +45,7 @@ export function benchmarkChart(bench) {
     list.appendChild(item);
   }
   const legend = el('p', 'chart-legend');
-  append(legend, legendItem('meter-overall', 'overall correctness'), legendItem('meter-safety', 'stale & drift scenarios'));
+  append(legend, legendItem('meter-overall', 'overall pass rate'), legendItem('meter-safety', 'stale & drift scenarios'));
   const source = el('p', 'chart-source');
   append(source, 'Source: ', link(bench.source, 'pi-edit-benchmark'), ` · reports generated ${bench.generatedAt.slice(0, 10)}`);
   append(body, list, legend, source);

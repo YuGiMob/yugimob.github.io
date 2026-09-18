@@ -687,13 +687,6 @@ a {
   letter-spacing: 0.05em;
 }
 
-.pg-lineno {
-  flex: 0 0 2.4ch;
-  color: var(--dim);
-  font-size: 0.7rem;
-  text-align: right;
-}
-
 .pg-text {
   flex: 1;
   white-space: pre-wrap;
@@ -1416,120 +1409,6 @@ a {
 .term-line.is-dim { color: var(--dim); }
 
 .term-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.q-chat {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 172px;
-}
-
-.q-bubble {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.32);
-  font-size: 0.74rem;
-  animation: rise 0.3s ease both;
-}
-
-.q-agent {
-  border-color: rgba(232, 182, 76, 0.32);
-}
-
-.q-agent.is-working {
-  background: linear-gradient(90deg, rgba(232, 182, 76, 0.05), rgba(232, 182, 76, 0.16), rgba(232, 182, 76, 0.05));
-  background-size: 200% 100%;
-  animation: shimmer 1.6s linear infinite;
-}
-
-.q-badge {
-  margin-left: auto;
-  color: var(--gold);
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.q-drained {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.q-user {
-  align-self: flex-end;
-  max-width: 90%;
-  border-color: rgba(123, 214, 196, 0.32);
-}
-
-.q-queue {
-  margin-top: 6px;
-  padding-top: 8px;
-  border-top: 1px dashed var(--line);
-}
-
-.q-queue-title {
-  margin-bottom: 6px;
-  color: var(--dim);
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.q-queue-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.q-queued {
-  padding: 5px 9px;
-  border-style: dashed;
-  font-size: 0.68rem;
-}
-
-.q-order {
-  color: var(--ember);
-  font-family: var(--mono);
-  font-size: 0.7rem;
-}
-
-.q-input-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.q-input {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.4);
-  color: var(--parchment);
-  font-family: var(--mono);
-  font-size: 0.7rem;
-}
-
-.q-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.q-actions {
   display: flex;
   gap: 8px;
   margin-top: 10px;
@@ -2341,8 +2220,6 @@ a {
   .hm-legend,
   .hm-deed,
   .hm-deeds-title,
-  .q-badge,
-  .q-input,
   .tps-foot,
   .chip-label,
   .chip-value,

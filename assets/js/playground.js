@@ -2,11 +2,11 @@ import { el, append, announce, createRuntime, reducedMotion } from './ui.js';
 import { createSession, replace, undo, externalEdit, isStale, staleCount } from './hashline.js';
 
 const SOURCE = [
-  "import { anchorFor } from './hash'",
+  "import { anchorIndex } from './anchors'",
   '',
   'export function replace(lines, req) {',
-  '  const from = indexOf(lines, req.from)',
-  '  const to = indexOf(lines, req.to)',
+  '  const from = anchorIndex(lines, req.remove_from)',
+  '  const to = anchorIndex(lines, req.remove_to)',
   '  if (from < 0 || to < 0) return stale(lines)',
   '  for (let i = from; i <= to; i += 1) {',
   '    const line = lines[i]',
@@ -19,8 +19,8 @@ const SOURCE = [
 ];
 
 const TOUR_REPLACEMENT = "  if (from < 0 || to < 0) return stale(lines, 'range')";
-const TOUR_DRIFT = '  const from = indexOf(lines, req.from) // drift';
-const TOUR_RETRY = '  const from = indexOf(lines, req.remove_from)';
+const TOUR_DRIFT = '  const from = anchorIndex(lines, req.remove_from) // drift';
+const TOUR_RETRY = '  const from = anchorIndex(lines, req.remove_from)';
 
 export function buildPlayground() {
   let session = createSession(SOURCE);
@@ -74,7 +74,7 @@ export function buildPlayground() {
   append(body, codePane, side);
   append(root, head, body);
 
-  const caption = el('p', 'pg-caption', 'A live simulation of the hashline protocol: real FNV-1a anchors, a real served-row record, real stale refusals. Nothing leaves this page.');
+  const caption = el('p', 'pg-caption', 'A live simulation of the hashline protocol: 4-letter anchor allocation, a served-row record, real stale refusals. Nothing leaves this page.');
 
   function action(className, label) {
     const button = el('button', `pg-action ${className}`, label);
@@ -117,7 +117,7 @@ export function buildPlayground() {
       const button = el('button', 'pg-line-btn');
       button.type = 'button';
       button.setAttribute('aria-pressed', selected ? 'true' : 'false');
-      append(button, el('span', 'pg-anchor', line.anchor), el('span', 'pg-lineno', String(index + 1)), el('code', 'pg-text', line.text || '\u00a0'));
+      append(button, el('span', 'pg-anchor', line.anchor), el('code', 'pg-text', line.text || '\u00a0'));
       button.addEventListener('click', (event) => {
         if (tourActive) cancelTour();
         selection = event.shiftKey ? { from: selection.from, to: index } : { from: index, to: index };
@@ -227,7 +227,7 @@ export function buildPlayground() {
     tourButton.textContent = 'stop the tour';
     tourRuntime = createRuntime();
     const steps = [
-      { at: 200, run: () => setFeedback('info', 'read served every row with a 4-character anchor. Select a line to address it instead of a number.') },
+      { at: 200, run: () => setFeedback('info', 'read served every row with a 4-letter anchor. Select a line to address it by anchor instead of by number.') },
       { at: 2200, run: () => { selectLine(6); input.value = TOUR_REPLACEMENT; renderRequest(); setFeedback('info', "The request names anchors, not line numbers: replace('" + session.lines[6].anchor + "')."); } },
       { at: 3800, run: applyEdit },
       { at: 5400, run: () => setFeedback('info', 'The post-edit diff carries fresh anchors, so the next edit needs no re-read. Untouched lines keep theirs.') },

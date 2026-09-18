@@ -1,25 +1,31 @@
-const FNV_OFFSET = 0x811c9dc5;
-const FNV_PRIME = 0x01000193;
+const ANCHOR_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+const ANCHOR_SPACE = ANCHOR_LETTERS.length ** 4;
+const MINT_STRIDE = 3000017;
 
-export function anchorFor(text) {
-  let hash = FNV_OFFSET;
-  const sample = text.slice(0, 500);
-  for (let index = 0; index < sample.length; index += 1) {
-    hash ^= sample.charCodeAt(index);
-    hash = Math.imul(hash, FNV_PRIME) >>> 0;
+function anchorAt(index) {
+  let value = ((index % ANCHOR_SPACE) + ANCHOR_SPACE) % ANCHOR_SPACE;
+  let anchor = '';
+  for (let position = 0; position < 4; position += 1) {
+    anchor = ANCHOR_LETTERS[value % ANCHOR_LETTERS.length] + anchor;
+    value = Math.floor(value / ANCHOR_LETTERS.length);
   }
-  return hash.toString(36).padStart(4, '0').slice(-4);
+  return anchor;
 }
 
-function allocateAnchor(session, text) {
-  let candidate = anchorFor(text);
-  let attempt = 0;
-  while (session.anchors.has(candidate)) {
-    attempt += 1;
-    candidate = anchorFor(`${text}\u0000${attempt}`);
+function seedMintIndex() {
+  return Math.floor(Math.random() * ANCHOR_SPACE);
+}
+
+function allocateAnchor(session) {
+  for (let attempt = 0; attempt < ANCHOR_SPACE; attempt += 1) {
+    const candidate = anchorAt(session.mintIndex);
+    session.mintIndex = (session.mintIndex + MINT_STRIDE) % ANCHOR_SPACE;
+    if (!session.anchors.has(candidate)) {
+      session.anchors.add(candidate);
+      return candidate;
+    }
   }
-  session.anchors.add(candidate);
-  return candidate;
+  throw new Error('anchor pool exhausted');
 }
 
 function snapshot(session) {
@@ -27,13 +33,14 @@ function snapshot(session) {
     lines: session.lines.map((line) => ({ anchor: line.anchor, text: line.text })),
     anchors: new Set(session.anchors),
     served: new Map(session.served),
+    mintIndex: session.mintIndex,
   };
 }
 
 export function createSession(sourceLines) {
-  const session = { lines: [], anchors: new Set(), served: new Map(), undo: null };
+  const session = { lines: [], anchors: new Set(), served: new Map(), mintIndex: seedMintIndex(), undo: null };
   for (const text of sourceLines) {
-    session.lines.push({ anchor: allocateAnchor(session, text), text });
+    session.lines.push({ anchor: allocateAnchor(session), text });
   }
   serveAll(session);
   return session;
@@ -95,7 +102,7 @@ export function replace(session, request) {
   session.undo = snapshot(session);
   const removed = session.lines.slice(fromIndex, toIndex + 1);
   for (const line of removed) session.anchors.delete(line.anchor);
-  const added = replacements.map((text) => ({ anchor: allocateAnchor(session, text), text }));
+  const added = replacements.map((text) => ({ anchor: allocateAnchor(session), text }));
   session.lines.splice(fromIndex, removed.length, ...added);
   const rows = [];
   const before = session.lines[fromIndex - 1];
@@ -117,6 +124,7 @@ export function undo(session) {
   session.lines = restored.lines.map((line) => ({ anchor: line.anchor, text: line.text }));
   session.anchors = new Set(restored.anchors);
   session.served = new Map(restored.served);
+  session.mintIndex = restored.mintIndex;
   session.undo = null;
   return { ok: true, code: null, message: `undo_last_change → restored ${count} lines`, rows: readRows(session) };
 }
