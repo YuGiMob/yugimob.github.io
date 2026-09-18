@@ -100,12 +100,11 @@
     },
     "sections": {
       "type": "object",
-      "required": ["showBackground", "showArtifacts", "showQuestLog", "showAbilityScores", "showCampfire"],
+      "required": ["showBackground", "showArtifacts", "showAbilityScores", "showCampfire"],
       "additionalProperties": false,
       "properties": {
         "showBackground": { "type": "boolean" },
         "showArtifacts": { "type": "boolean" },
-        "showQuestLog": { "type": "boolean" },
         "showAbilityScores": { "type": "boolean" },
         "showCampfire": { "type": "boolean" }
       }

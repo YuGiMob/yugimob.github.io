@@ -37,7 +37,7 @@
         "HTML-to-Markdown and PDF text extraction",
         "Jina Reader fallback for JavaScript pages"
       ],
-      "demo": "search",
+      "demo": "webtools",
       "size": "large"
     },
     {

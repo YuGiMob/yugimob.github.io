@@ -2,7 +2,7 @@ import { hydrateAvatar } from './avatar.js';
 import { el, append, link, copyButton, reducedMotion, formatNumber, animateValue } from './ui.js';
 import { buildDemo } from './demos.js';
 import { buildPlayground } from './playground.js';
-import { benchmarkChart, downloadsChart, historyChart, heatmapChart, freshnessChart } from './charts.js';
+import { benchmarkChart, downloadsChart } from './charts.js';
 
 const DATA_URL = 'data/site-data.json';
 const SHOWCASE_URL = 'data/showcase.json';
@@ -339,7 +339,7 @@ function renderForge(entries, projects) {
   return cleanups;
 }
 
-function renderLab(showcase, data, projectList, sections) {
+function renderLab(showcase, projectList) {
   const grid = document.getElementById('lab-grid');
   if (!grid) return [];
   const heading = document.getElementById('lab-heading');
@@ -353,10 +353,7 @@ function renderLab(showcase, data, projectList, sections) {
     chart.node.classList.add('is-wide');
     charts.push(chart);
   }
-  charts.push(historyChart(data.history));
   charts.push(downloadsChart(projectList));
-  if (sections.showQuestLog ?? true) charts.push(heatmapChart(data.activity));
-  charts.push(freshnessChart(projectList));
 
   const cleanups = [];
   for (const chart of charts) {
@@ -462,7 +459,7 @@ async function init() {
   renderHeroStats(data);
   renderFeatured(showcase.featured, projects.get(showcase.featured?.name));
   renderForge(showcase.projects, projects);
-  renderLab(showcase, data, data.projects, data.sections);
+  renderLab(showcase, data.projects);
   renderAbout(showcase);
   renderFooter(data.identity);
   renderStructuredData(data, showcase);

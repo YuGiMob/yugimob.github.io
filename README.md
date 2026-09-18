@@ -17,12 +17,10 @@ and a data lab charts the numbers behind the work.
   hashline playground — real 4-letter anchor allocation, a real served-row record, real
   `[E_RANGE_STALE]` refusals, and a scripted tour that runs the whole loop.
 - **The Forge** (`#forge`): five cards, each with a live demo:
-  search results and a rendered page (pi-unsloth-webtools), a Tor circuit
-  (pi-tor-proxy), a workflow pipeline (pi-msg-workflow), a guarded commit
+  a pipeline graph for search, fetch, and render (pi-unsloth-webtools), a Tor
+  circuit (pi-tor-proxy), a workflow pipeline (pi-msg-workflow), a guarded commit
   transcript (pi-git-commit), and a benchmark run trace (pi-edit-benchmark).
-- **Evidence Lab** (`#lab`): benchmark pass rates, weekly npm installs, the
-  download history that grows one snapshot per day, an 18-week activity
-  heatmap, and a "last shipped" freshness chart.
+- **Evidence Lab** (`#lab`): benchmark pass rates and weekly npm installs.
 - **About** (`#about`): prose and the principles behind the tools.
 - **Campfire** (`#campfire`): footer with the GitHub link.
 
@@ -37,7 +35,7 @@ assets/js/ui.js                 DOM, formatting, copy, runtime helpers
 assets/js/hashline.js           anchor allocation + edit session model
 assets/js/playground.js         the flagship interactive demo
 assets/js/demos.js              all five card demos
-assets/js/charts.js             the five lab charts
+assets/js/charts.js             the two lab charts
 assets/js/avatar.js             avatar srcset hydration
 data/site-data.json             machine-refreshed data
 data/site-data.schema.json      schema for the above
@@ -84,8 +82,7 @@ writing, so a corrupt file cannot wipe curated content.
 
 Each run also appends a `history` snapshot for the day (replacing an existing
 snapshot for the same date, capped at 120 entries) and rebuilds
-`activity.daily` from the last 120 days of public events. Those two fields are
-what the history chart and heatmap read.
+`activity.daily` from the last 120 days of public events.
 
 The site refreshes itself daily through
 `.github/workflows/refresh-data.yml` (06:00 UTC), which runs the script,

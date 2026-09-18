@@ -187,7 +187,6 @@
   "sections": {
     "showBackground": true,
     "showArtifacts": true,
-    "showQuestLog": true,
     "showAbilityScores": true,
     "showCampfire": true
   },

@@ -118,8 +118,8 @@ if ('daily' in data.activity) {
   }
 }
 needObject(data.sections, 'sections');
-hasOnly(data.sections, ['showBackground', 'showArtifacts', 'showQuestLog', 'showAbilityScores', 'showCampfire']);
-checkBooleans(data.sections, ['showBackground', 'showArtifacts', 'showQuestLog', 'showAbilityScores', 'showCampfire'], 'sections.');
+hasOnly(data.sections, ['showBackground', 'showArtifacts', 'showAbilityScores', 'showCampfire']);
+checkBooleans(data.sections, ['showBackground', 'showArtifacts', 'showAbilityScores', 'showCampfire'], 'sections.');
 if ('history' in data) {
   if (!Array.isArray(data.history)) fail('history invalid');
   for (const entry of data.history) {

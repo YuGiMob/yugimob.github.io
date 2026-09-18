@@ -1,4 +1,4 @@
-import { el, append, link, createController, createRuntime, typeText, reducedMotion, svg } from './ui.js';
+import { el, append, createController, createRuntime, typeText, reducedMotion, svg } from './ui.js';
 function frame(title, badge) {
   const root = el('div', 'demo');
   const bar = el('div', 'demo-bar');
@@ -40,143 +40,57 @@ function typeLines(container, lines, runtime, onDone) {
   next();
 }
 
-const SEARCH = {
-  tool: 'web_search',
-  engine: 'DDGS (7 engines)',
-  note: 'web_fetch · local files and private addresses allowed by default',
-  reader: [
-    'Title: pi-hashline-edit-pro',
-    'URL: https://github.com/YuGiMob/pi-hashline-edit-pro',
-    'Rendered via the Jina Reader',
-    '',
-    '# pi-hashline-edit-pro',
-    '',
-    'Every line comes back as `anchor│content`, and you edit by anchor.',
-    '',
-    '## Installation',
-    '',
-    'pi install npm:pi-hashline-edit-pro',
-  ],
-  queries: [
-    {
-      q: 'hashline edit anchors',
-      results: [
-        ['pi-hashline-edit-pro · GitHub', 'github.com/YuGiMob/pi-hashline-edit-pro', 'Hash-anchored read, replace, and undo tools for the pi coding agent. Every served line gets a unique 4-letter anchor.'],
-        ['pi-hashline-edit · GitHub', 'github.com/RimuruW/pi-hashline-edit', 'The original hash-anchored editing extension for pi, with line-hash contextual anchors.'],
-        ['pi-edit-benchmark · GitHub', 'github.com/YuGiMob/pi-edit-benchmark', 'Real-LLM benchmark scoring edit tools on correctness, safety, and stale handling, with a trace for every run.'],
-      ],
-    },
-    {
-      q: 'tor proxy for coding agents',
-      results: [
-        ['pi-tor-proxy · GitHub', 'github.com/YuGiMob/pi-tor-proxy', 'Routes pi agent requests through Tor with a self-managed Tor binary, per-instance circuits, and a verified exit IP.'],
-        ['How Tor circuits work', 'community.torproject.org', 'Three relays, layered encryption, and a new circuit per request.'],
-        ['npm: pi-tor-proxy', 'npmjs.com/package/pi-tor-proxy', 'Install command, weekly downloads, and version history.'],
-      ],
-    },
-    {
-      q: 'pi coding agent extensions',
-      results: [
-        ['pi · the coding agent', 'pi.dev', 'Extensions, tools, sessions, and a terminal UI built for real repositories.'],
-        ['pi-git-commit · GitHub', 'github.com/YuGiMob/pi-git-commit', 'A guarded commit flow: bash git stays blocked, git_commit is typed, and /commit opens the gate.'],
-        ['YuGiMob on GitHub', 'github.com/YuGiMob', 'Published pi extensions and the benchmark that keeps them honest.'],
-      ],
-    },
-  ],
-};
+function webToolsDemo() {
+  const { root, stage } = frame('web_search · web_fetch · web_render', 'no api key');
 
-function searchDemo() {
-  const { root, stage } = frame(SEARCH.tool, SEARCH.engine);
+  const svgRoot = svg('svg', { viewBox: '0 0 520 240', class: 'flow-svg', role: 'img', 'aria-label': 'How the three webtools run internally: search fans out to seven engines and reranks the hrefs, fetch normalizes and pins the resolved address before extracting HTML or PDF text, and render sends JavaScript pages through the Jina Reader' });
 
-  const bar = el('div', 'search-bar');
-  const prompt = el('span', 'search-prompt', '›');
-  const query = el('span', 'search-query');
-  const caret = el('span', 'search-caret');
-  append(bar, prompt, query, caret);
-  const meta = el('p', 'search-meta');
-  const results = el('ul', 'search-results');
-  const chips = el('div', 'search-chips');
-  const tail = el('pre', 'search-reader');
-  append(stage, bar, meta, results, tail, chips);
+  const defs = svg('defs');
+  const arrow = svg('marker', { id: 'flow-arrow', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '6', markerHeight: '6', orient: 'auto' });
+  arrow.appendChild(svg('path', { d: 'M 0 1 L 9 5 L 0 9 Z', class: 'flow-arrow-head' }));
+  const warnArrow = svg('marker', { id: 'flow-arrow-warn', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '6', markerHeight: '6', orient: 'auto' });
+  warnArrow.appendChild(svg('path', { d: 'M 0 1 L 9 5 L 0 9 Z', class: 'flow-arrow-head is-warn' }));
+  append(defs, arrow, warnArrow);
+  svgRoot.appendChild(defs);
 
-  let queryIndex = 0;
-  let generation = 0;
-
-  for (const [index, entry] of SEARCH.queries.entries()) {
-    const chip = press(entry.q, 'search-chip');
-    chip.addEventListener('click', () => {
-      show(index, runtimeRef);
-    });
-    chips.appendChild(chip);
-    chip.dataset.index = String(index);
+  function text(x, y, className, content, anchor) {
+    const node = svg('text', { x, y, class: className, 'text-anchor': anchor || 'middle' });
+    node.textContent = content;
+    svgRoot.appendChild(node);
   }
 
-  let runtimeRef = null;
-
-  function skeleton() {
-    results.replaceChildren();
-    for (let index = 0; index < 3; index += 1) {
-      const item = el('li', 'search-result is-skeleton');
-      append(item, el('span', 'skel skel-title'), el('span', 'skel skel-url'), el('span', 'skel skel-line'));
-      results.appendChild(item);
-    }
+  function box(x, y, label, sub) {
+    svgRoot.appendChild(svg('rect', { x, y, width: 118, height: 44, rx: '10', class: 'flow-node' }));
+    text(x + 59, y + 19, 'flow-label', label);
+    text(x + 59, y + 34, 'flow-sub', sub);
   }
 
-  function renderResults(entry) {
-    results.replaceChildren();
-    entry.results.forEach((item, index) => {
-      const [title, url, snippet] = item;
-      const row = el('li', 'search-result');
-      row.style.animationDelay = `${index * 90}ms`;
-      const anchor = link(`https://${url.replace(/^https?:\/\//, '')}`, title, 'search-title');
-      append(row, anchor, el('span', 'search-url', url), el('p', 'search-snippet', snippet));
-      results.appendChild(row);
-    });
-    meta.textContent = `${SEARCH.tool} · ${SEARCH.engine} · ${entry.results.length} results`;
-  }
+  const columns = [126, 260, 394];
+  const lanes = [
+    { y: 10, tool: 'web_search', stages: [['DDGS.text()', '7 engines'], ['dedupe + rank', 'SimpleFilterRanker'], ['results', 'Title · URL · Snippet']] },
+    { y: 98, tool: 'web_fetch', stages: [['normalize', 'http · https only'], ['resolve + pin', 'SSRF guard'], ['text + metadata', '512 KiB cap · 5 hops']] },
+    { y: 186, tool: 'web_render', stages: [['Jina Reader', 'third-party'], ['Markdown', 'JavaScript pages']] },
+  ];
 
-  function show(index, runtime) {
-    queryIndex = index;
-    const entry = SEARCH.queries[index];
-    generation += 1;
-    const token = generation;
-    for (const chip of chips.children) chip.classList.toggle('is-current', chip.dataset.index === String(index));
-    tail.textContent = '';
-    tail.classList.remove('is-visible');
-    meta.textContent = `${SEARCH.tool} · ${SEARCH.engine} · searching…`;
-    if (!runtime || reducedMotion()) {
-      query.textContent = entry.q;
-      renderResults(entry);
-      tail.textContent = SEARCH.reader.join('\n');
-      tail.classList.add('is-visible');
-      return;
-    }
-    skeleton();
-    typeText(query, entry.q, runtime, {
-      speed: 45,
-      onDone: () => {
-        if (token !== generation) return;
-        runtime.after(() => {
-          if (token !== generation) return;
-          renderResults(entry);
-          runtime.after(() => {
-            if (token !== generation) return;
-            tail.classList.add('is-visible');
-            typeText(tail, SEARCH.reader.join('\n'), runtime, { speed: 6 });
-          }, 350);
-        }, 620);
-      },
+  for (const lane of lanes) {
+    svgRoot.appendChild(svg('rect', { x: 6, y: lane.y, width: 104, height: 44, rx: '10', class: 'flow-node is-tool' }));
+    text(58, lane.y + 26, 'flow-label is-tool', lane.tool);
+    lane.stages.forEach((stage, index) => {
+      box(columns[index], lane.y, stage[0], stage[1]);
+      const from = index === 0 ? 114 : columns[index - 1] + 118;
+      svgRoot.appendChild(svg('path', { d: `M ${from} ${lane.y + 22} L ${columns[index] - 6} ${lane.y + 22}`, class: 'flow-edge', 'marker-end': 'url(#flow-arrow)' }));
     });
   }
 
-  const note = el('p', 'search-note', SEARCH.note);
-  stage.appendChild(note);
-  show(0, null);
+  text(260, 68, 'flow-sub', 'duckduckgo · brave · google · mojeek · yahoo · yandex · wikipedia');
 
-  return controller(root, (runtime) => {
-    runtimeRef = runtime;
-    show(queryIndex, runtime);
-  });
+  svgRoot.appendChild(svg('path', { d: 'M 319 142 L 319 180', class: 'flow-edge is-warn', 'marker-end': 'url(#flow-arrow-warn)' }));
+  text(327, 166, 'flow-edge-label', '403 · JS page', 'start');
+
+  const note = el('p', 'flow-note', 'web_fetch · local files and private addresses allowed by default');
+  append(stage, svgRoot, note);
+
+  return controller(root, () => {});
 }
 
 function torDemo() {
@@ -494,7 +408,7 @@ function traceDemo() {
 }
 
 const BUILDERS = {
-  search: searchDemo,
+  webtools: webToolsDemo,
   tor: torDemo,
   workflow: workflowDemo,
   git: gitDemo,

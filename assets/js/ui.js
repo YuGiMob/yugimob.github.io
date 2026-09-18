@@ -67,18 +67,6 @@ export function formatMonth(iso) {
   return `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }
 
-export function formatRelative(iso, now = Date.now()) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  const days = Math.floor((now - date.getTime()) / 86400000);
-  if (days <= 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 14) return `${days}d ago`;
-  if (days < 60) return `${Math.round(days / 7)}w ago`;
-  if (days < 365) return `${Math.round(days / 30)}mo ago`;
-  return `${Math.round(days / 365)}y ago`;
-}
-
 export function createRuntime() {
   const timeouts = new Set();
   let frameId = 0;
