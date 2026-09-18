@@ -53,18 +53,6 @@
       "size": "large"
     },
     {
-      "name": "pi-tps-status",
-      "kicker": "Instrumentation",
-      "tagline": "A live tokens-per-second widget in the status line, so you can feel a provider's real speed instead of guessing from a spinner.",
-      "highlights": [
-        "Live tok/s in the status bar",
-        "Provider-reported usage reconciled with estimates",
-        "Tool time excluded from the rate"
-      ],
-      "demo": "tps",
-      "size": "large"
-    },
-    {
       "name": "pi-msg-workflow",
       "kicker": "Agent workflow",
       "tagline": "Numbered message and command stores plus configurable review workflows: a start phase, rounds that reset the context, and a final commit or summary.",
@@ -87,18 +75,6 @@
       ],
       "demo": "git",
       "size": "large"
-    },
-    {
-      "name": "mypi",
-      "kicker": "Workbench",
-      "tagline": "The personal pi configuration that runs the daily work: a custom editor extension, model catalogs, themes, and settings in one versioned repository.",
-      "highlights": [
-        "Sticky Tab-completion editor extension",
-        "Model catalog in models-store.json",
-        "Settings versioned, secrets gitignored"
-      ],
-      "demo": "config",
-      "size": "small"
     },
     {
       "name": "pi-edit-benchmark",

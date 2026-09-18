@@ -92,14 +92,6 @@ export function createRuntime() {
       timeouts.add(id);
       return id;
     },
-    every(callback, delay) {
-      const tick = () => {
-        if (stopped) return;
-        callback();
-        if (!stopped) this.after(tick, delay);
-      };
-      return this.after(tick, delay);
-    },
     frame(callback) {
       const loop = (time) => {
         if (stopped) return;

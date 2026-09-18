@@ -1,4 +1,4 @@
-import { el, append, link, createController, createRuntime, typeText, reducedMotion, formatNumber, svg } from './ui.js';
+import { el, append, link, createController, createRuntime, typeText, reducedMotion, svg } from './ui.js';
 function frame(title, badge) {
   const root = el('div', 'demo');
   const bar = el('div', 'demo-bar');
@@ -78,7 +78,7 @@ const SEARCH = {
       q: 'pi coding agent extensions',
       results: [
         ['pi · the coding agent', 'pi.dev', 'Extensions, tools, sessions, and a terminal UI built for real repositories.'],
-        ['mypi · personal configuration', 'github.com/YuGiMob/mypi', 'Extensions, model routing, and settings in one versioned repository.'],
+        ['pi-git-commit · GitHub', 'github.com/YuGiMob/pi-git-commit', 'A guarded commit flow: bash git stays blocked, git_commit is typed, and /commit opens the gate.'],
         ['YuGiMob on GitHub', 'github.com/YuGiMob', 'Published pi extensions and the benchmark that keeps them honest.'],
       ],
     },
@@ -176,11 +176,6 @@ function searchDemo() {
   return controller(root, (runtime) => {
     runtimeRef = runtime;
     show(queryIndex, runtime);
-    if (reducedMotion()) return;
-    runtime.every(() => {
-      const next = (queryIndex + 1) % SEARCH.queries.length;
-      show(next, runtime);
-    }, 9000);
   });
 }
 
@@ -296,118 +291,6 @@ function torDemo() {
     runtime.frame((now) => renderTorFrame(now - start));
   });
 }
-
-function tpsDemo() {
-  const { root, stage } = frame('status line', 'live');
-  const top = el('div', 'tps-top');
-  const icon = el('span', 'tps-icon', '⚡');
-  const value = el('span', 'tps-value', '0.0');
-  const unit = el('span', 'tps-unit', 'tok/s [provider]');
-  const pause = press('pause', 'tps-pause');
-  append(top, icon, value, unit, pause);
-  const canvas = document.createElement('canvas');
-  canvas.className = 'tps-canvas';
-  canvas.width = 560;
-  canvas.height = 96;
-  const foot = el('p', 'tps-foot');
-  const tokensLabel = el('span', 'tps-stat');
-  const windowLabel = el('span', 'tps-stat');
-  const modelLabel = el('span', 'tps-stat tps-model', 'glm-5.3-flash · opencode-go');
-  append(foot, tokensLabel, windowLabel, modelLabel);
-  append(stage, top, canvas, foot);
-
-  const samples = [];
-  const MAX = 72;
-  let paused = false;
-  let tokens = 0;
-  let started = performance.now();
-
-  function draw() {
-    const context = canvas.getContext('2d');
-    if (!context) return;
-    const ratio = Math.min(2, window.devicePixelRatio || 1);
-    const width = canvas.clientWidth || 560;
-    const height = 96;
-    canvas.width = width * ratio;
-    canvas.height = height * ratio;
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    context.clearRect(0, 0, width, height);
-    const mid = height * 0.62;
-    context.strokeStyle = 'rgba(212, 160, 23, 0.18)';
-    context.lineWidth = 1;
-    context.beginPath();
-    context.moveTo(0, mid);
-    context.lineTo(width, mid);
-    context.stroke();
-    if (samples.length < 2) return;
-    const max = Math.max(80, ...samples);
-    const step = width / (MAX - 1);
-    context.beginPath();
-    samples.forEach((sample, index) => {
-      const x = index * step;
-      const y = height - (sample / max) * (height - 16) - 6;
-      if (index === 0) context.moveTo(x, y);
-      else context.lineTo(x, y);
-    });
-    context.strokeStyle = '#e8b64c';
-    context.lineWidth = 2;
-    context.lineJoin = 'round';
-    context.stroke();
-    context.lineTo((samples.length - 1) * step, height);
-    context.lineTo(0, height);
-    context.closePath();
-    const fill = context.createLinearGradient(0, 0, 0, height);
-    fill.addColorStop(0, 'rgba(232, 182, 76, 0.28)');
-    fill.addColorStop(1, 'rgba(232, 182, 76, 0)');
-    context.fillStyle = fill;
-    context.fill();
-    const headX = (samples.length - 1) * step;
-    const headY = height - (samples[samples.length - 1] / max) * (height - 16) - 6;
-    context.beginPath();
-    context.arc(headX, headY, 3.5, 0, Math.PI * 2);
-    context.fillStyle = '#ff6b35';
-    context.fill();
-  }
-
-  function sample() {
-    const base = 46 + Math.sin(performance.now() / 2600) * 6;
-    const noise = (Math.random() - 0.5) * 14;
-    const burst = Math.random() < 0.06 ? 24 : 0;
-    return Math.max(4, base + noise + burst);
-  }
-
-  function tick() {
-    if (paused) return;
-    const value2 = sample();
-    samples.push(value2);
-    if (samples.length > MAX) samples.shift();
-    const current = samples.slice(-8).reduce((sum, entry) => sum + entry, 0) / Math.min(8, samples.length);
-    value.textContent = current.toFixed(1);
-    tokens += Math.round(current * 0.13);
-    tokensLabel.textContent = `${formatNumber(tokens)} tokens`;
-    const elapsed = Math.round((performance.now() - started) / 1000);
-    windowLabel.textContent = `${Math.floor(elapsed / 60)}m ${String(elapsed % 60).padStart(2, '0')}s`;
-    draw();
-  }
-
-  pause.addEventListener('click', () => {
-    paused = !paused;
-    pause.textContent = paused ? 'resume' : 'pause';
-  });
-
-  for (let index = 0; index < MAX; index += 1) samples.push(44 + Math.sin(index / 6) * 5);
-  value.textContent = '46.2';
-  tokensLabel.textContent = '12,480 tokens';
-  windowLabel.textContent = '4m 56s';
-  draw();
-
-  return controller(root, (runtime) => {
-    if (reducedMotion()) return;
-    started = performance.now();
-    runtime.every(tick, 130);
-  });
-}
-
 
 function workflowDemo() {
   const { root, stage } = frame('/workflow 1', 'config');
@@ -557,93 +440,6 @@ function gitDemo() {
   });
 }
 
-const CONFIG_FILES = {
-  'extensions/': {
-    title: 'extensions/ · 1 active',
-    content: ['sticky-autocomplete.ts'].join('\n'),
-  },
-  'sticky-autocomplete.ts': {
-    title: 'extensions/sticky-autocomplete.ts',
-    content: [
-      'export function parseSlashCommand(textBeforeCursor) {',
-      "  if (!textBeforeCursor.startsWith('/')) return null",
-      "  const spaceIndex = textBeforeCursor.indexOf(' ')",
-      '  if (spaceIndex === -1) return null',
-      '  const commandName = textBeforeCursor.slice(1, spaceIndex)',
-      "  if (commandName === '') return null",
-      '  return { commandName, argumentText: textBeforeCursor.slice(spaceIndex + 1) }',
-      '}',
-    ].join('\n'),
-  },
-  'settings.json': {
-    title: 'settings.json',
-    content: [
-      '{',
-      '  "theme": "dark",',
-      '  "defaultThinkingLevel": "xhigh",',
-      '  "defaultProvider": "ollama-cloud",',
-      '  "defaultModel": "deepseek-v4.1-flash",',
-      '  "enableInstallTelemetry": false,',
-      '  "compaction": { "enabled": false },',
-      '  "retry": { "baseDelayMs": 5000 }',
-      '}',
-    ].join('\n'),
-  },
-  'models-store.json': {
-    title: 'models-store.json',
-    content: [
-      '{',
-      '  "ollama-cloud": {',
-      '    "models": [',
-      '      { "id": "deepseek-v4.1-flash", "name": "DeepSeek V4.1 Flash" }',
-      '    ]',
-      '  }',
-      '}',
-    ].join('\n'),
-  },
-};
-
-function configDemo() {
-  const { root, stage } = frame('mypi', 'repo');
-  const tree = el('ul', 'cfg-tree');
-  const view = el('div', 'cfg-view');
-  const viewTitle = el('p', 'cfg-view-title');
-  const viewBody = el('pre', 'cfg-view-body');
-  append(view, viewTitle, viewBody);
-  append(stage, tree, view);
-
-  function select(key) {
-    const file = CONFIG_FILES[key];
-    viewTitle.textContent = file.title;
-    viewBody.textContent = file.content;
-    for (const button of tree.querySelectorAll('.cfg-node')) {
-      button.classList.toggle('is-current', button.dataset.key === key);
-    }
-  }
-
-  const treeData = [
-    { key: 'extensions/', depth: 0 },
-    { key: 'sticky-autocomplete.ts', depth: 1 },
-    { key: 'models-store.json', depth: 0 },
-    { key: 'settings.json', depth: 0 },
-  ];
-
-  for (const entry of treeData) {
-    const item = el('li', 'cfg-item');
-    const button = el('button', 'cfg-node');
-    button.type = 'button';
-    button.dataset.key = entry.key;
-    button.style.paddingLeft = `${8 + entry.depth * 18}px`;
-    button.textContent = entry.depth === 0 ? entry.key : `↳ ${entry.key}`;
-    button.addEventListener('click', () => select(entry.key));
-    item.appendChild(button);
-    tree.appendChild(item);
-  }
-
-  select('extensions/');
-  return controller(root, () => {});
-}
-
 function traceDemo() {
   const { root, stage } = frame('trace · stale-line', 'recovered');
   const list = el('ol', 'tr-steps');
@@ -700,10 +496,8 @@ function traceDemo() {
 const BUILDERS = {
   search: searchDemo,
   tor: torDemo,
-  tps: tpsDemo,
   workflow: workflowDemo,
   git: gitDemo,
-  config: configDemo,
   trace: traceDemo,
 };
 

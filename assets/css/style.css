@@ -1217,58 +1217,6 @@ a {
   gap: 6px;
 }
 
-.tps-top {
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-  font-family: var(--mono);
-}
-
-.tps-icon {
-  color: var(--gold);
-}
-
-.tps-value {
-  color: var(--gold);
-  font-family: var(--display);
-  font-size: 2.1rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.tps-unit {
-  color: var(--dim);
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.tps-pause {
-  margin-left: auto;
-}
-
-.tps-canvas {
-  display: block;
-  width: 100%;
-  height: 96px;
-  margin: 10px 0 6px;
-}
-
-.tps-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  color: var(--dim);
-  font-family: var(--mono);
-  font-size: 0.7rem;
-}
-
-.tps-model {
-  margin-left: auto;
-  color: var(--muted);
-}
-
-
 .wf-lanes {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1412,70 +1360,6 @@ a {
   display: flex;
   gap: 8px;
   margin-top: 10px;
-}
-
-.demo-stage:has(> .cfg-tree) {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-  gap: 10px;
-  align-items: start;
-}
-
-.cfg-tree {
-  list-style: none;
-  max-height: 230px;
-  overflow: auto;
-  padding: 6px 0;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.32);
-}
-
-.cfg-node {
-  display: block;
-  width: 100%;
-  padding: 4px 8px;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  text-align: left;
-  cursor: pointer;
-}
-
-.cfg-node:hover {
-  color: var(--parchment);
-}
-
-.cfg-node.is-current {
-  color: var(--gold);
-  background: var(--gold-soft);
-}
-
-.cfg-view {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.32);
-  overflow: hidden;
-}
-
-.cfg-view-title {
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--line);
-  color: var(--dim);
-  font-family: var(--mono);
-  font-size: 0.7rem;
-}
-
-.cfg-view-body {
-  min-height: 170px;
-  max-height: 230px;
-  overflow: auto;
-  padding: 10px;
-  color: var(--arcane);
-  font-family: var(--mono);
-  font-size: 0.68rem;
 }
 
 .tr-steps {
@@ -2117,10 +2001,6 @@ a {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .demo-stage:has(> .cfg-tree) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .hero {
     padding-top: 64px;
   }
@@ -2212,15 +2092,12 @@ a {
   .wf-status,
   .wf-output,
   .term-body,
-  .cfg-node,
-  .cfg-view-body,
   .tr-step,
   .chart-note,
   .chart-source,
   .hm-legend,
   .hm-deed,
   .hm-deeds-title,
-  .tps-foot,
   .chip-label,
   .chip-value,
   .stat-label,
@@ -2244,8 +2121,7 @@ a {
   .pg-action,
   .copy-btn,
   .action-link,
-  .search-chip,
-  .cfg-node {
+  .search-chip {
     min-height: 40px;
   }
 

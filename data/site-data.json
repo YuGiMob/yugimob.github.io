@@ -76,29 +76,6 @@
       "pushedAt": "2026-09-17T19:44:39Z"
     },
     {
-      "name": "pi-tps-status",
-      "description": "Live tokens-per-second status widget for pi",
-      "language": "TypeScript",
-      "stars": 0,
-      "forks": 0,
-      "url": "https://github.com/YuGiMob/pi-tps-status",
-      "npm": "pi-tps-status",
-      "license": "MIT",
-      "npmWeeklyDownloads": 89,
-      "pushedAt": "2026-08-24T06:01:25Z"
-    },
-    {
-      "name": "mypi",
-      "description": "My personal pi configuration: extensions, models, and settings",
-      "language": "TypeScript",
-      "stars": 0,
-      "forks": 0,
-      "url": "https://github.com/YuGiMob/mypi",
-      "npm": null,
-      "license": null,
-      "pushedAt": "2026-09-05T15:57:58Z"
-    },
-    {
       "name": "pi-edit-benchmark",
       "description": "Real-LLM tool-calling benchmark comparing file-editing extensions for pi, with full traces for every run",
       "language": "TypeScript",
@@ -112,7 +89,7 @@
   ],
   "stats": {
     "totalStars": 94,
-    "npmPackages": 6,
+    "npmPackages": 5,
     "publicRepos": 12,
     "starsGiven": 17,
     "forksReceived": 29,
