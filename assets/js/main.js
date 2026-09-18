@@ -2,7 +2,7 @@ import { hydrateAvatar } from './avatar.js';
 import { el, append, link, copyButton, reducedMotion, formatNumber, animateValue } from './ui.js';
 import { buildDemo } from './demos.js';
 import { buildPlayground } from './playground.js';
-import { benchmarkChart, downloadsChart } from './charts.js';
+import { benchmarkChart } from './charts.js';
 
 const DATA_URL = 'data/site-data.json';
 const SHOWCASE_URL = 'data/showcase.json';
@@ -41,7 +41,7 @@ function fallbackShowcase(data) {
     benchmark: null,
     principles: [],
     about: data.about?.paragraphs ?? [],
-    lab: { title: 'Evidence Lab', intro: 'Live figures from the GitHub and npm APIs.' },
+    lab: { title: 'Evidence Lab', intro: 'Benchmark figures come from committed run reports.' },
   };
 }
 
@@ -202,7 +202,6 @@ function renderIdentity(data) {
   const navGithub = document.getElementById('nav-github');
   if (navGithub) {
     navGithub.href = identity.links?.github || navGithub.href;
-    navGithub.textContent = `${identity.displayName} on GitHub ↗`;
   }
   const heroGithub = document.getElementById('hero-github');
   if (heroGithub && identity.links?.github) heroGithub.href = identity.links.github;
@@ -338,7 +337,7 @@ function renderForge(entries, projects) {
   return cleanups;
 }
 
-function renderLab(showcase, projectList) {
+function renderLab(showcase) {
   const grid = document.getElementById('lab-grid');
   if (!grid) return [];
   const heading = document.getElementById('lab-heading');
@@ -352,7 +351,6 @@ function renderLab(showcase, projectList) {
     chart.node.classList.add('is-wide');
     charts.push(chart);
   }
-  charts.push(downloadsChart(projectList));
 
   const cleanups = [];
   for (const chart of charts) {
@@ -458,7 +456,7 @@ async function init() {
   renderHeroStats(data);
   renderFeatured(showcase.featured, projects.get(showcase.featured?.name));
   renderForge(showcase.projects, projects);
-  renderLab(showcase, data.projects);
+  renderLab(showcase);
   renderAbout(showcase);
   renderFooter(data.identity);
   renderStructuredData(data, showcase);

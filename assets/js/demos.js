@@ -122,41 +122,22 @@ function webToolsDemo() {
   return controller(root, () => {});
 }
 
-function torDemo() {
-  const { root, stage } = frame('tool: bash', 'network');
-
-  const svgRoot = svg('svg', { viewBox: '0 0 560 200', class: 'tor-svg', role: 'img', 'aria-label': 'A request travelling through three Tor relays' });
-  const defs = svg('defs');
-  const gradient = svg('linearGradient', { id: 'tor-packet', x1: '0', y1: '0', x2: '1', y2: '1' });
-  gradient.appendChild(svg('stop', { offset: '0', 'stop-color': '#ffd77a' }));
-  gradient.appendChild(svg('stop', { offset: '1', 'stop-color': '#c04a1f' }));
-  defs.appendChild(gradient);
-  svgRoot.appendChild(defs);
-
-  const directPath = svg('path', { d: 'M 52 110 L 508 110', class: 'tor-line tor-direct' });
-  const circuitPath = svg('path', { d: 'M 52 110 L 160 62 L 285 150 L 410 62 L 508 110', class: 'tor-line tor-circuit', id: 'tor-path' });
+function torView(config) {
+  const svgRoot = svg('svg', { viewBox: config.viewBox, class: `tor-svg ${config.className}`, role: 'img', 'aria-label': 'A request travelling through three Tor relays' });
+  const directPath = svg('path', { d: config.direct, class: 'tor-line tor-direct' });
+  const circuitPath = svg('path', { d: config.circuit, class: 'tor-line tor-circuit' });
   append(svgRoot, directPath, circuitPath);
-
-  const nodes = [
-    { x: 52, y: 110, label: 'you', sub: '' },
-    { x: 160, y: 62, label: 'guard', sub: 'hop 1' },
-    { x: 285, y: 150, label: 'middle', sub: 'hop 2' },
-    { x: 410, y: 62, label: 'exit', sub: 'hop 3' },
-    { x: 508, y: 110, label: 'site', sub: '' },
-  ];
-
-  for (const node of nodes) {
-    svgRoot.appendChild(svg('circle', { cx: node.x, cy: node.y, r: 9, class: 'tor-node' }));
-    const label = svg('text', { x: node.x, y: node.y - 18, class: 'tor-label', 'text-anchor': 'middle' }, );
+  for (const node of config.nodes) {
+    svgRoot.appendChild(svg('circle', { cx: node.x, cy: node.y, r: config.radius || 9, class: 'tor-node' }));
+    const label = svg('text', { x: node.lx ?? node.x, y: node.ly ?? node.y - 18, class: 'tor-label', 'text-anchor': node.anchor || 'middle' });
     label.textContent = node.label;
     svgRoot.appendChild(label);
     if (node.sub) {
-      const sub = svg('text', { x: node.x, y: node.y + 30, class: 'tor-sub', 'text-anchor': 'middle' });
+      const sub = svg('text', { x: node.sx ?? node.x, y: node.sy ?? node.y + 30, class: 'tor-sub', 'text-anchor': node.sanchor || 'middle' });
       sub.textContent = node.sub;
       svgRoot.appendChild(sub);
     }
   }
-
   const packet = svg('g', { class: 'tor-packet' });
   const ringOuter = svg('circle', { r: 14, class: 'tor-ring ring-outer' });
   const ringMid = svg('circle', { r: 10, class: 'tor-ring ring-mid' });
@@ -164,13 +145,47 @@ function torDemo() {
   const core = svg('circle', { r: 4, class: 'tor-core' });
   append(packet, ringOuter, ringMid, ringInner, core);
   svgRoot.appendChild(packet);
+  return { svgRoot, directPath, circuitPath, packet, ringOuter, ringMid, ringInner };
+}
+
+function torDemo() {
+  const { root, stage } = frame('tool: bash', 'network');
+
+  const wide = torView({
+    className: 'is-wide',
+    viewBox: '0 0 560 200',
+    direct: 'M 52 110 L 508 110',
+    circuit: 'M 52 110 L 160 62 L 285 150 L 410 62 L 508 110',
+    nodes: [
+      { x: 52, y: 110, label: 'you' },
+      { x: 160, y: 62, label: 'guard', sub: 'hop 1' },
+      { x: 285, y: 150, label: 'middle', sub: 'hop 2' },
+      { x: 410, y: 62, label: 'exit', sub: 'hop 3' },
+      { x: 508, y: 110, label: 'site' },
+    ],
+  });
+  const tall = torView({
+    className: 'is-tall',
+    radius: 11,
+    viewBox: '0 0 340 640',
+    direct: 'M 170 40 L 170 600',
+    circuit: 'M 170 40 L 80 180 L 250 320 L 80 460 L 170 600',
+    nodes: [
+      { x: 170, y: 40, label: 'you', ly: 20 },
+      { x: 80, y: 180, label: 'guard', sub: 'hop 1', lx: 62, ly: 185, anchor: 'end', sx: 62, sy: 209, sanchor: 'end' },
+      { x: 250, y: 320, label: 'middle', sub: 'hop 2', lx: 266, ly: 325, anchor: 'start', sx: 266, sy: 349, sanchor: 'start' },
+      { x: 80, y: 460, label: 'exit', sub: 'hop 3', lx: 62, ly: 465, anchor: 'end', sx: 62, sy: 489, sanchor: 'end' },
+      { x: 170, y: 600, label: 'site', lx: 188, ly: 605, anchor: 'start' },
+    ],
+  });
+  const views = [wide, tall];
 
   const readout = el('div', 'tor-readout');
   const toggle = el('div', 'tor-toggle');
   const directButton = press('direct', 'tor-mode is-current');
   const torButton = press('tor', 'tor-mode');
   append(toggle, directButton, torButton);
-  append(stage, svgRoot, readout, toggle);
+  append(stage, wide.svgRoot, tall.svgRoot, readout, toggle);
 
   let mode = 'tor';
   const hopTimes = [0, 720, 1440, 2160, 2880];
@@ -180,49 +195,51 @@ function torDemo() {
     mode = next;
     directButton.classList.toggle('is-current', next === 'direct');
     torButton.classList.toggle('is-current', next === 'tor');
-    directPath.classList.toggle('is-hidden', next !== 'direct');
-    circuitPath.classList.toggle('is-hidden', next !== 'tor');
-    ringOuter.style.opacity = next === 'tor' ? '1' : '0';
-    ringMid.style.opacity = next === 'tor' ? '1' : '0';
-    ringInner.style.opacity = next === 'tor' ? '1' : '0';
+    for (const view of views) {
+      view.directPath.classList.toggle('is-hidden', next !== 'direct');
+      view.circuitPath.classList.toggle('is-hidden', next !== 'tor');
+      view.ringOuter.style.opacity = next === 'tor' ? '1' : '0';
+      view.ringMid.style.opacity = next === 'tor' ? '1' : '0';
+      view.ringInner.style.opacity = next === 'tor' ? '1' : '0';
+    }
     readout.textContent = next === 'direct'
       ? 'direct · exit IP 203.0.113.42 (you) · 38 ms · DNS and sockets exposed'
       : 'tor · exit IP 185.220.101.7 · 812 ms · circuit fresh';
     readout.classList.toggle('is-warn', next === 'direct');
   }
 
+  function renderTorFrame(elapsed) {
+    for (const view of views) {
+      let position;
+      if (mode === 'direct') {
+        const progress = Math.min(1, (elapsed % (directTime + 900)) / directTime);
+        position = view.directPath.getPointAtLength(view.directPath.getTotalLength() * progress);
+        view.packet.style.opacity = progress <= 0 || progress >= 1 ? '0' : '1';
+      } else {
+        const cycle = hopTimes[hopTimes.length - 1] + 900;
+        const time = elapsed % cycle;
+        let leg = 0;
+        for (let index = 1; index < hopTimes.length; index += 1) {
+          if (time >= hopTimes[index]) leg = index;
+        }
+        const legStart = hopTimes[leg];
+        const legEnd = hopTimes[leg + 1] ?? cycle;
+        const progress = Math.min(1, (time - legStart) / (legEnd - legStart));
+        position = view.circuitPath.getPointAtLength(view.circuitPath.getTotalLength() * ((leg + progress) / (hopTimes.length - 1)));
+        view.packet.style.opacity = time > hopTimes[hopTimes.length - 1] + 400 ? '0' : '1';
+        const completed = hopTimes.slice(1).filter((hop) => time >= hop).length;
+        view.ringOuter.style.opacity = completed >= 1 ? '0' : '1';
+        view.ringMid.style.opacity = completed >= 2 ? '0' : '1';
+        view.ringInner.style.opacity = completed >= 3 ? '0' : '1';
+      }
+      view.packet.setAttribute('transform', `translate(${position.x} ${position.y})`);
+    }
+  }
+
   directButton.addEventListener('click', () => setMode('direct'));
   torButton.addEventListener('click', () => setMode('tor'));
   setMode('tor');
   renderTorFrame(0);
-
-  function renderTorFrame(elapsed) {
-    let position;
-    if (mode === 'direct') {
-      const progress = Math.min(1, (elapsed % (directTime + 900)) / directTime);
-      const pathPoint = directPath.getPointAtLength(directPath.getTotalLength() * progress);
-      position = pathPoint;
-      const hide = progress <= 0 || progress >= 1;
-      packet.style.opacity = hide ? '0' : '1';
-    } else {
-      const cycle = hopTimes[hopTimes.length - 1] + 900;
-      const time = elapsed % cycle;
-      let leg = 0;
-      for (let index = 1; index < hopTimes.length; index += 1) {
-        if (time >= hopTimes[index]) leg = index;
-      }
-      const legStart = hopTimes[leg];
-      const legEnd = hopTimes[leg + 1] ?? cycle;
-      const progress = Math.min(1, (time - legStart) / (legEnd - legStart));
-      position = circuitPath.getPointAtLength(circuitPath.getTotalLength() * ((leg + progress) / (hopTimes.length - 1)));
-      packet.style.opacity = time > hopTimes[hopTimes.length - 1] + 400 ? '0' : '1';
-      const completed = hopTimes.slice(1).filter((time2) => time >= time2).length;
-      ringOuter.style.opacity = completed >= 1 ? '0' : '1';
-      ringMid.style.opacity = completed >= 2 ? '0' : '1';
-      ringInner.style.opacity = completed >= 3 ? '0' : '1';
-    }
-    packet.setAttribute('transform', `translate(${position.x} ${position.y})`);
-  }
 
   return controller(root, (runtime) => {
     if (reducedMotion()) {

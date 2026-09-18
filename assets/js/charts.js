@@ -1,4 +1,4 @@
-import { el, append, link, createController, formatNumber } from './ui.js';
+import { el, append, link, createController } from './ui.js';
 
 function chartFrame(kicker, title, note) {
   const root = el('article', 'chart');
@@ -51,28 +51,5 @@ export function benchmarkChart(bench) {
   append(body, list, legend, source);
   return createController(root, (runtime) => {
     runtime.after(() => root.classList.add('is-live'), 120);
-  }, () => root.classList.remove('is-live'));
-}
-
-export function downloadsChart(projects) {
-  const packages = projects
-    .filter((project) => project.npm && Number.isFinite(project.npmWeeklyDownloads))
-    .sort((a, b) => b.npmWeeklyDownloads - a.npmWeeklyDownloads);
-  const total = packages.reduce((sum, project) => sum + project.npmWeeklyDownloads, 0);
-  const { root, body } = chartFrame('Reach', 'Weekly npm installs', `${formatNumber(total)} installs across ${packages.length} packages · npm downloads API`);
-  const max = Math.max(1, ...packages.map((project) => project.npmWeeklyDownloads));
-  const list = el('ul', 'dl-rows');
-  for (const project of packages) {
-    const item = el('li', 'dl-row');
-    const label = link(`https://www.npmjs.com/package/${project.npm}`, project.npm, 'dl-label');
-    const track = meter('meter-downloads', (project.npmWeeklyDownloads / max) * 100);
-    const value = el('span', 'dl-value', formatNumber(project.npmWeeklyDownloads));
-    append(item, label, track, value);
-    item.title = `${project.npm} · ${formatNumber(project.npmWeeklyDownloads)} installs in the last week`;
-    list.appendChild(item);
-  }
-  append(body, list);
-  return createController(root, (runtime) => {
-    runtime.after(() => root.classList.add('is-live'), 100);
   }, () => root.classList.remove('is-live'));
 }

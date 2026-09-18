@@ -122,6 +122,6 @@
   ],
   "lab": {
     "title": "Evidence Lab",
-    "intro": "Every number below comes from the GitHub and npm APIs or from committed benchmark reports. The workflow that refreshes it runs daily at 06:00 UTC."
+    "intro": "The benchmark figures below come from committed run reports. The workflow that refreshes the site's other numbers runs daily at 06:00 UTC."
   }
 }

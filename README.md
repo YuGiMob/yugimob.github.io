@@ -20,7 +20,7 @@ and a data lab charts the numbers behind the work.
   a pipeline graph for search, fetch, and render (pi-unsloth-webtools), a Tor
   circuit (pi-tor-proxy), a workflow pipeline (pi-msg-workflow), a guarded commit
   transcript (pi-git-commit), and a benchmark run trace (pi-edit-benchmark).
-- **Evidence Lab** (`#lab`): benchmark pass rates and weekly npm installs.
+- **Evidence Lab** (`#lab`): benchmark pass rates.
 - **About** (`#about`): prose and the principles behind the tools.
 - **Campfire** (`#campfire`): footer with the GitHub link.
 
