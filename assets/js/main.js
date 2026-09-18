@@ -215,8 +215,8 @@ function renderHeroStats(data) {
   const totalDownloads = data.projects.reduce((sum, project) => sum + (project.npmWeeklyDownloads || 0), 0);
   const stats = [
     ['GitHub stars', data.stats.totalStars ?? 0],
-    ['npm installs / week', totalDownloads],
     ['published packages', data.stats.npmPackages ?? 0],
+    ['npm installs / week', totalDownloads],
   ];
   for (const [label, value] of stats) {
     const item = el('div', 'stat');
