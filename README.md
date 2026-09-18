@@ -15,7 +15,7 @@ and a data lab charts the numbers behind the work.
   weekly installs, and packages.
 - **Flagship** (`#featured`): pi-hashline-edit-pro, with an interactive
   hashline playground — real 4-letter anchor allocation, a real served-row record, real
-  `[E_RANGE_STALE]` refusals, and a scripted tour that runs the whole loop.
+  `[E_RANGE_STALE]` refusals, and a guided six-step run through one edit.
 - **The Forge** (`#forge`): five cards, each with a live demo:
   a pipeline graph for search, fetch, and render (pi-unsloth-webtools), a Tor
   circuit (pi-tor-proxy), a workflow pipeline (pi-msg-workflow), a guarded commit

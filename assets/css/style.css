@@ -610,25 +610,40 @@ a {
   flex: 1;
 }
 
-.pg-badge {
-  padding: 4px 9px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
+.pg-step {
   color: var(--dim);
-  font-size: 0.7rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 
-.pg-badge.is-warn {
-  color: var(--ember);
-  border-color: rgba(255, 107, 53, 0.45);
+.pg-claim {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(232, 182, 76, 0.035);
 }
 
-.pg-badge.is-ready {
-  color: var(--gold);
-  border-color: var(--line-strong);
+.pg-claim-title {
+  color: var(--parchment);
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.pg-claim-text {
+  margin-top: 5px;
+  max-width: 72ch;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.pg-call {
+  margin-top: 9px;
+  color: var(--arcane);
+  font-family: var(--mono);
+  font-size: 0.72rem;
 }
 
 .pg-body {
@@ -647,37 +662,28 @@ a {
   padding: 10px 0;
 }
 
-.pg-line-btn {
+.pg-line {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  width: 100%;
   padding: 3px 12px;
-  border: 0;
   border-left: 2px solid transparent;
-  background: none;
   color: var(--parchment);
   font-family: var(--mono);
   font-size: 0.72rem;
-  text-align: left;
-  cursor: pointer;
 }
 
-.pg-line-btn:hover {
-  background: rgba(232, 182, 76, 0.06);
-}
-
-.pg-line.is-selected .pg-line-btn {
+.pg-line.is-selected {
   border-left-color: var(--gold);
   background: rgba(232, 182, 76, 0.1);
 }
 
-.pg-line.is-drifted .pg-line-btn {
+.pg-line.is-drifted {
   border-left-color: var(--ember);
   background: rgba(255, 107, 53, 0.09);
 }
 
-.pg-line.is-flash .pg-line-btn {
+.pg-line.is-flash {
   animation: flash 1.1s ease;
 }
 
@@ -711,6 +717,34 @@ a {
 }
 
 .pg-request {
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.pg-request summary {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+}
+
+.pg-request summary::-webkit-details-marker {
+  display: none;
+}
+
+.pg-request summary::before {
+  content: "▸ ";
+}
+
+.pg-request[open] summary::before {
+  content: "▾ ";
+}
+
+.pg-request-body {
+  margin-top: 8px;
   max-height: 150px;
   overflow: auto;
   white-space: pre-wrap;
@@ -723,18 +757,6 @@ a {
   font-family: var(--mono);
   font-size: 0.7rem;
   line-height: 1.55;
-}
-
-.pg-input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.4);
-  color: var(--parchment);
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  resize: vertical;
 }
 
 .pg-actions {
@@ -765,14 +787,8 @@ a {
   border-color: var(--line-strong);
 }
 
-.pg-tour {
-  color: var(--arcane);
-}
-
 .pg-feedback {
   min-height: 66px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--line);
 }
 
 .pg-feedback-msg {
@@ -1794,7 +1810,7 @@ a {
     display: none;
   }
 
-  .pg-line-btn {
+  .pg-line {
     min-height: 34px;
     font-size: 0.8rem;
   }
@@ -1804,7 +1820,8 @@ a {
   .pg-file,
   .pg-action,
   .pg-feedback-msg,
-  .pg-request,
+  .pg-call,
+  .pg-request-body,
   .pg-diff,
   .copy-btn,
   .action-link,
@@ -1828,10 +1845,6 @@ a {
   .forge-kicker,
   .chart-kicker {
     font-size: 0.78rem;
-  }
-
-  .pg-badge {
-    font-size: 0.72rem;
   }
 
   .demo-button,
