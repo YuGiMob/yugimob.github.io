@@ -135,7 +135,3 @@ export function externalEdit(session, anchor, text) {
   line.text = text;
   return true;
 }
-
-export function staleCount(session) {
-  return session.lines.filter((line) => isStale(session, line)).length;
-}

@@ -1,8 +1,8 @@
 {
   "identity": {
     "displayName": "YuGiMob",
-    "classTitle": "Artificer of Agent Tools",
-    "tagline": "Coding agents with safety rails: hash-anchored edits, Tor-wrapped requests, and benchmarks that tell the truth.",
+    "classTitle": "Coding-agent extensions and benchmarks",
+    "tagline": "Extensions for the pi coding agent: anchored file edits, Tor-routed requests, guarded commits, and a benchmark with published traces.",
     "avatarUrl": "https://avatars.githubusercontent.com/u/110136195?s=216&v=4",
     "links": {
       "github": "https://github.com/YuGiMob",
@@ -11,7 +11,7 @@
   },
   "about": {
     "paragraphs": [
-      "Author of published pi-coding-agent extensions on npm, plus a benchmark that keeps them honest. Building agent tooling since 2022."
+      "I build extensions for pi, the terminal coding agent, and publish them on npm, together with a benchmark that measures whether they actually help."
     ]
   },
   "projects": [

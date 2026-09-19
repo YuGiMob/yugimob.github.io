@@ -47,24 +47,9 @@ export function reducedMotion() {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-export function formatCompact(value) {
-  if (!Number.isFinite(value)) return '0';
-  if (value >= 1000000) return `${Math.round(value / 100000) / 10}M`;
-  if (value >= 1000) return `${Math.round(value / 100) / 10}k`;
-  return String(value);
-}
-
 export function formatNumber(value) {
   if (!Number.isFinite(value)) return '0';
   return new Intl.NumberFormat('en-US').format(value);
-}
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-export function formatMonth(iso) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }
 
 export function createRuntime() {

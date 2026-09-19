@@ -1,28 +1,28 @@
 {
   "featured": {
     "name": "pi-hashline-edit-pro",
-    "kicker": "Flagship artifact",
-    "headline": "Edits that land on the line you meant",
+    "kicker": "Flagship",
+    "headline": "Edits addressed by anchors, not line numbers",
     "summary": [
-      "Line numbers drift the moment anything above them changes, and fuzzy matching can land on the wrong occurrence without saying so. pi-hashline-edit-pro removes both failure modes: every served line gets a unique 4-letter anchor, and the anchor is the only address an edit can use.",
-      "It registers read, replace, insert, anchor_grep, and undo_last_change, and disables the built-in edit tool. In its own benchmark it leads the field at 95% overall and 94% on stale-and-drift scenarios."
+      "Line numbers shift whenever something above them changes, and fuzzy matching can silently pick the wrong occurrence. pi-hashline-edit-pro avoids both by giving every served line a unique four-letter anchor. The anchor is the only address an edit may use, so inserting or deleting lines never invalidates the lines you did not touch.",
+      "It disables the built-in edit tool and registers read, replace, insert, anchor_grep, and undo_last_change instead. On its own 34-scenario benchmark it places first at 95.2% overall and 94.3% on the stale-and-drift cases, and the traces for every run are in the repository."
     ],
     "points": [
       {
         "title": "Anchors survive edits",
-        "body": "Anchors are allocated to each served line, so inserting or deleting lines never renumbers the ones you did not touch. Follow-up edits keep working without a re-read."
+        "body": "Every served line carries its own anchor. An insertion or deletion reassigns nothing else, so a follow-up edit needs no re-read."
       },
       {
         "title": "Stale edits are refused",
-        "body": "Every served row is remembered. If the file changed underneath, the tool answers [E_RANGE_STALE] with the current range and fresh anchors instead of silently editing a neighbor."
+        "body": "The session remembers the text it served. If the file changed underneath, the tool returns [E_RANGE_STALE] and the current range instead of editing a neighbour."
       },
       {
-        "title": "Undo is byte-exact",
-        "body": "The last replace or insert on a file reverts with BOM and line endings intact, and the history survives a session restart."
+        "title": "Undo restores the bytes",
+        "body": "The last replace or insert on a file reverts byte-for-byte, including BOM and line endings, and the undo record survives a session restart."
       },
       {
         "title": "Batches are atomic",
-        "body": "Multiple edits group per file into one batch with a combined diff and a single undo. Overlaps, or one stale member, abort the whole batch unwritten."
+        "body": "Edits to the same file are grouped into one batch with one diff and one undo. If any member is stale, the whole batch is refused and nothing is written."
       }
     ],
     "demo": "hashline"
@@ -30,11 +30,11 @@
   "projects": [
     {
       "name": "pi-unsloth-webtools",
-      "kicker": "Search, fetch & render",
-      "tagline": "Web search, fetch, and render with no API key: a multi-engine DDGS search plus HTML-to-Markdown and PDF extraction ported from the Unsloth Studio codebase, with a Jina Reader fallback for JavaScript pages.",
+      "kicker": "Web tools",
+      "tagline": "Search, fetch, and render tools for pi with no API key: a seven-engine search with dedup and ranking, HTML-to-Markdown and PDF extraction ported from the Unsloth Studio codebase, and a Jina Reader fallback for pages that need JavaScript.",
       "highlights": [
-        "Zero-key search across seven engines",
-        "HTML-to-Markdown and PDF text extraction",
+        "Seven search engines behind one tool",
+        "HTML and PDF text extraction",
         "Jina Reader fallback for JavaScript pages"
       ],
       "demo": "webtools",
@@ -43,11 +43,11 @@
     {
       "name": "pi-tor-proxy",
       "kicker": "Network privacy",
-      "tagline": "Routes every request the pi agent makes through Tor. It downloads and verifies its own Tor binary, gives each pi instance its own circuit, and shows the verified exit IP in the footer.",
+      "tagline": "Routes every request the pi agent makes through Tor. It downloads and verifies its own Tor binary, gives each pi instance its own circuit, and checks the exit IP against check.torproject.org.",
       "highlights": [
-        "Downloads and SHA-256-verifies its own Tor binary",
+        "Downloads and SHA-256 verifies its own Tor binary",
         "Per-instance circuit via IsolateSOCKSAuth",
-        "Exit IP verified against check.torproject.org"
+        "Exit IP checked against check.torproject.org"
       ],
       "demo": "tor",
       "size": "large"
@@ -55,11 +55,11 @@
     {
       "name": "pi-msg-workflow",
       "kicker": "Agent workflow",
-      "tagline": "Numbered message and command stores plus configurable review workflows: a start phase, rounds that reset the context, and a final commit or summary.",
+      "tagline": "Numbered message and command stores plus configurable review workflows: a start phase, rounds that reset the context between passes, and a final commit or summary.",
       "highlights": [
         "/msg, /cmd, and /workflow",
-        "Numbered, editable stores",
-        "Rounds reset the context"
+        "Numbered, editable message stores",
+        "Rounds reset the context between passes"
       ],
       "demo": "workflow",
       "size": "large"
@@ -67,22 +67,22 @@
     {
       "name": "pi-git-commit",
       "kicker": "Guardrails",
-      "tagline": "A commit flow that stops an agent from committing carelessly: a bash guard, a structured git_commit tool, and a /commit command for humans.",
+      "tagline": "A commit flow that keeps an agent from committing carelessly: a bash guard for mutative git commands, a structured git_commit tool, and a /commit command that a human has to run first.",
       "highlights": [
-        "Mutative git in bash is blocked",
-        "FIX / IMPROVE / NEW typed commits",
-        "The flow is gated by /commit"
+        "Mutative git commands in bash are blocked",
+        "FIX, IMPROVE, and NEW typed commits",
+        "The flow opens only after /commit"
       ],
       "demo": "git",
       "size": "large"
     },
     {
       "name": "pi-edit-benchmark",
-      "kicker": "Evidence",
+      "kicker": "Benchmark",
       "tagline": "Drives real models through each editing tool's own tools and scores correctness, safety, and robustness, with a full trace for every run.",
       "highlights": [
         "34 scenarios, 8 models, 2,176 runs",
-        "Stale edits scored, not just happy paths",
+        "Stale and drift scenarios are scored",
         "Every verdict links to its trace"
       ],
       "demo": "trace",
@@ -108,20 +108,20 @@
     ]
   },
   "principles": [
-    "Make the wrong edit impossible",
-    "Refuse loudly, never guess",
-    "Show the model what it sees",
-    "Guard the destructive path",
-    "Measure before claiming",
-    "Ship static, refresh by robot"
+    "Make the wrong operation impossible, not merely discouraged.",
+    "Fail loudly; never guess.",
+    "Show the model exactly what it sees.",
+    "Put a human gate in front of anything destructive.",
+    "Measure before claiming, and publish the traces.",
+    "Keep the site static; let a scheduled job refresh the numbers."
   ],
   "about": [
-    "I build tools for coding agents, mostly extensions for pi. The pattern behind every one of them is the same: find something agents get subtly wrong, then make the wrong version impossible.",
-    "The extensions are all on npm. The flagship gives every served line a 4-letter anchor so edits cannot drift, refuses stale edits instead of guessing, and has an undo that restores bytes. When I wanted proof it was better, I built the benchmark and published the traces.",
-    "Numbers refresh daily from the GitHub and npm APIs through a scheduled workflow, and the benchmark figures come from committed run reports."
+    "I build extensions for pi, the terminal coding agent, and publish them on npm. The same pattern shows up in most of the work: an agent makes a change that looks right and is subtly wrong, and the fix is to make that failure impossible rather than paper over it.",
+    "pi-hashline-edit-pro is the main one. It replaces line numbers and fuzzy matching with four-letter anchors, refuses stale edits, and can undo byte-for-byte. When I wanted to know whether it was actually better than the alternatives, I wrote pi-edit-benchmark, ran 8 models over 34 scenarios, and published the traces, including the runs it loses.",
+    "The rest is here too: Tor routing, numbered review workflows, a guarded commit flow, and the web tools. The numbers on this page refresh from the GitHub and npm APIs every day through a scheduled workflow."
   ],
   "lab": {
-    "title": "Evidence Lab",
-    "intro": "The benchmark figures below come from committed run reports. The workflow that refreshes the site's other numbers runs daily at 06:00 UTC."
+    "title": "Benchmark results",
+    "intro": "The figures come from committed run reports in pi-edit-benchmark, and every verdict links back to a trace. The rest of the numbers on this page refresh daily at 06:00 UTC."
   }
 }

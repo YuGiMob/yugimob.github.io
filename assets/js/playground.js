@@ -71,7 +71,7 @@ export function buildPlayground() {
   append(body, codePane, side);
   append(root, head, claim, body);
 
-  const caption = el('p', 'pg-caption', 'Six steps through one edit: anchors instead of line numbers, a refusal instead of a guess, and an undo that restores the bytes. Everything runs in your browser.');
+  const caption = el('p', 'pg-caption', 'This panel runs the real session model in your browser. Press the button to walk through six steps of one edit.');
 
   function buildRequest() {
     return {

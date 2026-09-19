@@ -1,5 +1,5 @@
 import { hydrateAvatar } from './avatar.js';
-import { el, append, link, copyButton, reducedMotion, formatNumber, animateValue } from './ui.js';
+import { el, append, link, copyButton, formatNumber, animateValue, svg } from './ui.js';
 import { buildDemo } from './demos.js';
 import { buildPlayground } from './playground.js';
 import { benchmarkChart } from './charts.js';
@@ -41,7 +41,7 @@ function fallbackShowcase(data) {
     benchmark: null,
     principles: [],
     about: data.about?.paragraphs ?? [],
-    lab: { title: 'Evidence Lab', intro: 'Benchmark figures come from committed run reports.' },
+    lab: { title: 'Benchmark results', intro: 'Benchmark figures come from committed run reports in pi-edit-benchmark.' },
   };
 }
 
@@ -58,22 +58,6 @@ function observeVisibility(element, onShow, onHide) {
   }, { rootMargin: '120px 0px', threshold: 0.12 });
   observer.observe(element);
   return observer;
-}
-
-function setupReveal() {
-  const targets = [...document.querySelectorAll('[data-reveal]')];
-  if (reducedMotion() || typeof IntersectionObserver !== 'function') {
-    for (const target of targets) target.classList.add('is-visible');
-    return;
-  }
-  const observer = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      entry.target.classList.add('is-visible');
-      observer.unobserve(entry.target);
-    }
-  }, { rootMargin: '-40px 0px', threshold: 0.1 });
-  for (const target of targets) observer.observe(target);
 }
 
 function setupNav() {
@@ -126,68 +110,6 @@ function setupChrome() {
   window.addEventListener('scroll', update, { passive: true });
 }
 
-function initHeroCanvas() {
-  const canvas = document.getElementById('hero-canvas');
-  if (!canvas || reducedMotion()) return;
-  const context = canvas.getContext('2d');
-  if (!context) return;
-  let width = 0;
-  let height = 0;
-  let frameId = 0;
-  let particles = [];
-
-  const resize = () => {
-    const ratio = Math.min(1.6, window.devicePixelRatio || 1);
-    width = canvas.clientWidth;
-    height = canvas.clientHeight;
-    canvas.width = Math.round(width * ratio);
-    canvas.height = Math.round(height * ratio);
-    context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    const count = Math.min(90, Math.round((width * height) / 26000));
-    particles = Array.from({ length: count }, spawn);
-  };
-
-  function spawn() {
-    return {
-      x: Math.random() * width,
-      y: height + Math.random() * 40,
-      vx: (Math.random() - 0.5) * 0.16,
-      vy: -(0.18 + Math.random() * 0.5),
-      r: 0.6 + Math.random() * 1.5,
-      alpha: 0.1 + Math.random() * 0.32,
-      tone: Math.random() < 0.35 ? '192, 74, 31' : '212, 160, 23',
-    };
-  }
-
-  const step = () => {
-    context.clearRect(0, 0, width, height);
-    for (const particle of particles) {
-      particle.x += particle.vx;
-      particle.y += particle.vy;
-      if (particle.y < -20) Object.assign(particle, spawn(), { y: height + 10 });
-      context.beginPath();
-      context.arc(particle.x, particle.y, particle.r, 0, Math.PI * 2);
-      context.fillStyle = `rgba(${particle.tone}, ${particle.alpha})`;
-      context.fill();
-    }
-    frameId = requestAnimationFrame(step);
-  };
-
-  const start = () => {
-    if (frameId || document.hidden) return;
-    frameId = requestAnimationFrame(step);
-  };
-  const stop = () => {
-    if (frameId) cancelAnimationFrame(frameId);
-    frameId = 0;
-  };
-
-  resize();
-  window.addEventListener('resize', resize, { passive: true });
-  document.addEventListener('visibilitychange', () => (document.hidden ? stop() : start()));
-  start();
-}
-
 function renderIdentity(data) {
   const identity = data.identity;
   hydrateAvatar(document.getElementById('avatar'), identity.avatarUrl, identity.displayName);
@@ -214,7 +136,7 @@ function renderHeroStats(data) {
   const totalDownloads = data.projects.reduce((sum, project) => sum + (project.npmWeeklyDownloads || 0), 0);
   const stats = [
     ['GitHub stars', data.stats.totalStars ?? 0],
-    ['published packages', data.stats.npmPackages ?? 0],
+    ['packages on npm', data.stats.npmPackages ?? 0],
     ['npm installs / week', totalDownloads],
   ];
   for (const [label, value] of stats) {
@@ -232,8 +154,8 @@ function renderHeroStats(data) {
   }
 }
 
-function metricChip(label, value, className) {
-  const chip = el('span', `chip ${className || ''}`);
+function metricChip(label, value) {
+  const chip = el('span', 'chip');
   append(chip, el('span', 'chip-label', label), el('span', 'chip-value', value));
   return chip;
 }
@@ -252,8 +174,9 @@ function projectChips(project) {
   const chips = el('div', 'chips');
   chips.appendChild(metricChip('stars', formatNumber(project.stars ?? 0)));
   if (project.npmWeeklyDownloads) chips.appendChild(metricChip('installs/wk', formatNumber(project.npmWeeklyDownloads)));
-  if (project.license) chips.appendChild(metricChip('license', project.license));
   if (project.language) chips.appendChild(metricChip('language', project.language));
+  if (project.license) chips.appendChild(metricChip('license', project.license));
+  if (project.pushedAt) chips.appendChild(metricChip('updated', String(project.pushedAt).slice(0, 10)));
   return chips;
 }
 
@@ -304,7 +227,6 @@ function renderForge(entries, projects) {
     const project = projects.get(entry.name);
     if (!project) continue;
     const card = el('article', `forge-card ${entry.size === 'large' ? 'is-large' : 'is-small'}`);
-    card.dataset.reveal = '';
 
     const copy = el('div', 'forge-copy');
     copy.appendChild(el('p', 'forge-kicker', entry.kicker));
@@ -375,11 +297,62 @@ function renderAbout(showcase) {
   }
 }
 
+function formatWindow(range) {
+  const [start, end] = String(range).split('..');
+  if (!end) return range;
+  if (end.length === 2) return `${start} to ${start.slice(0, 8)}${end}`;
+  return `${start} to ${end}`;
+}
+
+function activityChart(daily) {
+  const width = 320;
+  const height = 44;
+  const gap = 3;
+  const barWidth = (width - gap * (daily.length - 1)) / daily.length;
+  const peak = Math.max(1, ...daily.map((entry) => entry.pushes));
+  const chart = svg('svg', {
+    class: 'activity-chart',
+    viewBox: `0 0 ${width} ${height}`,
+    role: 'img',
+    'aria-label': `Pushes per day, ${daily[0].date} to ${daily[daily.length - 1].date}`,
+  });
+  daily.forEach((entry, index) => {
+    const value = Math.max(0, entry.pushes);
+    const barHeight = Math.max(value > 0 ? 2 : 1, Math.round((value / peak) * (height - 4)));
+    const bar = svg('rect', {
+      x: index * (barWidth + gap),
+      y: height - barHeight,
+      width: barWidth,
+      height: barHeight,
+      rx: 1.5,
+      class: value > 0 ? 'activity-bar' : 'activity-bar is-empty',
+    });
+    const label = svg('title');
+    label.textContent = `${entry.date}: ${value} ${value === 1 ? 'push' : 'pushes'}`;
+    bar.appendChild(label);
+    chart.appendChild(bar);
+  });
+  return chart;
+}
+
+function renderActivity(data) {
+  const panel = document.getElementById('activity-panel');
+  const activity = data.activity;
+  if (!panel || !activity) return;
+  panel.appendChild(el('h3', 'activity-title', 'Public activity'));
+  const line = el('p', 'activity-line');
+  append(line, `${formatNumber(activity.pushes ?? 0)} pushes to public repositories, `, el('span', 'activity-window', formatWindow(activity.window)), '.');
+  panel.appendChild(line);
+  const daily = Array.isArray(activity.daily) ? activity.daily : [];
+  if (daily.length > 0) panel.appendChild(activityChart(daily));
+  if (activity.fetchedAt) panel.appendChild(el('p', 'activity-note', `GitHub public events, fetched ${activity.fetchedAt}.`));
+}
+
 function renderFooter(identity) {
   const githubLink = document.getElementById('github-link');
   if (githubLink) {
     githubLink.href = identity.links?.github || 'https://github.com/YuGiMob';
-    githubLink.textContent = `${identity.displayName} on GitHub ↗`;
+    githubLink.textContent = `${identity.displayName} on GitHub`;
   }
   const year = document.getElementById('campfire-year');
   if (year) year.textContent = `© ${new Date().getFullYear()} ${identity.displayName}`;
@@ -458,14 +431,13 @@ async function init() {
   renderForge(showcase.projects, projects);
   renderLab(showcase);
   renderAbout(showcase);
+  renderActivity(data);
   renderFooter(data.identity);
   renderStructuredData(data, showcase);
   applyVisibility(data.sections);
-  setupReveal();
   setupNav();
   setupAnchorAlignment();
   setupChrome();
-  initHeroCanvas();
 }
 
 init().catch((error) => {

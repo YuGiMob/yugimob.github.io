@@ -2,40 +2,41 @@
 
 Source for [yugimob.github.io](https://yugimob.github.io): a hand-written static
 showcase for the pi-coding-agent extensions and tools built by YuGiMob.
-Plain HTML, CSS, and JavaScript — no build step, no framework, no runtime
-dependencies. GitHub Pages serves the files directly.
+Plain HTML, CSS, and JavaScript, with no build step, no framework, and no
+runtime dependencies. GitHub Pages serves the files directly.
 
-The page is a showcase, not a list: the flagship gets a live, interactive
-playground, every other artifact gets a demo of its actual interaction pattern,
-and a data lab charts the numbers behind the work.
+The flagship gets a live, interactive playground, every other artifact gets a
+demo of its interaction pattern, and the benchmark section charts the numbers
+behind the work.
 
 ## Page sections
 
 - **Hero** (`#hero`): avatar, name and tagline, live counters for stars,
-  weekly installs, and packages.
+  packages, and weekly installs.
 - **Flagship** (`#featured`): pi-hashline-edit-pro, with an interactive
-  hashline playground — real 4-letter anchor allocation, a real served-row record, real
-  `[E_RANGE_STALE]` refusals, and a guided six-step run through one edit.
-- **The Forge** (`#forge`): five cards, each with a live demo:
-  a pipeline graph for search, fetch, and render (pi-unsloth-webtools), a Tor
-  circuit (pi-tor-proxy), a workflow pipeline (pi-msg-workflow), a guarded commit
+  hashline playground: real 4-letter anchor allocation, a served-row record,
+  real `[E_RANGE_STALE]` refusals, and a guided six-step run through one edit.
+- **Projects** (`#forge`): five cards, each with a live demo: a pipeline graph
+  for search, fetch, and render (pi-unsloth-webtools), a Tor circuit
+  (pi-tor-proxy), a workflow pipeline (pi-msg-workflow), a guarded commit
   transcript (pi-git-commit), and a benchmark run trace (pi-edit-benchmark).
-- **Evidence Lab** (`#lab`): benchmark pass rates.
-- **About** (`#about`): prose and the principles behind the tools.
-- **Campfire** (`#campfire`): footer with the GitHub link.
+- **Benchmarks** (`#lab`): benchmark pass rates from committed run reports.
+- **About** (`#about`): prose, the principles behind the tools, and a
+  pushes-per-day chart built from public GitHub events.
+- Footer (`#campfire`): the GitHub link.
 
 ## Files
 
 ```
 index.html                      page shell, meta tags, JSON-LD
-404.html                        themed not-found page
+404.html                        not-found page
 assets/css/style.css            the entire stylesheet
 assets/js/main.js               fetch, render, wire everything
 assets/js/ui.js                 DOM, formatting, copy, runtime helpers
 assets/js/hashline.js           anchor allocation + edit session model
 assets/js/playground.js         the flagship interactive demo
 assets/js/demos.js              all five card demos
-assets/js/charts.js             the two lab charts
+assets/js/charts.js             the benchmark chart
 assets/js/avatar.js             avatar srcset hydration
 data/site-data.json             machine-refreshed data
 data/site-data.schema.json      schema for the above
@@ -53,7 +54,7 @@ Two files, with a clean split:
 identity block, the curated project manifest (name, URL, npm package, curated
 description), and machine numbers: stars, forks, languages, last push,
 weekly npm downloads, stats, activity (window, pushes, highlights, per-day
-events), and `history` — one snapshot per day with total stars, total weekly
+events), and `history`: one snapshot per day with total stars, total weekly
 downloads, and pushes.
 
 **`data/showcase.json`** is curated by hand. It holds the featured project

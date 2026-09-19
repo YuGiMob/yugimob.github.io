@@ -359,7 +359,7 @@ function gitDemo() {
 
   const lines = [
     { text: '$ git commit -am "quick fix"', cls: 'is-cmd', speed: 18 },
-    { text: '⛔ Mutative git commands are blocked. Ask the user to run /toggle-allow-git to allow them for this session.', cls: 'is-err', speed: 8 },
+    { text: 'error · mutative git commands are blocked. Run /toggle-allow-git to allow them for this session.', cls: 'is-err', speed: 8 },
     { text: '$ /commit', cls: 'is-cmd', speed: 18, pause: 320 },
     { text: '✓ staged 4 files · diff summary in the transcript (ctrl+o to expand)', cls: 'is-ok', speed: 10 },
     { text: '$ pi › git_commit(type: "FIX", message: "guard the commit path")', cls: 'is-cmd', speed: 12, pause: 320 },
@@ -414,7 +414,7 @@ function traceDemo() {
     append(item, el('span', 'tr-icon', step.icon), el('span', 'tr-name', step.name), el('span', 'tr-detail', step.detail));
     list.appendChild(item);
   }
-  const foot = el('p', 'tr-foot', 'What pi-edit-benchmark scores: refused instead of silently mis-applied.');
+  const foot = el('p', 'tr-foot', 'pi-edit-benchmark scores the refusal itself, not only the final diff.');
   const actions = el('div', 'tr-actions');
   const replay = press('replay', 'tr-replay');
   actions.appendChild(replay);
