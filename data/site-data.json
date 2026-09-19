@@ -19,7 +19,7 @@
       "name": "pi-hashline-edit-pro",
       "description": "Hash-anchored read/replace/undo tools for the pi coding agent; every line gets a unique 4-letter anchor",
       "language": "TypeScript",
-      "stars": 86,
+      "stars": 87,
       "forks": 28,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
@@ -67,13 +67,13 @@
       "name": "pi-unsloth-webtools",
       "description": "web_search, web_fetch, and web_render tools ported from the Unsloth Studio codebase (multi-engine DDGS search, HTML-to-Markdown and PDF extraction, Jina Reader rendering)",
       "language": "TypeScript",
-      "stars": 1,
+      "stars": 2,
       "forks": 0,
       "url": "https://github.com/YuGiMob/pi-unsloth-webtools",
       "npm": "pi-unsloth-webtools",
       "license": "AGPL-3.0",
       "npmWeeklyDownloads": 550,
-      "pushedAt": "2026-09-17T19:44:39Z"
+      "pushedAt": "2026-09-18T06:19:01Z"
     },
     {
       "name": "pi-edit-benchmark",
@@ -88,15 +88,15 @@
     }
   ],
   "stats": {
-    "totalStars": 94,
+    "totalStars": 96,
     "npmPackages": 5,
     "publicRepos": 12,
     "starsGiven": 17,
     "forksReceived": 29
   },
   "activity": {
-    "window": "2026-09-03..17",
-    "pushes": 63,
+    "window": "2026-09-05..18",
+    "pushes": 64,
     "highlights": [
       "closed issue #45 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #44 on YuGiMob/pi-hashline-edit-pro",
@@ -104,22 +104,12 @@
       "closed issue #41 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #38 on YuGiMob/pi-hashline-edit-pro"
     ],
-    "fetchedAt": "2026-09-18",
+    "fetchedAt": "2026-09-19",
     "daily": [
       {
-        "date": "2026-09-03",
-        "events": 3,
-        "pushes": 3
-      },
-      {
-        "date": "2026-09-04",
-        "events": 3,
-        "pushes": 3
-      },
-      {
         "date": "2026-09-05",
-        "events": 10,
-        "pushes": 10
+        "events": 4,
+        "pushes": 4
       },
       {
         "date": "2026-09-06",
@@ -128,8 +118,8 @@
       },
       {
         "date": "2026-09-07",
-        "events": 9,
-        "pushes": 6
+        "events": 7,
+        "pushes": 5
       },
       {
         "date": "2026-09-08",
@@ -173,13 +163,18 @@
       },
       {
         "date": "2026-09-16",
-        "events": 7,
-        "pushes": 7
+        "events": 8,
+        "pushes": 8
       },
       {
         "date": "2026-09-17",
-        "events": 6,
-        "pushes": 4
+        "events": 9,
+        "pushes": 7
+      },
+      {
+        "date": "2026-09-18",
+        "events": 10,
+        "pushes": 10
       }
     ]
   },
@@ -201,6 +196,12 @@
       "totalStars": 94,
       "totalDownloads": 7131,
       "pushes": 63
+    },
+    {
+      "date": "2026-09-19",
+      "totalStars": 96,
+      "totalDownloads": 7018,
+      "pushes": 64
     }
   ]
 }
