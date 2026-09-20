@@ -32,7 +32,7 @@ function runSiteValidator(mutate) {
       filter: (source) => !['.git', '.omo'].includes(basename(source)),
     });
     if (mutate) mutate(copy);
-    return spawnSync(process.execPath, [join(copy, 'scripts', 'validate-site.mjs')], { encoding: 'utf8' });
+    return spawnSync(process.execPath, [join(ROOT, 'scripts', 'validate-site.mjs'), copy], { encoding: 'utf8' });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -177,9 +177,9 @@ test('the validator refuses a duplicated project and a malformed fetchedAt', () 
 });
 
 test('the schema walker refuses types, enums, patterns, and nested unknown keys', () => {
-  const wrongEmail = structuredClone(DATA);
-  wrongEmail.identity.links.email = 'not-an-email';
-  assert.match(runValidator(wrongEmail, SHOWCASE).stderr, /identity\.links\.email invalid/);
+  const emptyAvatar = structuredClone(DATA);
+  emptyAvatar.identity.avatarUrl = '';
+  assert.match(runValidator(emptyAvatar, SHOWCASE).stderr, /identity\.avatarUrl invalid/);
 
   const emptyName = structuredClone(DATA);
   emptyName.identity.displayName = '';
@@ -247,4 +247,145 @@ test('the validator refuses benchmark totals that contradict each other', () => 
   const badFocus = structuredClone(DATA);
   badFocus.benchmark.focusCounts = 5;
   assert.match(runValidator(badFocus, SHOWCASE).stderr, /benchmark focusCounts invalid/);
+});
+
+test('the validator refuses history, daily, and highlight counts beyond the caps', () => {
+  const day = 86400000;
+  const start = Date.parse('2026-01-01');
+  const dateAt = (index) => new Date(start + index * day).toISOString().slice(0, 10);
+  const longHistory = structuredClone(DATA);
+  longHistory.history = Array.from({ length: 121 }, (unused, index) => ({ date: dateAt(index), totalStars: 1, totalDownloads: 1 }));
+  assert.match(runValidator(longHistory, SHOWCASE).stderr, /history has 121 entries; the cap is 120/);
+
+  const longDaily = structuredClone(DATA);
+  longDaily.activity.daily = Array.from({ length: 121 }, (unused, index) => ({ date: dateAt(index), events: 1, pushes: 1 }));
+  assert.match(runValidator(longDaily, SHOWCASE).stderr, /activity\.daily has 121 entries; the cap is 120/);
+
+  const manyHighlights = structuredClone(DATA);
+  manyHighlights.activity.highlights = ['a', 'b', 'c', 'd', 'e', 'f'];
+  assert.match(runValidator(manyHighlights, SHOWCASE).stderr, /activity\.highlights has 6 entries; the cap is 5/);
+});
+
+test('the site validator refuses a stale CSP hash and an un-preloaded module', () => {
+  const staleHash = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace(/'sha256-[A-Za-z0-9+/=]+'/, "'sha256-AAAA'"));
+  });
+  assert.equal(staleHash.status, 1);
+  assert.match(staleHash.stderr, /CSP hash for the inline JSON-LD block is stale/);
+
+  const missingPreload = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('  <link rel="modulepreload" href="assets/js/charts.js">\n', ''));
+  });
+  assert.equal(missingPreload.status, 1);
+  assert.match(missingPreload.stderr, /assets\/js\/charts\.js is not preloaded/);
+});
+
+test('the site validator refuses third-party assets, README ghosts, and noscript strays', () => {
+  const thirdParty = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('<link rel="stylesheet" href="assets/css/style.css">', '<link rel="stylesheet" href="https://cdn.example.com/x.css">'));
+  });
+  assert.equal(thirdParty.status, 1);
+  assert.match(thirdParty.stderr, /third-party stylesheet/);
+
+  const readme = runSiteValidator((dir) => {
+    const path = join(dir, 'README.md');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('assets/js/main.js               boot', 'assets/js/ghost.js              boot'));
+  });
+  assert.equal(readme.status, 1);
+  assert.match(readme.stderr, /listed path assets\/js\/ghost\.js does not exist/);
+
+  const noscript = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('github.com/YuGiMob/pi-tor-proxy', 'github.com/YuGiMob/pi-ghost'));
+  });
+  assert.equal(noscript.status, 1);
+  assert.match(noscript.stderr, /noscript link pi-ghost is not in site-data\.json/);
+});
+
+test('the site validator refuses an image without alt text', () => {
+  const noAlt = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace(' alt="YuGiMob" width="72"', ' width="72"'));
+  });
+  assert.equal(noAlt.status, 1);
+  assert.match(noAlt.stderr, /<img> is missing an alt attribute/);
+});
+
+test('the site validator refuses a jumped heading order and a broken aria reference', () => {
+  const jump = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    const source = readFileSync(path, 'utf8');
+    writeFileSync(path, source.replace('<section id="problems"', '<h3>jump</h3><section id="problems"'));
+  });
+  assert.equal(jump.status, 1);
+  assert.match(jump.stderr, /heading level jumps from h1 to h3/);
+
+  const aria = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('aria-labelledby="problems-heading"', 'aria-labelledby="problems-ghost"'));
+  });
+  assert.equal(aria.status, 1);
+  assert.match(aria.stderr, /aria reference to missing id problems-ghost/);
+});
+
+test('the site validator refuses a target=_blank link without rel and a missing lang', () => {
+  const blank = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('target="_blank" rel="noopener noreferrer" aria-label="YuGiMob on GitHub"', 'target="_blank" aria-label="YuGiMob on GitHub"'));
+  });
+  assert.equal(blank.status, 1);
+  assert.match(blank.stderr, /target="_blank" link has no rel=noopener/);
+
+  const lang = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('<html lang="en">', '<html>'));
+  });
+  assert.equal(lang.status, 1);
+  assert.match(lang.stderr, /<html> is missing a lang attribute/);
+});
+
+test('the site validator refuses a title and description outside their length limits', () => {
+  const short = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    const source = readFileSync(path, 'utf8');
+    writeFileSync(path, source.replace('<title>YuGiMob · Coding-agent extensions that fail loudly</title>', '<title>x</title>').replace(/content="Extensions for the pi coding agent[^"]*"/, 'content="short"'));
+  });
+  assert.equal(short.status, 1);
+  assert.match(short.stderr, /title length 1 is outside 5-70/);
+  assert.match(short.stderr, /meta description length 5 is outside 50-200/);
+});
+
+test('the site validator refuses a drifted sitemap lastmod and a missing avatar file', () => {
+  const sitemap = runSiteValidator((dir) => {
+    const path = join(dir, 'sitemap.xml');
+    const source = readFileSync(path, 'utf8');
+    writeFileSync(path, source.replace(new RegExp('<lastmod>[^<]*</lastmod>'), '<lastmod>2020-01-01</lastmod>'));
+  });
+  assert.equal(sitemap.status, 1);
+  assert.match(sitemap.stderr, /does not match the newest history date/);
+
+  const avatar = runSiteValidator((dir) => {
+    const path = join(dir, 'data', 'site-data.json');
+    const data = JSON.parse(readFileSync(path, 'utf8'));
+    data.identity.avatarUrl = 'assets/ghost.png';
+    writeFileSync(path, JSON.stringify(data, null, 2));
+  });
+  assert.equal(avatar.status, 1);
+  assert.match(avatar.stderr, /points at a missing file/);
+});
+
+test('the site validator refuses a nav order that does not match the section order', () => {
+  const nav = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    const source = readFileSync(path, 'utf8');
+    writeFileSync(path, source
+      .replace('<a href="#problems" data-nav="problems">The problems</a>', '<a href="#swap" data-nav="swap">swap</a>')
+      .replace('<a href="#evidence" data-nav="evidence">The evidence</a>', '<a href="#problems" data-nav="problems">The problems</a>')
+      .replace('<a href="#swap" data-nav="swap">swap</a>', '<a href="#evidence" data-nav="evidence">The evidence</a>'));
+  });
+  assert.equal(nav.status, 1);
+  assert.match(nav.stderr, /nav order does not match the section order/);
 });

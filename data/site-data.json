@@ -4,10 +4,9 @@
     "displayName": "YuGiMob",
     "classTitle": "Coding-agent extensions that fail loudly",
     "tagline": "Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, guarded commits, and a benchmark that publishes the traces.",
-    "avatarUrl": "https://avatars.githubusercontent.com/u/110136195?s=216&v=4",
+    "avatarUrl": "assets/avatar.png",
     "links": {
-      "github": "https://github.com/YuGiMob",
-      "email": null
+      "github": "https://github.com/YuGiMob"
     }
   },
   "projects": [
@@ -87,7 +86,6 @@
     "totalStars": 97,
     "npmPackages": 5,
     "publicRepos": 12,
-    "starsGiven": 17,
     "forksReceived": 30
   },
   "activity": {

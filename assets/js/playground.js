@@ -26,6 +26,13 @@ const REPLACEMENT = "  if (from < 0 || to < 0) return stale(lines, 'range')";
 const DRIFT = '  if (from < 0 || to < 0) return staleRange(lines)';
 const INSERTED = ['  if (from > to) [from, to] = [to, from]'];
 const GREP_PATTERN = 'stale';
+
+export const PLAYGROUND_SOURCE = SOURCE;
+export const PLAYGROUND_TARGET = TARGET;
+export const PLAYGROUND_REPLACEMENT = REPLACEMENT;
+export const PLAYGROUND_DRIFT = DRIFT;
+export const PLAYGROUND_INSERTED = INSERTED;
+export const PLAYGROUND_PATTERN = GREP_PATTERN;
 const STEP_PARAM = 'step';
 
 function requestedStep() {
@@ -51,6 +58,7 @@ export function buildPlayground() {
   append(head, fileLabel, el('span', 'pg-head-spacer'), stepLabel);
 
   const claimTitle = el('p', 'pg-claim-title');
+  claimTitle.setAttribute('aria-live', 'polite');
   const claimText = el('p', 'pg-claim-text');
   const call = el('p', 'pg-call');
   const claim = el('div', 'pg-claim');
@@ -58,7 +66,10 @@ export function buildPlayground() {
 
   const code = el('ol', 'pg-code');
   code.setAttribute('role', 'listbox');
-  code.setAttribute('aria-label', 'File rows, each addressed by its own anchor. Select a row with Enter or a click.');
+  code.setAttribute('aria-multiselectable', 'true');
+  code.setAttribute('aria-orientation', 'vertical');
+  code.setAttribute('aria-describedby', 'pg-caption');
+  code.setAttribute('aria-label', 'File rows, each addressed by its own anchor. Select a row with Enter or a click; hold shift to extend the range.');
   const codePane = el('div', 'pg-code-pane');
   codePane.appendChild(code);
 
@@ -90,6 +101,7 @@ export function buildPlayground() {
   append(root, head, claim, body);
 
   const caption = el('p', 'pg-caption', 'This panel runs the same anchor, staleness, insert, and undo rules as the tool, reduced to one file. Click or focus a row to select it, then press the button to walk through the steps of one edit.');
+  caption.id = 'pg-caption';
 
   function lineIndexByAnchor(anchor) {
     return session.lines.findIndex((line) => line.anchor === anchor);
@@ -436,6 +448,17 @@ export function buildPlayground() {
   renderStep();
   if (stepIndex === 0) setResult('info', 'A guided run through one edit. Press the button to start.', []);
   else setResult('info', `Replayed ${stepIndex} of ${steps.length} steps from the link.`, []);
+
+  window.addEventListener('popstate', () => {
+    const target = Math.min(requestedStep(), steps.length);
+    if (target === stepIndex) return;
+    reset();
+    replayTo(target);
+    renderCode();
+    renderStep();
+    if (target > 0) setResult('info', `Replayed ${target} of ${steps.length} steps from the link.`, []);
+    updateUrl();
+  });
 
   return createController(root, () => {}, null, caption);
 }

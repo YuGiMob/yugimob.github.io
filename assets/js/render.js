@@ -10,6 +10,8 @@ import {
   problemIndexRows,
   problemsHeading,
   projectChipRows,
+  repositoryFacts,
+  stalenessNotice,
   structuredData,
 } from './view-model.js';
 
@@ -101,12 +103,47 @@ function problemHead(number, entry) {
   return head;
 }
 
+function lazyMount(container, build) {
+  let mounted = null;
+  let settled = false;
+  const mount = () => {
+    if (settled) return mounted;
+    settled = true;
+    window.removeEventListener('beforeprint', mount);
+    container.classList.remove('is-loading');
+    try {
+      mounted = build();
+    } catch (error) {
+      console.warn('YuGiMob:', error);
+      mounted = null;
+    }
+    if (!mounted) {
+      container.appendChild(el('p', 'chart-note', 'This panel could not be loaded from the data.'));
+      return null;
+    }
+    append(container, mounted.node, mounted.caption);
+    observeVisibility(mounted.node, () => mounted.start(), () => mounted.stop());
+    return mounted;
+  };
+  container.classList.add('is-loading');
+  if (typeof IntersectionObserver !== 'function') {
+    mount();
+    return;
+  }
+  window.addEventListener('beforeprint', mount);
+  const observer = new IntersectionObserver((entries, self) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    self.disconnect();
+    mount();
+  }, { rootMargin: '200px 0px' });
+  observer.observe(container);
+}
+
 function mountDemo(entry) {
   const box = el('div', 'problem-demo');
-  const demo = entry.demo === PLAYGROUND_ID ? buildPlayground() : entry.demo ? buildDemo(entry.demo) : null;
-  if (!demo) return box;
-  append(box, demo.node, demo.caption);
-  observeVisibility(demo.node, () => demo.start(), () => demo.stop());
+  if (entry.demo) {
+    lazyMount(box, () => (entry.demo === PLAYGROUND_ID ? buildPlayground() : buildDemo(entry.demo)));
+  }
   return box;
 }
 
@@ -175,20 +212,16 @@ export function renderEvidence(showcase, projects, benchmark) {
   if (project) copy.appendChild(answerBlock(evidence, project));
   const demoBox = el('div', 'problem-demo');
   if (benchmark) {
-    const chart = benchmarkChart(benchmark);
-    demoBox.appendChild(chart.node);
-    observeVisibility(chart.node, () => chart.start(), () => chart.stop());
+    lazyMount(demoBox, () => benchmarkChart(benchmark));
+  } else {
+    demoBox.appendChild(el('p', 'chart-note', 'The benchmark block is missing from the data, so the run rates cannot be shown.'));
   }
   append(grid, copy, demoBox);
   article.appendChild(grid);
   if (evidence.demo) {
-    const trace = buildDemo(evidence.demo);
-    if (trace) {
-      const box = el('div', 'evidence-trace');
-      append(box, trace.node);
-      article.appendChild(box);
-      observeVisibility(trace.node, () => trace.start(), () => trace.stop());
-    }
+    const box = el('div', 'evidence-trace');
+    lazyMount(box, () => buildDemo(evidence.demo));
+    article.appendChild(box);
   }
   body.appendChild(article);
 }
@@ -259,19 +292,37 @@ export function renderActivity(data) {
     const [low, high] = extent(values);
     panel.appendChild(el('p', 'sr-only', `${values.length} days recorded, ${formatNumber(total)} pushes total, between ${formatNumber(low)} and ${formatNumber(high)} per day.`));
   }
+  const highlights = Array.isArray(activity.highlights) ? activity.highlights : [];
+  const facts = repositoryFacts(data.stats);
+  const factsLine = el('p', 'activity-facts');
+  append(factsLine, `${facts.repositories} public repositories · ${facts.forks} forks received.`);
+  panel.appendChild(factsLine);
+  if (highlights.length > 0) {
+    panel.appendChild(el('h4', 'activity-subtitle', 'Recently'));
+    const list = el('ul', 'activity-highlights');
+    for (const highlight of highlights) list.appendChild(el('li', 'activity-highlight', highlight));
+    panel.appendChild(list);
+  }
   if (activity.fetchedAt) panel.appendChild(el('p', 'activity-note', `GitHub public events, fetched ${activity.fetchedAt}.`));
   const history = Array.isArray(data.history) ? data.history : [];
   const growth = history.length > 0 ? historyPanel(history) : null;
   if (growth) panel.appendChild(growth);
 }
 
-export function renderFooter(identity) {
+export function renderFooter(data) {
+  const identity = data.identity;
   const githubLink = document.getElementById('github-link');
   if (githubLink) {
     githubLink.href = identity.links?.github || 'https://github.com/YuGiMob';
     githubLink.textContent = `${identity.displayName} on GitHub`;
   }
   setText('campfire-year', `© ${new Date().getFullYear()} ${identity.displayName}`);
+  const notice = document.getElementById('data-age');
+  if (notice) {
+    const message = stalenessNotice(data, new Date().toISOString().slice(0, 10));
+    notice.textContent = message ?? '';
+    notice.hidden = !message;
+  }
 }
 
 export function renderStructuredData(data, showcase) {

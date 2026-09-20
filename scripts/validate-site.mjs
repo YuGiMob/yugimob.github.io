@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { dirname, join, posix } from 'node:path';
+import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = process.argv[2] ? resolve(process.argv[2]) : join(dirname(fileURLToPath(import.meta.url)), '..');
 const errors = [];
 
 function fail(message) {
@@ -69,6 +69,24 @@ for (const [page, source] of html) {
   const policy = source.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/);
   if (!policy) fail(`${page}: missing the Content-Security-Policy meta tag`);
   else if (!policy[1].includes("default-src 'self'")) fail(`${page}: CSP does not default to 'self'`);
+  if (!/<html[^>]*\slang="[^"]+"/.test(source)) fail(`${page}: <html> is missing a lang attribute`);
+  for (const match of source.matchAll(/<img\b[^>]*>/g)) {
+    if (!/\salt="[^"]*"/.test(match[0])) fail(`${page}: <img> is missing an alt attribute`);
+  }
+  for (const match of source.matchAll(/aria-(?:labelledby|describedby|controls)="([^"]+)"/g)) {
+    for (const id of match[1].split(/\s+/)) {
+      if (!ids.has(id)) fail(`${page}: aria reference to missing id ${id}`);
+    }
+  }
+  for (const match of source.matchAll(/<a\b[^>]*target="_blank"[^>]*>/g)) {
+    if (!/rel="[^"]*noopener/.test(match[0])) fail(`${page}: a target="_blank" link has no rel=noopener`);
+  }
+  const headings = [...source.matchAll(/<h([1-6])\b/g)].map((match) => Number(match[1]));
+  for (let index = 1; index < headings.length; index += 1) {
+    if (headings[index] > headings[index - 1] + 1) fail(`${page}: heading level jumps from h${headings[index - 1]} to h${headings[index]}`);
+  }
+  if (headings.length > 0 && headings[0] !== 1) fail(`${page}: the first heading is h${headings[0]}, not h1`);
+  if ([...source.matchAll(/<main\b/g)].length !== 1) fail(`${page}: expected exactly one <main>`);
 }
 
 const indexSource = html.get('index.html') || '';
@@ -79,6 +97,7 @@ for (const file of readdirSync(join(ROOT, 'assets', 'js'))) {
   if (!file.endsWith('.js')) continue;
   const source = readText(`assets/js/${file}`);
   for (const match of source.matchAll(/(?:getElementById|setText|setHidden)\('([^']+)'/g)) referencedIds.add(match[1]);
+  for (const match of source.matchAll(/querySelector\('#([^']+)'\)/g)) referencedIds.add(match[1]);
 }
 for (const id of referencedIds) {
   if (!indexIds.has(id)) fail(`index.html: missing #${id} referenced by scripts`);
@@ -95,19 +114,8 @@ if (structuredData && policy) {
 
 function importTargets(source) {
   const targets = [];
-  let pending = false;
-  for (const line of source.split('\n')) {
-    const trimmed = line.trim();
-    if (/^import\b/.test(trimmed)) pending = true;
-    if (!pending) continue;
-    const match = trimmed.match(/from '(\.\S+)'/);
-    if (match) {
-      targets.push(match[1]);
-      pending = false;
-    } else if (trimmed.endsWith(';')) {
-      pending = false;
-    }
-  }
+  for (const match of source.matchAll(/^\s*(?:import|export)\b[^;]*?\bfrom\s+'(\.[^']+)'/gm)) targets.push(match[1]);
+  for (const match of source.matchAll(/^\s*import\s+'(\.[^']+)'/gm)) targets.push(match[1]);
   return targets;
 }
 
@@ -133,8 +141,8 @@ for (const file of ['data/site-data.json', 'data/showcase.json']) {
 }
 
 const siteDataPath = join(ROOT, 'data', 'site-data.json');
+let siteData = null;
 if (existsSync(siteDataPath)) {
-  let siteData = null;
   try {
     siteData = JSON.parse(readFileSync(siteDataPath, 'utf8'));
   } catch (err) {
@@ -150,12 +158,18 @@ if (existsSync(siteDataPath)) {
     }
     const avatarUrl = siteData.identity && siteData.identity.avatarUrl;
     if (policy && typeof avatarUrl === 'string') {
-      try {
-        const origin = new URL(avatarUrl).origin;
-        const imgSrc = policy[1].match(/img-src ([^;]+)/)?.[1] ?? '';
-        if (!imgSrc.includes(origin)) fail(`index.html: the CSP img-src does not allow the avatar origin ${origin}`);
-      } catch {
-        fail('site-data.json: identity.avatarUrl is not a URL');
+      const imgSrc = policy[1].match(/img-src ([^;]+)/)?.[1] ?? '';
+      if (/^https?:\/\//.test(avatarUrl)) {
+        try {
+          const origin = new URL(avatarUrl).origin;
+          if (!imgSrc.includes(origin)) fail(`index.html: the CSP img-src does not allow the avatar origin ${origin}`);
+        } catch {
+          fail('site-data.json: identity.avatarUrl is not a URL');
+        }
+      } else if (!imgSrc.includes("'self'")) {
+        fail('index.html: the CSP img-src does not allow a local avatar');
+      } else if (!existsSync(join(ROOT, avatarUrl))) {
+        fail(`site-data.json: identity.avatarUrl points at a missing file ${avatarUrl}`);
       }
     }
   }
@@ -177,6 +191,29 @@ const stylesheet = readText('assets/css/style.css');
 for (const match of stylesheet.matchAll(/url\('([^']+)'\)/g)) {
   const target = localTarget(match[1]);
   if (target && !existsSync(join(ROOT, 'assets', 'css', target))) fail(`assets/css/style.css: missing file ${match[1]}`);
+}
+
+const title = indexSource.match(/<title>([^<]*)<\/title>/)?.[1] ?? '';
+if (title.length < 5 || title.length > 70) fail(`index.html: the title length ${title.length} is outside 5-70`);
+const description = indexSource.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? '';
+if (description.length < 50 || description.length > 200) fail(`index.html: the meta description length ${description.length} is outside 50-200`);
+if (siteData && typeof siteData.identity?.displayName === 'string' && !title.includes(siteData.identity.displayName)) {
+  fail('index.html: the title does not contain the display name');
+}
+const navIds = [...indexSource.matchAll(/data-nav="([^"]+)"/g)].map((match) => match[1]);
+const navPositions = navIds.map((id) => indexSource.indexOf(`id="${id}"`));
+if (navPositions.some((position, index) => position < 0 || (index > 0 && position < navPositions[index - 1]))) {
+  fail('index.html: the nav order does not match the section order');
+}
+const sitemap = readText('sitemap.xml');
+const lastmod = sitemap.match(/<lastmod>(\d{4}-\d{2}-\d{2})<\/lastmod>/)?.[1];
+if (!lastmod) {
+  fail('sitemap.xml: missing a lastmod date');
+} else {
+  if (lastmod > new Date().toISOString().slice(0, 10)) fail(`sitemap.xml: lastmod ${lastmod} is in the future`);
+  const history = Array.isArray(siteData?.history) ? siteData.history : [];
+  const newest = typeof history[history.length - 1]?.date === 'string' ? history[history.length - 1].date : null;
+  if (newest && lastmod !== newest) fail(`sitemap.xml: lastmod ${lastmod} does not match the newest history date ${newest}`);
 }
 
 if (errors.length > 0) {

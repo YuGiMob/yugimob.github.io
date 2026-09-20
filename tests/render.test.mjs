@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { renderDegradedNotice } from '../assets/js/render.js';
+import { applyVisibility, renderDegradedNotice } from '../assets/js/render.js';
 
 function withDocument(element, run) {
   const original = globalThis.document;
@@ -32,4 +32,34 @@ test('renderDegradedNotice reveals the notice before writing the message', () =>
 
 test('renderDegradedNotice does nothing when the page has no notice element', () => {
   withDocument(null, () => renderDegradedNotice('fallback in use'));
+});
+
+function withElements(ids, run) {
+  const nodes = new Map(ids.map((id) => [id, { hidden: false }]));
+  const original = globalThis.document;
+  globalThis.document = { getElementById: (id) => nodes.get(id) ?? null };
+  try {
+    run(nodes);
+  } finally {
+    globalThis.document = original;
+  }
+}
+
+const VISIBLE_IDS = ['problems', 'evidence', 'colophon', 'campfire', 'hero-stats'];
+
+test('applyVisibility hides every section the data turns off', () => {
+  withElements(VISIBLE_IDS, (nodes) => {
+    applyVisibility({ showArtifacts: false, showAbout: false, showAbilityScores: false, showCampfire: false }, {});
+    for (const id of VISIBLE_IDS) assert.equal(nodes.get(id).hidden, true);
+  });
+});
+
+test('applyVisibility defaults to showing sections and follows the evidence block', () => {
+  withElements(VISIBLE_IDS, (nodes) => {
+    applyVisibility({}, { evidence: { name: 'tool' } });
+    for (const id of VISIBLE_IDS) assert.equal(nodes.get(id).hidden, false);
+    applyVisibility({}, {});
+    assert.equal(nodes.get('evidence').hidden, true);
+    assert.equal(nodes.get('problems').hidden, false);
+  });
 });

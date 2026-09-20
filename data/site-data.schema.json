@@ -14,14 +14,13 @@
         "displayName": { "type": "string", "minLength": 1 },
         "classTitle": { "type": "string", "minLength": 1 },
         "tagline": { "type": "string", "minLength": 1 },
-        "avatarUrl": { "type": "string", "format": "uri" },
+        "avatarUrl": { "type": "string", "minLength": 1 },
         "links": {
           "type": "object",
-          "required": ["github", "email"],
+          "required": ["github"],
           "additionalProperties": false,
           "properties": {
-            "github": { "type": "string", "format": "uri" },
-            "email": { "type": ["string", "null"], "format": "email" }
+            "github": { "type": "string", "format": "uri" }
           }
         }
       }
@@ -49,13 +48,12 @@
     },
     "stats": {
       "type": "object",
-      "required": ["totalStars", "npmPackages", "publicRepos", "starsGiven", "forksReceived"],
+      "required": ["totalStars", "npmPackages", "publicRepos", "forksReceived"],
       "additionalProperties": false,
       "properties": {
         "totalStars": { "type": "integer", "minimum": 0 },
         "npmPackages": { "type": "integer", "minimum": 0 },
         "publicRepos": { "type": "integer", "minimum": 0 },
-        "starsGiven": { "type": "integer", "minimum": 0 },
         "forksReceived": { "type": "integer", "minimum": 0 }
       }
     },

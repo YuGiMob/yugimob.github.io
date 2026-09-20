@@ -111,10 +111,14 @@ export function createRuntime() {
       return id;
     },
     frame(callback) {
+      if (frameId) return;
       const loop = (time) => {
-        if (stopped) return;
+        if (stopped) {
+          frameId = 0;
+          return;
+        }
         callback(time);
-        frameId = requestAnimationFrame(loop);
+        frameId = stopped ? 0 : requestAnimationFrame(loop);
       };
       frameId = requestAnimationFrame(loop);
     },

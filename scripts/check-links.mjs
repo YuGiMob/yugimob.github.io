@@ -18,7 +18,7 @@ const showcase = readJson('data/showcase.json');
 const urls = new Map();
 
 function add(url, label) {
-  if (!url) return;
+  if (!/^https?:\/\//.test(url ?? '')) return;
   if (!urls.has(url)) urls.set(url, new Set());
   urls.get(url).add(label);
 }
@@ -39,12 +39,18 @@ for (const problem of showcase.problems ?? []) {
   add(project?.url, `${problem.name} showcase`);
 }
 
+async function probe(url, method) {
+  const response = await fetch(url, { redirect: 'follow', method, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  if (response.body) await response.body.cancel().catch(() => {});
+  return response;
+}
+
 async function check(url) {
   let lastStatus = 0;
   for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
     try {
-      const response = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(TIMEOUT_MS) });
-      if (response.body) await response.body.cancel().catch(() => {});
+      let response = await probe(url, 'HEAD');
+      if (response.status === 405 || response.status === 501) response = await probe(url, 'GET');
       lastStatus = response.status;
       if ((response.status === 429 || response.status >= 500) && attempt + 1 < ATTEMPTS) {
         await sleep(retryDelayMs(response.headers));

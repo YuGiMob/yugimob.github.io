@@ -76,7 +76,6 @@ if (process.env.GITHUB_TOKEN) GITHUB_HEADERS.Authorization = `Bearer ${process.e
 
 const EVENT_PAGES = 3;
 const REPO_PAGES = 5;
-const STARRED_PAGES = 50;
 const PAGE_SIZE = 100;
 const FETCH_TIMEOUT_MS = 15000;
 const UNLISTED_REPOS = new Set(['pi-jina-webtools', 'pi-msg-queue', 'pi-tps-status', 'mypi']);
@@ -145,7 +144,7 @@ const reportCount = (path, oldArray, newArray) => {
   summary.push(before === after ? `${path}: ${after} entries (unchanged)` : `${path}: ${before} -> ${after} entries`);
 };
 
-async function getJson(url, headers, warnPrefix) {
+async function request(url, headers, warnPrefix, read) {
   for (let attempt = 1; attempt <= 2; attempt++) {
     let response;
     try {
@@ -167,46 +166,29 @@ async function getJson(url, headers, warnPrefix) {
         await sleep(300);
         continue;
       }
-      console.warn(`${warnPrefix}:`, response.status);
+      console.warn(`${warnPrefix}: ${response.status}${response.status === 404 ? ' (not found)' : ''}`);
       return null;
     }
     try {
-      return await response.json();
+      return await read(response);
     } catch (err) {
       if (attempt < 2) {
         await sleep(300);
         continue;
       }
-      console.warn(`${warnPrefix}: non-JSON body`, err.message);
+      console.warn(`${warnPrefix}: unreadable body`, err.message);
       return null;
     }
   }
   return null;
 }
 
-async function getText(url, headers, warnPrefix) {
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    try {
-      const response = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-      if (!response.ok) {
-        if (attempt < 2) {
-          await sleep(300);
-          continue;
-        }
-        console.warn(`${warnPrefix}:`, response.status);
-        return null;
-      }
-      return await response.text();
-    } catch (err) {
-      if (attempt < 2) {
-        await sleep(300);
-        continue;
-      }
-      console.warn(`${warnPrefix}:`, err.message);
-      return null;
-    }
-  }
-  return null;
+function getJson(url, headers, warnPrefix) {
+  return request(url, headers, warnPrefix, (response) => response.json());
+}
+
+function getText(url, headers, warnPrefix) {
+  return request(url, headers, warnPrefix, (response) => response.text());
 }
 
 async function fetchPages(baseUrl, maxPages, warnPrefix) {
@@ -227,15 +209,10 @@ async function fetchPages(baseUrl, maxPages, warnPrefix) {
   return received ? items : null;
 }
 
-async function fetchStarredCount() {
-  const items = await fetchPages('https://api.github.com/users/YuGiMob/starred', STARRED_PAGES, 'GitHub API error for /starred');
-  return Array.isArray(items) ? items.length : null;
-}
-const [user, reposRaw, events, starsGiven] = await Promise.all([
+const [user, reposRaw, events] = await Promise.all([
   getJson('https://api.github.com/users/YuGiMob', GITHUB_HEADERS, 'GitHub API error for /users/YuGiMob'),
   fetchPages('https://api.github.com/users/YuGiMob/repos', REPO_PAGES, 'GitHub API error for /repos'),
   fetchPages('https://api.github.com/users/YuGiMob/events/public', EVENT_PAGES, 'GitHub API error for /events/public'),
-  fetchStarredCount(),
 ]);
 const repos = Array.isArray(reposRaw) ? reposRaw : [];
 
@@ -244,9 +221,6 @@ if (Array.isArray(events) && events.length >= EVENT_PAGES * PAGE_SIZE) {
 }
 if (Array.isArray(reposRaw) && reposRaw.length >= REPO_PAGES * PAGE_SIZE) {
   console.warn(`GitHub repos: reached the ${REPO_PAGES * PAGE_SIZE}-repo window; totals may be incomplete`);
-}
-if (typeof starsGiven === 'number' && starsGiven >= STARRED_PAGES * PAGE_SIZE) {
-  console.warn(`GitHub stars given: reached the ${STARRED_PAGES * PAGE_SIZE}-star window; the count may be incomplete`);
 }
 
 if (Array.isArray(reposRaw)) {
@@ -282,10 +256,6 @@ if (user) {
 }
 data.stats.npmPackages = npmPackages.length;
 report('stats.npmPackages', existing.stats.npmPackages, data.stats.npmPackages);
-if (typeof starsGiven === 'number') {
-  data.stats.starsGiven = starsGiven;
-  report('stats.starsGiven', existing.stats.starsGiven, starsGiven);
-}
 
 const repoByName = new Map(repos.map((r) => [r.name, r]));
 const existingByName = new Map(existing.projects.map((p) => [p.name, p]));
@@ -319,25 +289,24 @@ if (Array.isArray(events)) {
   reportCount('activity.daily', existing.activity.daily, data.activity.daily);
 }
 let anyNpmSuccess = false;
-for (const pkg of npmPackages) {
-  const json = await getJson(
-    `https://api.npmjs.org/downloads/point/last-week/${pkg}`,
-    { Accept: 'application/json' },
-    `npm API error for ${pkg}`,
-  );
+const npmResults = await Promise.all(
+  npmPackages.map((pkg) =>
+    getJson(
+      `https://api.npmjs.org/downloads/point/last-week/${pkg}`,
+      { Accept: 'application/json' },
+      `npm API error for ${pkg}`,
+    ),
+  ),
+);
+npmPackages.forEach((pkg, index) => {
+  const json = npmResults[index];
   const project = projectByNpm.get(pkg);
-  if (project && json && typeof json.downloads === 'number') {
-    anyNpmSuccess = true;
-    const prev = existingByName.get(project.name);
-    report(
-      `projects.${project.name}.npmWeeklyDownloads`,
-      prev?.npmWeeklyDownloads,
-      json.downloads,
-    );
-    project.npmWeeklyDownloads = json.downloads;
-  }
-  await sleep(50);
-}
+  if (!project || !json || typeof json.downloads !== 'number') return;
+  anyNpmSuccess = true;
+  const prev = existingByName.get(project.name);
+  report(`projects.${project.name}.npmWeeklyDownloads`, prev?.npmWeeklyDownloads, json.downloads);
+  project.npmWeeklyDownloads = json.downloads;
+});
 
 const scenarioSources = await Promise.all(
   BENCHMARK_SCENARIO_RAW.map((url) => getText(url, { Accept: 'text/plain' }, `benchmark scenarios ${url}`)),
@@ -390,8 +359,7 @@ const fetchedSomething =
   user !== null ||
   Array.isArray(reposRaw) ||
   Array.isArray(events) ||
-  anyNpmSuccess ||
-  typeof starsGiven === 'number';
+  anyNpmSuccess;
 if (fetchedSomething) {
   const totalDownloads = data.projects.reduce(
     (sum, project) => sum + (Number.isFinite(project.npmWeeklyDownloads) ? project.npmWeeklyDownloads : 0),
@@ -406,16 +374,18 @@ if (fetchedSomething) {
   reportCount('history', existing.history, data.history);
 }
 const dataChanged = JSON.stringify(existing) !== JSON.stringify(data);
-try {
-  writeFileSync(TMP_FILE, `${JSON.stringify(data, null, 2)}\n`);
-  renameSync(TMP_FILE, DATA_FILE);
-} catch (err) {
-  safeUnlink(TMP_FILE);
-  throw err;
+if (dataChanged) {
+  try {
+    writeFileSync(TMP_FILE, `${JSON.stringify(data, null, 2)}\n`);
+    renameSync(TMP_FILE, DATA_FILE);
+  } catch (err) {
+    safeUnlink(TMP_FILE);
+    throw err;
+  }
+  if (data.history.at(-1)?.date === today) updateSitemapLastmod(today);
 }
-if (dataChanged) updateSitemapLastmod(today);
 console.log('Refresh complete. Changes:');
 for (const line of summary) {
   console.log(`  ${line}`);
 }
-console.log(`Data written to ${DATA_FILE}`);
+console.log(dataChanged ? `Data written to ${DATA_FILE}` : `No changes; ${DATA_FILE} left untouched`);

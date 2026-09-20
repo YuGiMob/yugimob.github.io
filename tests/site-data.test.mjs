@@ -8,7 +8,7 @@ const VALID = {
     classTitle: 'Testing things',
     tagline: 'A tagline.',
     avatarUrl: 'https://example.com/a.png',
-    links: { github: 'https://github.com/tester', email: null },
+    links: { github: 'https://github.com/tester' },
   },
   projects: [{ name: 'tool', url: 'https://github.com/tester/tool', description: 'A tool.' }],
   stats: { totalStars: 1 },

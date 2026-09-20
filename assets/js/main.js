@@ -1,4 +1,4 @@
-import { el, setText } from './ui.js';
+import { el, link, setText } from './ui.js';
 import { fetchJson } from './fetch-json.js';
 import { isValidSiteData, isValidBenchmark, fallbackShowcase } from './site-data.js';
 import {
@@ -19,6 +19,8 @@ import {
 
 const DATA_URL = 'data/site-data.json';
 const SHOWCASE_URL = 'data/showcase.json';
+
+document.getElementById('main-content')?.setAttribute('aria-busy', 'true');
 
 function setupNav() {
   const links = [...document.querySelectorAll('[data-nav]')];
@@ -129,8 +131,9 @@ async function init() {
   renderEvidence(showcase, projects, benchmark);
   renderColophon(showcase);
   renderActivity(data);
-  renderFooter(data.identity);
+  renderFooter(data);
   renderStructuredData(data, showcase);
+  document.getElementById('main-content')?.removeAttribute('aria-busy');
   if (!showcaseRaw) {
     renderDegradedNotice('The curated copy in data/showcase.json could not be loaded, so this page is showing the fallback descriptions from data/site-data.json.');
   }
@@ -145,9 +148,12 @@ init().catch((error) => {
 });
 
 function renderError() {
+  document.title = 'YuGiMob · data unavailable';
   setText('intro-headline', 'This page could not load its data.');
   setText('display-name', 'YuGiMob');
-  for (const id of ['problems', 'evidence', 'colophon']) {
+  const main = document.getElementById('main-content');
+  if (main) main.removeAttribute('aria-busy');
+  for (const id of ['problems', 'evidence', 'colophon', 'activity-panel']) {
     const section = document.getElementById(id);
     if (section) section.hidden = true;
   }
@@ -155,10 +161,19 @@ function renderError() {
   if (navLinks) navLinks.hidden = true;
   const stats = document.getElementById('hero-stats');
   if (stats) stats.hidden = true;
+  const notice = document.getElementById('data-age');
+  if (notice) notice.hidden = true;
   const paragraphs = document.getElementById('intro-paragraphs');
   if (paragraphs) {
     paragraphs.replaceChildren();
-    paragraphs.appendChild(el('p', 'intro-paragraph', 'The page could not fetch its data files. Check data/site-data.json and data/showcase.json.'));
+    const message = el('p', 'intro-paragraph', 'The page could not fetch its data files. The machine file and the curated file are still readable by hand:');
+    const source = el('p', 'intro-paragraph');
+    source.append(
+      link('data/site-data.json', 'data/site-data.json'),
+      ' · ',
+      link('data/showcase.json', 'data/showcase.json'),
+    );
+    paragraphs.append(message, source);
   }
   const actions = document.querySelector('.intro-actions');
   if (actions) {

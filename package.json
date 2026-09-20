@@ -1,6 +1,8 @@
 {
   "name": "yugimob-site",
   "private": true,
+  "license": "MIT",
+  "homepage": "https://yugimob.github.io/",
   "type": "module",
   "engines": {
     "node": ">=22.8"

@@ -71,6 +71,7 @@ export function benchmarkChart(bench) {
     const item = el('li', `bench-row${contender.highlight ? ' is-highlight' : ''}`);
     const label = el('span', 'bench-label');
     label.appendChild(el('span', 'bench-name', contender.label));
+    if (contender.version) label.appendChild(el('span', 'bench-version', `v${contender.version}`));
     if (contender.highlight) label.appendChild(el('span', 'bench-flag', 'this project'));
     if (contender.traceUrl) {
       const trace = link(contender.traceUrl, 'trace', 'bench-trace');

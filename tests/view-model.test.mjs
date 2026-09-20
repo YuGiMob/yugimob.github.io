@@ -7,6 +7,9 @@ import {
   problemIndexRows,
   problemsHeading,
   projectChipRows,
+  repositoryFacts,
+  staleDays,
+  stalenessNotice,
   structuredData,
 } from '../assets/js/view-model.js';
 
@@ -17,6 +20,7 @@ const PROJECTS = [
     language: 'TypeScript',
     license: 'MIT',
     stars: 12,
+    forks: 4,
     npm: 'tool-a',
     url: 'https://github.com/tester/tool-a',
     npmWeeklyDownloads: 34,
@@ -77,12 +81,16 @@ test('heroStatRows sums the weekly npm downloads across projects', () => {
 test('projectChipRows formats the numbers and skips absent fields', () => {
   assert.deepEqual(projectChipRows(PROJECTS[0]), [
     { label: 'stars', value: '12' },
+    { label: 'forks', value: '4' },
     { label: 'installs/wk', value: '34' },
     { label: 'language', value: 'TypeScript' },
     { label: 'license', value: 'MIT' },
     { label: 'updated', value: '2026-09-17' },
   ]);
-  assert.deepEqual(projectChipRows(PROJECTS[1]), [{ label: 'stars', value: '0' }]);
+  assert.deepEqual(projectChipRows(PROJECTS[1]), [
+    { label: 'stars', value: '0' },
+    { label: 'forks', value: '0' },
+  ]);
 });
 
 test('activityLine expands the window range', () => {
@@ -100,4 +108,33 @@ test('structuredData lists the showcase projects in order and drops unknown name
   assert.equal(list.itemListElement[0].item.codeRepository, 'https://github.com/tester/tool-a');
   assert.deepEqual(list.itemListElement[0].item.sameAs, ['https://www.npmjs.com/package/tool-a']);
   assert.equal(list.itemListElement[1].item.license, undefined);
+});
+
+test('repositoryFacts formats the repository totals', () => {
+  assert.deepEqual(repositoryFacts({ publicRepos: 12, forksReceived: 30 }), { repositories: '12', forks: '30' });
+  assert.deepEqual(repositoryFacts({}), { repositories: '0', forks: '0' });
+});
+
+test('staleDays counts whole days and rejects unusable dates', () => {
+  assert.equal(staleDays('2026-09-17', '2026-09-20'), 3);
+  assert.equal(staleDays('2026-09-20', '2026-09-20'), 0);
+  assert.equal(staleDays('2026-09-25', '2026-09-20'), 0);
+  assert.equal(staleDays(undefined, '2026-09-20'), null);
+  assert.equal(staleDays('not a date', '2026-09-20'), null);
+});
+
+test('stalenessNotice names the source that went stale', () => {
+  const stale = { activity: { fetchedAt: '2026-09-10' }, benchmark: { generatedAt: '2026-09-20T12:00:00Z' } };
+  assert.equal(stalenessNotice(stale, '2026-09-20'), 'The daily refresh last updated this page 10 days ago.');
+  assert.equal(stalenessNotice({ activity: { fetchedAt: '2026-09-19' } }, '2026-09-20', 0), 'The daily refresh last updated this page 1 day ago.');
+  assert.equal(stalenessNotice({}, '2026-09-20'), null);
+});
+
+test('stalenessNotice blames a stale benchmark report on the report, not the refresh', () => {
+  const fresh = { activity: { fetchedAt: '2026-09-19' }, benchmark: { generatedAt: '2026-09-20T12:00:00Z' } };
+  assert.equal(stalenessNotice(fresh, '2026-09-20'), null);
+  const oldReport = { activity: { fetchedAt: '2026-09-19' }, benchmark: { generatedAt: '2026-06-01T12:00:00Z' } };
+  assert.equal(stalenessNotice(oldReport, '2026-09-20'), 'The newest benchmark report is 111 days old.');
+  const both = { activity: { fetchedAt: '2026-09-01' }, benchmark: { generatedAt: '2026-09-10T12:00:00Z' } };
+  assert.equal(stalenessNotice(both, '2026-09-20'), 'The daily refresh last updated this page 19 days ago; the newest benchmark report is 10 days old.');
 });

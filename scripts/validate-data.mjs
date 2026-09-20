@@ -4,7 +4,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEMO_IDS } from '../assets/js/demos.js';
 import { PLAYGROUND_ID } from '../assets/js/playground.js';
-import { BENCHMARK_FOCI, isTimestamp } from './refresh-lib.mjs';
+import { BENCHMARK_FOCI, HISTORY_LIMIT, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS, isTimestamp } from './refresh-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -271,9 +271,18 @@ if (isPlainObject(showcase)) run(() => validateShowcase(showcase, declaredNames)
 if (isPlainObject(data)) {
   run(() => {
     if (Array.isArray(data.activity?.daily)) checkSortedDates(data.activity.daily, 'activity.daily');
+    if (Array.isArray(data.activity?.daily) && data.activity.daily.length > MAX_ACTIVITY_DAYS) {
+      fail(`activity.daily has ${data.activity.daily.length} entries; the cap is ${MAX_ACTIVITY_DAYS}`);
+    }
+    if (Array.isArray(data.activity?.highlights) && data.activity.highlights.length > MAX_HIGHLIGHTS) {
+      fail(`activity.highlights has ${data.activity.highlights.length} entries; the cap is ${MAX_HIGHLIGHTS}`);
+    }
   });
   run(() => {
     if (Array.isArray(data.history)) checkSortedDates(data.history, 'history');
+    if (Array.isArray(data.history) && data.history.length > HISTORY_LIMIT) {
+      fail(`history has ${data.history.length} entries; the cap is ${HISTORY_LIMIT}`);
+    }
   });
 }
 

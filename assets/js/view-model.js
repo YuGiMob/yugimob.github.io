@@ -50,7 +50,10 @@ export function heroStatRows(data) {
 }
 
 export function projectChipRows(project) {
-  const chips = [{ label: 'stars', value: formatNumber(project.stars ?? 0) }];
+  const chips = [
+    { label: 'stars', value: formatNumber(project.stars ?? 0) },
+    { label: 'forks', value: formatNumber(project.forks ?? 0) },
+  ];
   if (project.npmWeeklyDownloads) chips.push({ label: 'installs/wk', value: formatNumber(project.npmWeeklyDownloads) });
   if (project.language) chips.push({ label: 'language', value: project.language });
   if (project.license) chips.push({ label: 'license', value: project.license });
@@ -63,6 +66,37 @@ export function activityLine(activity) {
     pushes: `${formatNumber(activity.pushes ?? 0)} pushes to public repositories, `,
     window: formatWindow(activity.window),
   };
+}
+
+export function repositoryFacts(stats) {
+  return {
+    repositories: formatNumber(stats?.publicRepos ?? 0),
+    forks: formatNumber(stats?.forksReceived ?? 0),
+  };
+}
+
+const DAY_MS = 86400000;
+
+function dayCount(days) {
+  return `${days} ${days === 1 ? 'day' : 'days'}`;
+}
+
+export function staleDays(date, today) {
+  const then = Date.parse(date);
+  const now = Date.parse(today);
+  if (!Number.isFinite(then) || !Number.isFinite(now)) return null;
+  return Math.max(0, Math.round((now - then) / DAY_MS));
+}
+
+export function stalenessNotice(data, today, limit = 3) {
+  const messages = [];
+  const activityDays = staleDays(data.activity?.fetchedAt, today);
+  const benchmarkDays = staleDays(data.benchmark?.generatedAt, today);
+  if (activityDays != null && activityDays > limit) messages.push(`the daily refresh last updated this page ${dayCount(activityDays)} ago`);
+  if (benchmarkDays != null && benchmarkDays > limit) messages.push(`the newest benchmark report is ${dayCount(benchmarkDays)} old`);
+  if (messages.length === 0) return null;
+  const joined = messages.join('; ');
+  return `${joined.charAt(0).toUpperCase()}${joined.slice(1)}.`;
 }
 
 export function structuredData(data, showcase) {
