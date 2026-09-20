@@ -2,9 +2,11 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { retryDelayMs, sleep } from './refresh-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TIMEOUT_MS = 15000;
+const ATTEMPTS = 3;
 const WARN_STATUSES = new Set([401, 403, 429]);
 
 function readJson(relativePath) {
@@ -22,23 +24,39 @@ function add(url, label) {
 }
 
 add(site.identity.links.github, 'identity');
+add(site.identity.avatarUrl, 'avatar');
 for (const project of site.projects) {
   add(project.url, project.name);
   if (project.npm) add(`https://registry.npmjs.org/${project.npm}`, `${project.name} on npm`);
 }
-if (showcase.evidence?.benchmark?.source) add(showcase.evidence.benchmark.source, 'benchmark');
+if (site.benchmark) {
+  add(site.benchmark.source, 'benchmark');
+  add(site.benchmark.reportUrl, 'benchmark report');
+  add(site.benchmark.tracesUrl, 'benchmark traces');
+}
+for (const problem of showcase.problems ?? []) {
+  const project = site.projects.find((entry) => entry.name === problem.name);
+  add(project?.url, `${problem.name} showcase`);
+}
 
 async function check(url) {
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  let lastStatus = 0;
+  for (let attempt = 0; attempt < ATTEMPTS; attempt += 1) {
     try {
       const response = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(TIMEOUT_MS) });
       if (response.body) await response.body.cancel().catch(() => {});
+      lastStatus = response.status;
+      if ((response.status === 429 || response.status >= 500) && attempt + 1 < ATTEMPTS) {
+        await sleep(retryDelayMs(response.headers));
+        continue;
+      }
       return response.status;
     } catch {
-      if (attempt === 1) return 0;
+      if (attempt + 1 >= ATTEMPTS) return lastStatus;
+      await sleep(500 * (attempt + 1));
     }
   }
-  return 0;
+  return lastStatus;
 }
 
 let failures = 0;

@@ -1,9 +1,12 @@
 import test from 'node:test';
-import { execFileSync } from 'node:child_process';
+import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { promisify } from 'node:util';
 
+const run = promisify(execFile);
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 function filesIn(relativeDir, suffix) {
@@ -19,8 +22,16 @@ const files = [
   ...filesIn('tests', '.mjs'),
 ];
 
-for (const file of files) {
-  test(`parses: ${file}`, () => {
-    execFileSync(process.execPath, ['--check', join(ROOT, file)], { stdio: 'pipe' });
-  });
-}
+test('every script parses', async () => {
+  const results = await Promise.all(
+    files.map(async (file) => {
+      try {
+        await run(process.execPath, ['--check', join(ROOT, file)], { stdio: 'pipe' });
+        return null;
+      } catch (error) {
+        return `${file}: ${error.stderr?.trim() || error.message}`;
+      }
+    }),
+  );
+  assert.deepEqual(results.filter(Boolean), []);
+});

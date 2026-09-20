@@ -90,33 +90,15 @@
     "kicker": "Evidence",
     "headline": "Everyone claims their tool is better",
     "problem": "Editing-tool READMEs ship with a demo GIF and a claim, and almost none of them publish the runs where they lose. If the only evidence is a highlight reel, it is not evidence; it is marketing with extra steps.",
-    "answer": "pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness across 34 scenarios. Eight models, eight contenders, 272 runs each. Every verdict links to its trace, including the runs my own tool fails.",
+    "answer": "pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness. The headline number is a pass rate; the next two split out staleness and served state, where a silent mis-edit is worse than a refusal. Every contender links to a committed trace, including the runs my own tool fails.",
     "highlights": [
-      "34 scenarios, 8 models, 2,176 runs",
-      "Stale and drift scenarios are scored",
-      "Every verdict links to its trace",
+      "Stale and served-state scenarios are scored separately",
+      "Every contender links to a committed trace",
+      "Confidence intervals on every pass rate",
       "The losses are published too"
     ],
     "demo": "trace",
-    "intro": "The figures come from committed run reports in pi-edit-benchmark. The trace beside the chart shows one run being scored, including the refusal that became the point.",
-    "benchmark": {
-      "source": "https://github.com/YuGiMob/pi-edit-benchmark",
-      "generatedAt": "2026-09-04T15:00:39.514Z",
-      "models": 8,
-      "scenarios": 34,
-      "contenderCount": 8,
-      "runsPerContender": 272,
-      "contenders": [
-        { "label": "hashline-edit-pro", "overall": 95.2, "safety": 94.3, "errors": 0, "highlight": true },
-        { "label": "hashline-context-edit", "overall": 79.8, "safety": 90.9, "errors": 0 },
-        { "label": "hashline-edit", "overall": 79.0, "safety": 89.8, "errors": 1 },
-        { "label": "aft-pi", "overall": 77.2, "safety": 78.4, "errors": 1 },
-        { "label": "hashline-readmap", "overall": 76.5, "safety": 81.8, "errors": 3 },
-        { "label": "pix-edit", "overall": 72.1, "safety": 80.7, "errors": 10 },
-        { "label": "semantic-edit", "overall": 66.9, "safety": 69.3, "errors": 10 },
-        { "label": "built-in edit", "overall": 65.1, "safety": 67.0, "errors": 5 }
-      ]
-    }
+    "intro": "The figures come from committed run reports in pi-edit-benchmark. The trace beside the chart shows one run being scored, including the refusal that became the point."
   },
   "principles": [
     "Make the wrong operation impossible, not merely discouraged.",

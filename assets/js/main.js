@@ -1,9 +1,11 @@
 import { el, setText } from './ui.js';
-import { isValidSiteData, fallbackShowcase } from './site-data.js';
+import { fetchJson } from './fetch-json.js';
+import { isValidSiteData, isValidBenchmark, fallbackShowcase } from './site-data.js';
 import {
   applyVisibility,
   renderActivity,
   renderColophon,
+  renderDegradedNotice,
   renderEvidence,
   renderFooter,
   renderHeroStats,
@@ -17,28 +19,6 @@ import {
 
 const DATA_URL = 'data/site-data.json';
 const SHOWCASE_URL = 'data/showcase.json';
-
-async function fetchJson(url, attempts = 2) {
-  let lastError = null;
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    let retryable = true;
-    try {
-      const options = { cache: 'no-cache' };
-      if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') options.signal = AbortSignal.timeout(6000);
-      const response = await fetch(url, options);
-      if (!response.ok) {
-        retryable = response.status === 429 || response.status >= 500;
-        throw new Error(`${url}: ${response.status}`);
-      }
-      return await response.json();
-    } catch (error) {
-      lastError = error;
-      if (!retryable || attempt + 1 >= attempts) break;
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    }
-  }
-  throw lastError;
-}
 
 function setupNav() {
   const links = [...document.querySelectorAll('[data-nav]')];
@@ -136,19 +116,24 @@ async function init() {
   if (!isValidSiteData(data)) throw new Error('invalid site data');
   const showcase = showcaseRaw || fallbackShowcase(data);
   const projects = new Map(data.projects.map((project) => [project.name, project]));
+  const benchmark = isValidBenchmark(data.benchmark) ? data.benchmark : null;
+  if (data.benchmark != null && !benchmark) console.warn('YuGiMob: ignoring an unusable benchmark block');
 
+  applyVisibility(data.sections, showcase);
   renderIdentity(data);
   renderIntro(showcase);
   renderHeroStats(data);
-  renderProblemIndex(showcase);
+  renderProblemsHeading(showcase, projects);
+  renderProblemIndex(showcase, projects);
   renderProblems(showcase, projects);
-  renderProblemsHeading(showcase);
-  renderEvidence(showcase, projects);
+  renderEvidence(showcase, projects, benchmark);
   renderColophon(showcase);
   renderActivity(data);
   renderFooter(data.identity);
   renderStructuredData(data, showcase);
-  applyVisibility(data.sections, showcase);
+  if (!showcaseRaw) {
+    renderDegradedNotice('The curated copy in data/showcase.json could not be loaded, so this page is showing the fallback descriptions from data/site-data.json.');
+  }
   setupNav();
   setupAnchorAlignment();
   setupChrome();

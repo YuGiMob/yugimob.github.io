@@ -3,12 +3,13 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.8"
   },
   "scripts": {
     "test": "node --test \"tests/*.test.mjs\"",
+    "coverage": "node --test --experimental-test-coverage --test-coverage-exclude=\"assets/js/{demos,playground,charts,ui,avatar,render,main}.js\" --test-coverage-exclude=\"tests/*.test.mjs\" --test-coverage-lines=95 --test-coverage-branches=82 --test-coverage-functions=92 \"tests/*.test.mjs\"",
     "validate": "node scripts/validate-data.mjs && node scripts/validate-site.mjs",
-    "check": "npm run validate && npm test",
+    "check": "npm run validate && npm run coverage",
     "refresh": "node scripts/refresh-data.mjs",
     "links": "node scripts/check-links.mjs",
     "serve": "python3 -m http.server 8123"

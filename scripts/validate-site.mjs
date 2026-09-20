@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,6 +29,10 @@ function localTarget(value) {
   return clean.replace(/^\//, '');
 }
 
+function sha256(value) {
+  return createHash('sha256').update(value, 'utf8').digest('base64');
+}
+
 const pages = ['index.html', '404.html'];
 const html = new Map();
 for (const page of pages) html.set(page, readText(page));
@@ -48,6 +53,22 @@ for (const [page, source] of html) {
     const target = localTarget(match[1]);
     if (target && !existsSync(join(ROOT, target))) fail(`${page}: missing local file ${match[1]}`);
   }
+  for (const match of source.matchAll(/<script\b[^>]*src="(https?:\/\/[^"]+)"/g)) {
+    fail(`${page}: third-party script ${match[1]}`);
+  }
+  for (const match of source.matchAll(/<link\b[^>]*>/g)) {
+    const tag = match[0];
+    const rel = tag.match(/rel="([^"]+)"/)?.[1] ?? '';
+    const as = tag.match(/as="([^"]+)"/)?.[1] ?? '';
+    const href = tag.match(/href="(https?:\/\/[^"]+)"/)?.[1];
+    if (!href) continue;
+    if (rel === 'stylesheet' || rel === 'modulepreload' || (rel === 'preload' && as !== 'image')) {
+      fail(`${page}: third-party ${rel || as} asset ${href}`);
+    }
+  }
+  const policy = source.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/);
+  if (!policy) fail(`${page}: missing the Content-Security-Policy meta tag`);
+  else if (!policy[1].includes("default-src 'self'")) fail(`${page}: CSP does not default to 'self'`);
 }
 
 const indexSource = html.get('index.html') || '';
@@ -57,12 +78,19 @@ const referencedIds = new Set();
 for (const file of readdirSync(join(ROOT, 'assets', 'js'))) {
   if (!file.endsWith('.js')) continue;
   const source = readText(`assets/js/${file}`);
-  for (const match of source.matchAll(/getElementById\('([^']+)'\)/g)) referencedIds.add(match[1]);
-  for (const match of source.matchAll(/setText\('([^']+)'/g)) referencedIds.add(match[1]);
-  for (const match of source.matchAll(/setHidden\('([^']+)'/g)) referencedIds.add(match[1]);
+  for (const match of source.matchAll(/(?:getElementById|setText|setHidden)\('([^']+)'/g)) referencedIds.add(match[1]);
 }
 for (const id of referencedIds) {
   if (!indexIds.has(id)) fail(`index.html: missing #${id} referenced by scripts`);
+}
+
+const structuredData = indexSource.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+const policy = indexSource.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/);
+if (structuredData && policy) {
+  const declared = policy[1].match(/'sha256-([A-Za-z0-9+/=]+)'/);
+  const actual = sha256(structuredData[1]);
+  if (!declared) fail('index.html: the CSP has no sha256 hash for the inline JSON-LD block');
+  else if (declared[1] !== actual) fail(`index.html: the CSP hash for the inline JSON-LD block is stale, expected 'sha256-${actual}'`);
 }
 
 function importTargets(source) {
@@ -98,20 +126,41 @@ while (queue.length > 0) {
 for (const file of preloaded) {
   if (!existsSync(join(ROOT, file))) fail(`index.html: preloaded file ${file} is missing`);
 }
+
+const fetched = new Set([...indexSource.matchAll(/<link rel="preload" as="fetch" href="([^"]+)"/g)].map((match) => match[1]));
+for (const file of ['data/site-data.json', 'data/showcase.json']) {
+  if (!fetched.has(file)) fail(`index.html: ${file} is fetched at runtime but not preloaded`);
+}
+
 const siteDataPath = join(ROOT, 'data', 'site-data.json');
 if (existsSync(siteDataPath)) {
+  let siteData = null;
   try {
-    const projectNames = new Set(JSON.parse(readFileSync(siteDataPath, 'utf8')).projects.map((project) => project.name));
+    siteData = JSON.parse(readFileSync(siteDataPath, 'utf8'));
+  } catch (err) {
+    fail(`site-data.json unusable for the noscript check: ${err.message}`);
+  }
+  if (siteData) {
+    const projectNames = new Set(siteData.projects.map((project) => project.name));
     const list = indexSource.match(/<ul class="noscript-list">([\s\S]*?)<\/ul>/);
     if (list) {
       for (const match of list[1].matchAll(/github\.com\/[^/"']+\/([^"']+)"/g)) {
         if (!projectNames.has(match[1])) fail(`index.html: noscript link ${match[1]} is not in site-data.json`);
       }
     }
-  } catch (err) {
-    fail(`site-data.json unusable for the noscript check: ${err.message}`);
+    const avatarUrl = siteData.identity && siteData.identity.avatarUrl;
+    if (policy && typeof avatarUrl === 'string') {
+      try {
+        const origin = new URL(avatarUrl).origin;
+        const imgSrc = policy[1].match(/img-src ([^;]+)/)?.[1] ?? '';
+        if (!imgSrc.includes(origin)) fail(`index.html: the CSP img-src does not allow the avatar origin ${origin}`);
+      } catch {
+        fail('site-data.json: identity.avatarUrl is not a URL');
+      }
+    }
   }
 }
+
 const readme = readText('README.md');
 const filesBlock = readme.match(/## Files\s+```\n([\s\S]*?)```/);
 if (!filesBlock) {

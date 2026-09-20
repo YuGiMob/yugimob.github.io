@@ -18,6 +18,13 @@ export function isValidSiteData(data) {
   return true;
 }
 
+export function isValidBenchmark(benchmark) {
+  if (!benchmark || typeof benchmark !== 'object' || Array.isArray(benchmark)) return false;
+  if (!Array.isArray(benchmark.contenders)) return false;
+  if (!benchmark.focusCounts || typeof benchmark.focusCounts !== 'object' || Array.isArray(benchmark.focusCounts)) return false;
+  return true;
+}
+
 export function fallbackShowcase(data) {
   const paragraphs = [data.identity.tagline];
   return {

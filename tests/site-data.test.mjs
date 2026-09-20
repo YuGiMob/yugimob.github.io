@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isValidSiteData, fallbackShowcase, countWord, formatWindow } from '../assets/js/site-data.js';
+import { isValidSiteData, isValidBenchmark, fallbackShowcase, countWord, formatWindow } from '../assets/js/site-data.js';
 
 const VALID = {
   identity: {
@@ -61,4 +61,16 @@ test('formatWindow expands a same-month range', () => {
   assert.equal(formatWindow('2026-09-03..17'), '2026-09-03 to 2026-09-17');
   assert.equal(formatWindow('2026-08-01..2026-09-17'), '2026-08-01 to 2026-09-17');
   assert.equal(formatWindow('2026-09-17'), '2026-09-17');
+});
+
+test('isValidBenchmark rejects a malformed block and accepts a complete one', () => {
+  assert.equal(isValidBenchmark(null), false);
+  assert.equal(isValidBenchmark('none'), false);
+  assert.equal(isValidBenchmark({ contenders: [] }), false);
+  assert.equal(isValidBenchmark({ contenders: [], focusCounts: { core: 0, staleness: 0, 'served-state': 0 } }), true);
+});
+
+test('isValidSiteData tolerates an unusable benchmark block', () => {
+  assert.equal(isValidSiteData({ ...VALID, benchmark: 'none' }), true);
+  assert.equal(isValidSiteData({ ...VALID, benchmark: { contenders: [], focusCounts: {} } }), true);
 });

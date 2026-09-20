@@ -1,4 +1,4 @@
-import { el, append, link, svg, formatNumber, createController } from './ui.js';
+import { el, append, link, svg, formatNumber, extent, createController } from './ui.js';
 
 function chartFrame(kicker, title, note) {
   const root = el('article', 'chart');
@@ -26,34 +26,98 @@ function meter(className, value) {
 }
 
 export function sortedContenders(contenders) {
-  return [...contenders].sort((a, b) => b.overall - a.overall || b.safety - a.safety);
+  return [...contenders].sort((a, b) => b.overall - a.overall || (b.safety ?? 0) - (a.safety ?? 0));
+}
+
+const OUTCOME_ORDER = ['applied', 'recovered', 'rejected', 'error', 'undo', 'noop'];
+
+function outcomeStrip(contender) {
+  const strip = el('span', 'bench-outcomes');
+  const outcomes = contender.outcomes ?? {};
+  const total = OUTCOME_ORDER.reduce((sum, kind) => sum + (outcomes[kind] ?? 0), 0);
+  if (total === 0) return strip;
+  for (const kind of OUTCOME_ORDER) {
+    const count = outcomes[kind] ?? 0;
+    if (count === 0) continue;
+    const segment = el('span', `outcome-segment is-${kind}`);
+    segment.style.setProperty('--share', String(count));
+    segment.title = `${formatNumber(count)} ${kind}`;
+    strip.appendChild(segment);
+  }
+  strip.setAttribute('aria-hidden', 'true');
+  return strip;
+}
+
+function contenderDetail(contender, bench) {
+  const parts = [`${contender.overall.toFixed(1)}% overall`];
+  const focusCounts = bench.focusCounts ?? {};
+  if (contender.safety != null) parts.push(`${contender.safety.toFixed(1)}% on ${focusCounts.staleness ?? 0} staleness scenarios`);
+  if (contender.served != null) parts.push(`${contender.served.toFixed(1)}% on ${focusCounts['served-state'] ?? 0} served-state scenarios`);
+  const outcomes = contender.outcomes ?? {};
+  const split = OUTCOME_ORDER.filter((kind) => outcomes[kind] > 0).map((kind) => `${formatNumber(outcomes[kind])} ${kind}`);
+  if (split.length > 0) parts.push(`out of ${formatNumber(contender.runs)} runs: ${split.join(', ')}`);
+  return parts.join('; ');
 }
 
 export function benchmarkChart(bench) {
+  const cost = Number.isFinite(bench.costUsd) ? ` · $${bench.costUsd.toFixed(2)} in API cost` : '';
   const { root, body } = chartFrame(
     'Results',
     'Pass rate by editing tool',
-    `${bench.models} models × ${bench.scenarios} scenarios × ${bench.contenderCount} contenders · ${bench.runsPerContender} runs each`,
+    `${bench.models} models × ${bench.scenarios} scenarios × ${bench.contenderCount} contenders · ${bench.runsPerContender} runs each · ${formatNumber(bench.totalRuns)} runs${cost}`
   );
   const list = el('ul', 'bench-rows');
   for (const contender of sortedContenders(bench.contenders)) {
     const item = el('li', `bench-row${contender.highlight ? ' is-highlight' : ''}`);
     const label = el('span', 'bench-label');
-    label.appendChild(el('span', null, contender.label));
+    label.appendChild(el('span', 'bench-name', contender.label));
     if (contender.highlight) label.appendChild(el('span', 'bench-flag', 'this project'));
-    label.appendChild(el('span', 'sr-only', ` ${contender.safety}% on stale and drift scenarios`));
+    if (contender.traceUrl) {
+      const trace = link(contender.traceUrl, 'trace', 'bench-trace');
+      trace.setAttribute('aria-label', `committed run trace for ${contender.label}`);
+      label.appendChild(trace);
+    }
     if (contender.errors > 0) label.appendChild(el('span', 'bench-errors', `${contender.errors} ${contender.errors === 1 ? 'error' : 'errors'}`));
+    label.appendChild(el('span', 'sr-only', contenderDetail(contender, bench)));
     const bars = el('span', 'bench-bars');
-    append(bars, meter('meter-overall', contender.overall), meter('meter-safety', contender.safety));
-    const value = el('span', 'bench-value', `${contender.overall.toFixed(1)}%`);
+    append(
+      bars,
+      meter('meter-overall', contender.overall),
+      meter('meter-safety', contender.safety ?? 0),
+      meter('meter-served', contender.served ?? 0),
+      outcomeStrip(contender),
+    );
+    const value = el('span', 'bench-value');
+    value.appendChild(el('span', 'bench-rate', `${contender.overall.toFixed(1)}%`));
+    const interval = el('span', 'bench-interval', `${contender.low.toFixed(1)}–${contender.high.toFixed(1)}`);
+    interval.title = '95% confidence interval';
+    value.appendChild(interval);
     append(item, label, bars, value);
     list.appendChild(item);
   }
+  const present = OUTCOME_ORDER.filter((kind) => bench.contenders.some((entry) => (entry.outcomes?.[kind] ?? 0) > 0));
   const legend = el('p', 'chart-legend');
-  append(legend, legendItem('meter-overall', 'overall pass rate'), legendItem('meter-safety', 'stale & drift scenarios'));
+  append(
+    legend,
+    legendItem('meter-overall', 'overall pass rate'),
+    legendItem('meter-safety', `staleness (${bench.focusCounts?.staleness ?? 0})`),
+    legendItem('meter-served', `served state (${bench.focusCounts?.['served-state'] ?? 0})`),
+  );
+  const outcomeLegend = el('p', 'chart-legend');
+  for (const kind of present) outcomeLegend.appendChild(legendItem(`outcome-segment is-${kind}`, kind));
+  const method = el('p', 'chart-method', 'Real models drive each contender’s own tools through a tool-calling loop, and every row links to a committed trace. Staleness and served-state scenarios are scored separately, so refusing a stale edit is not counted against the tool.');
   const source = el('p', 'chart-source');
-  append(source, 'Source: ', link(bench.source, 'pi-edit-benchmark'), ` · reports generated ${bench.generatedAt.slice(0, 10)}`);
-  append(body, list, legend, source);
+  append(
+    source,
+    'Source: ',
+    link(bench.source, 'pi-edit-benchmark'),
+    ' · ',
+    link(bench.reportUrl, 'run report'),
+    ' · ',
+    link(bench.tracesUrl, 'traces'),
+    ` · generated ${String(bench.generatedAt).slice(0, 10)}`
+  );
+  append(body, list, legend, outcomeLegend, method, source);
   return createController(root, (runtime) => {
     runtime.after(() => root.classList.add('is-live'), 120);
   }, () => root.classList.remove('is-live'));
@@ -61,8 +125,7 @@ export function benchmarkChart(bench) {
 
 export function sparklinePoints(values, width = 120, height = 28) {
   const series = values.length > 1 ? values : [values[0], values[0]];
-  const min = Math.min(...series);
-  const max = Math.max(...series);
+  const [min, max] = extent(series);
   const span = max - min || 1;
   const step = width / (series.length - 1);
   return series

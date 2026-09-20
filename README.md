@@ -19,7 +19,9 @@ flagship loses.
   install command, source link, and a working demo.
   - pi-hashline-edit-pro gets the flagship treatment with an interactive
     hashline playground: real 4-letter anchor allocation, a served-row record,
-    real `[E_RANGE_STALE]` refusals, and a guided six-step run through one edit.
+    real `[E_RANGE_STALE]` refusals, and a guided eight-step run through one
+    edit (read, replace, insert, `anchor_grep`, drift, refusal, retry, undo)
+    that can be linked at any step with `?step=N`.
   - The other entries run a pipeline graph (pi-unsloth-webtools), a Tor circuit
     (pi-tor-proxy), a workflow pipeline (pi-msg-workflow), and a guarded commit
     transcript (pi-git-commit).
@@ -36,7 +38,7 @@ flagship loses.
 index.html                      page shell, meta tags, JSON-LD
 404.html                        not-found page
 favicon.ico                     legacy favicon
-sitemap.xml                     single-URL sitemap
+sitemap.xml                     single-URL sitemap, lastmod refreshed with the data
 robots.txt                      crawl policy and sitemap reference
 assets/apple-touch-icon.png     iOS home-screen icon
 assets/og.jpg                   social preview image
@@ -45,6 +47,8 @@ assets/fonts/                   self-hosted Inter, Newsreader, IBM Plex Mono
 assets/js/main.js               boot, fetch, navigation, error state
 assets/js/render.js             all DOM rendering
 assets/js/site-data.js          data guards, fallback model, formatting
+assets/js/view-model.js         pure derivations behind the DOM
+assets/js/fetch-json.js         retrying JSON fetch with a timeout
 assets/js/ui.js                 DOM, formatting, copy, runtime helpers
 assets/js/hashline.js           anchor allocation + edit session model
 assets/js/playground.js         the flagship interactive demo
@@ -108,15 +112,24 @@ weekly npm downloads, stats, activity (window, pushes, highlights, per-day
 events), and `history`: one snapshot per day with total stars and total weekly
 downloads.
 
+It also holds the `benchmark` block behind the evidence chart. The refresh
+pulls the committed run report from pi-edit-benchmark, joins every run to the
+scenario focus that the benchmark's own scenario sources declare, and derives
+the pass rates, the staleness and served-state splits, the outcome counts, and
+a 95% Wilson interval per contender. Each contender keeps a link to a
+committed trace. Nothing in that block is typed by hand, so the chart cannot
+drift from the runs it claims to show.
+
 The About panel renders those snapshots as a stars and weekly-installs trend.
 
 **`data/showcase.json`** is curated by hand. It holds the introduction, one
 entry per problem/tool pair (kicker, problem headline, problem paragraph,
-answer paragraph, highlights, demo id, size), the evidence block
-(with the benchmark snapshot and trace demo), the principles, and the
-colophon prose. The two files are joined by project name; the validator
-fails if a showcased name is missing from the manifest, duplicated, or if the
-same project is used for both a problem and the evidence.
+answer paragraph, highlights, demo id, size), the evidence narrative
+(problem, answer, highlights, trace demo), the principles, and the colophon
+prose. It carries no numbers: the chart reads them from the machine file. The
+two files are joined by project name; the validator fails if a showcased name
+is missing from the manifest, duplicated, or if the same project is used for
+both a problem and the evidence.
 
 ## Refreshing data
 
@@ -124,11 +137,12 @@ same project is used for both a problem and the evidence.
 node scripts/refresh-data.mjs
 ```
 
-The script fetches the GitHub user, repos, and public events, plus npm weekly
-downloads for every package in the manifest, then updates only the machine
-fields. It requires Node >= 22, needs no install, and makes no authenticated
-requests by default; the refresh workflow passes `GITHUB_TOKEN` so scheduled
-runs do not fight over a shared rate limit.
+The script fetches the GitHub user, repos, and public events, npm weekly
+downloads for every package in the manifest, and the committed
+pi-edit-benchmark run report plus its scenario sources, then updates only the
+machine fields. It requires Node >= 22.8, needs no install, and makes no
+authenticated requests by default; the refresh workflow passes `GITHUB_TOKEN`
+so scheduled runs do not fight over a shared rate limit.
 
 What it preserves: curated prose, descriptions, identity, and the showcase
 file are never touched. Forks and the site repo are skipped. The file is
@@ -145,10 +159,17 @@ GitHub API's 300-event maximum and capping the window at 120 days.
 When a fetch reaches an API pagination cap, the run prints a warning so the
 truncated window is visible in the log.
 
+If the benchmark report or its scenario sources cannot be fetched, the run
+warns and keeps the existing block rather than writing a partial chart. A
+summary with no highlighted contender, or one whose runs do not cover the full
+models × scenarios matrix, is refused the same way. A run that changes
+`data/site-data.json` moves the `lastmod` in `sitemap.xml` to the day it wrote.
+
 The site refreshes itself daily through
 `.github/workflows/refresh-data.yml` (06:00 UTC), which runs the script,
-validates both data files, and commits `data/site-data.json` only when it
-changed. It can also be triggered manually from the Actions tab.
+validates both data files, and commits `data/site-data.json` and `sitemap.xml`
+only when one of them changed. It can also be triggered manually from the Actions
+tab.
 
 ## Validating
 
@@ -156,14 +177,18 @@ changed. It can also be triggered manually from the Actions tab.
 npm run validate
 ```
 
-`npm run validate` runs both checkers. The data validator checks both JSON files
-against the structural rules, cross-references showcase names with the manifest,
-verifies every `demo` id and benchmark total, and prints `validate: ok`, listing
-every failure it finds in one run. The site validator checks internal links,
-element ids the scripts depend on, module preloads, README file paths, and local
-stylesheet references, then prints `validate:site: ok`. The schema files drive
-editor validation through the `$schema` keys in both data files. The workflow
-runs both on every refresh and on push.
+`npm run validate` runs both checkers. The data validator walks both JSON files
+against the schema files themselves, so a rule lives in one place, then
+cross-references showcase names with the manifest, verifies every `demo` id,
+and re-derives the benchmark arithmetic (contender counts, `models × scenarios`,
+outcome totals, and the interval around each pass rate). It prints
+`validate: ok` and lists every failure it finds in one run. The site validator
+checks internal links, element ids the scripts depend on, module preloads, the
+runtime data preloads, README file paths, local stylesheet references, the
+`Content-Security-Policy` on both pages, and that the CSP hash still matches the
+inline JSON-LD block, then prints `validate:site: ok`. The schema files also
+drive editor validation through the `$schema` keys in both data files. The
+workflow runs both on every refresh and on push.
 
 ## Testing
 
@@ -172,11 +197,20 @@ npm test
 ```
 
 The suite runs on `node --test` with no dependencies: unit tests for the
-anchored-edit session model, the avatar srcset helper, the data guards and
-formatting, the chart transforms, and the refresh activity and history
-helpers, plus a parse check for every script and integration checks that the
-committed data and site structure pass their validators and that the validator
-refuses broken input. `npm run check` runs validation and the tests together.
+anchored-edit session model, the avatar srcset helper, the retrying fetch, the
+data guards, the view-model derivations, the chart transforms, and the refresh
+activity, history, and benchmark helpers, plus a parse check for every script
+and integration checks that the committed data and site structure pass their
+validators and that the validator refuses broken input.
+
+`npm run check` runs validation and the tests together. `npm run coverage`
+adds `--experimental-test-coverage` (Node 22.8 or newer) with thresholds on
+lines, branches, and functions. Test files and the DOM-bound modules
+(`render.js`, `main.js`, `demos.js`, `playground.js`, `charts.js`, `ui.js`,
+`avatar.js`) are excluded from the gate: they are exercised through the site
+validator and by hand, while the gate covers the logic modules that the unit
+suite actually drives. `npm run check` uses the coverage run, so CI fails when
+the covered code slips.
 
 ## Serving locally
 

@@ -44,7 +44,7 @@
     },
     "evidence": {
       "type": "object",
-      "required": ["name", "kicker", "headline", "problem", "answer", "highlights", "benchmark"],
+      "required": ["name", "kicker", "headline", "problem", "answer", "highlights"],
       "additionalProperties": false,
       "properties": {
         "name": { "type": "string", "minLength": 1 },
@@ -58,36 +58,7 @@
           "items": { "type": "string", "minLength": 1 }
         },
         "demo": { "type": "string", "minLength": 1 },
-        "intro": { "type": "string", "minLength": 1 },
-        "benchmark": {
-          "type": "object",
-          "required": ["source", "generatedAt", "models", "scenarios", "contenderCount", "runsPerContender", "contenders"],
-          "additionalProperties": false,
-          "properties": {
-            "source": { "type": "string", "format": "uri" },
-            "generatedAt": { "type": "string", "minLength": 1 },
-            "models": { "type": "integer", "minimum": 1 },
-            "scenarios": { "type": "integer", "minimum": 1 },
-            "contenderCount": { "type": "integer", "minimum": 1 },
-            "runsPerContender": { "type": "integer", "minimum": 1 },
-            "contenders": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "object",
-                "required": ["label", "overall", "safety", "errors"],
-                "additionalProperties": false,
-                "properties": {
-                  "label": { "type": "string", "minLength": 1 },
-                  "overall": { "type": "number", "minimum": 0, "maximum": 100 },
-                  "safety": { "type": "number", "minimum": 0, "maximum": 100 },
-                  "errors": { "type": "integer", "minimum": 0 },
-                  "highlight": { "type": "boolean" }
-                }
-              }
-            }
-          }
-        }
+        "intro": { "type": "string", "minLength": 1 }
       }
     },
     "principles": {

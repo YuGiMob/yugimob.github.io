@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { buildActivity, buildDaily, buildHighlights, upsertHistory } from '../scripts/refresh-lib.mjs';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 function push(date, repo = 'tester/tool') {
   return { type: 'PushEvent', created_at: `${date}T10:00:00Z`, repo: { name: repo } };
@@ -72,4 +77,16 @@ test('upsertHistory appends a new date and caps the list', () => {
   ];
   const next = upsertHistory(history, { date: '2026-09-03', totalStars: 3, totalDownloads: 30 }, 2);
   assert.deepEqual(next.map((entry) => entry.date), ['2026-09-02', '2026-09-03']);
+});
+
+test('refresh-data.mjs imports every refresh-lib helper it calls', async () => {
+  const source = readFileSync(join(ROOT, 'scripts', 'refresh-data.mjs'), 'utf8');
+  const block = source.match(/import \{([^{}]*)\} from '\.\/refresh-lib\.mjs'/);
+  assert.ok(block, 'refresh-data.mjs must import from refresh-lib.mjs');
+  const imported = new Set(block[1].split(',').map((name) => name.trim()).filter(Boolean));
+  const library = await import('../scripts/refresh-lib.mjs');
+  assert.deepEqual([...imported].filter((name) => !(name in library)), []);
+  const body = source.slice(block.index + block[0].length);
+  const missing = Object.keys(library).filter((name) => !imported.has(name) && new RegExp(`\\b${name}\\b`).test(body));
+  assert.deepEqual(missing, []);
 });

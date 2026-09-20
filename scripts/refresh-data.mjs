@@ -1,13 +1,25 @@
 #!/usr/bin/env node
 
 import { readFileSync, writeFileSync, renameSync, existsSync, unlinkSync, readdirSync, statSync } from 'node:fs';
-import { buildActivity, upsertHistory } from './refresh-lib.mjs';
+import {
+  BENCHMARK_REPORT_RAW,
+  BENCHMARK_SCENARIO_RAW,
+  benchmarkCoversFullMatrix,
+  buildActivity,
+  isTimestamp,
+  parseScenarioFocus,
+  retryDelayMs,
+  sleep,
+  summarizeBenchmark,
+  upsertHistory,
+} from './refresh-lib.mjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_FILE = join(ROOT, 'data', 'site-data.json');
 const TMP_FILE = `${DATA_FILE}.${process.pid}.tmp`;
+const SITEMAP_FILE = join(ROOT, 'sitemap.xml');
 
 function safeUnlink(path) {
   try {
@@ -26,6 +38,32 @@ function cleanupStaleTmpFiles() {
       } catch {}
     }
   } catch {}
+}
+
+function updateSitemapLastmod(date) {
+  if (!existsSync(SITEMAP_FILE)) {
+    console.warn('sitemap.xml is missing; skipped the lastmod update');
+    return;
+  }
+  const source = readFileSync(SITEMAP_FILE, 'utf8');
+  const previous = source.match(/<lastmod>([^<]+)<\/lastmod>/)?.[1];
+  if (!source.includes('</loc>')) {
+    console.warn('sitemap.xml has no <loc> entry; skipped the lastmod update');
+    return;
+  }
+  const next = previous
+    ? source.replace(/<lastmod>[^<]*<\/lastmod>/, `<lastmod>${date}</lastmod>`)
+    : source.replace('</loc>', `</loc>\n    <lastmod>${date}</lastmod>`);
+  if (next === source) return;
+  const tmp = `${SITEMAP_FILE}.${process.pid}.tmp`;
+  try {
+    writeFileSync(tmp, next);
+    renameSync(tmp, SITEMAP_FILE);
+    report('sitemap.lastmod', previous, date);
+  } catch (err) {
+    safeUnlink(tmp);
+    console.warn('sitemap.xml update failed:', err.message);
+  }
 }
 
 cleanupStaleTmpFiles();
@@ -106,16 +144,7 @@ const reportCount = (path, oldArray, newArray) => {
   const after = Array.isArray(newArray) ? newArray.length : 0;
   summary.push(before === after ? `${path}: ${after} entries (unchanged)` : `${path}: ${before} -> ${after} entries`);
 };
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-function retryDelayMs(response) {
-  const v = response.headers.get('retry-after');
-  if (!v) return 1000;
-  const n = Number(v);
-  if (Number.isFinite(n)) return Math.min(n * 1000, 60000);
-  const t = Date.parse(v);
-  if (!Number.isNaN(t)) return Math.min(Math.max(0, t - Date.now()), 60000);
-  return 1000;
-}
+
 async function getJson(url, headers, warnPrefix) {
   for (let attempt = 1; attempt <= 2; attempt++) {
     let response;
@@ -131,7 +160,7 @@ async function getJson(url, headers, warnPrefix) {
     }
     if (!response.ok) {
       if (attempt < 2 && response.status === 429) {
-        await sleep(retryDelayMs(response));
+        await sleep(retryDelayMs(response.headers));
         continue;
       }
       if (attempt < 2 && response.status >= 500) {
@@ -154,6 +183,32 @@ async function getJson(url, headers, warnPrefix) {
   }
   return null;
 }
+
+async function getText(url, headers, warnPrefix) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const response = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+      if (!response.ok) {
+        if (attempt < 2) {
+          await sleep(300);
+          continue;
+        }
+        console.warn(`${warnPrefix}:`, response.status);
+        return null;
+      }
+      return await response.text();
+    } catch (err) {
+      if (attempt < 2) {
+        await sleep(300);
+        continue;
+      }
+      console.warn(`${warnPrefix}:`, err.message);
+      return null;
+    }
+  }
+  return null;
+}
+
 async function fetchPages(baseUrl, maxPages, warnPrefix) {
   const items = [];
   let received = false;
@@ -284,17 +339,60 @@ for (const pkg of npmPackages) {
   await sleep(50);
 }
 
+const scenarioSources = await Promise.all(
+  BENCHMARK_SCENARIO_RAW.map((url) => getText(url, { Accept: 'text/plain' }, `benchmark scenarios ${url}`)),
+);
+const focusById = new Map();
+for (const source of scenarioSources) {
+  if (typeof source !== 'string') continue;
+  for (const [id, focus] of parseScenarioFocus(source)) focusById.set(id, focus);
+}
+const benchmarkReport = await getJson(BENCHMARK_REPORT_RAW, { Accept: 'application/json' }, 'benchmark report');
+if (!benchmarkReport || focusById.size === 0) {
+  console.warn('benchmark report or scenario sources unavailable; keeping the existing block');
+} else if (!Array.isArray(benchmarkReport.runs)) {
+  console.warn('benchmark report has no run list; keeping the existing block');
+} else {
+  const unknownScenarios = new Set(
+    benchmarkReport.runs
+      .map((run) => run.scenarioId)
+      .filter((id) => id && !focusById.has(id)),
+  );
+  if (unknownScenarios.size > 0) {
+    console.warn(`${unknownScenarios.size} benchmark scenario(s) have no focus in the sources: ${[...unknownScenarios].join(', ')}`);
+  }
+  const benchmark = summarizeBenchmark(benchmarkReport, focusById, (id) =>
+    data.projects.some((project) => project.name === id),
+  );
+  if (benchmark.contenderCount === 0 || !benchmark.contenders.some((entry) => entry.highlight)) {
+    console.warn('benchmark summary has no highlighted contender; keeping the existing block');
+  } else if (!benchmarkCoversFullMatrix(benchmark)) {
+    console.warn(`benchmark report is not a complete matrix (${benchmark.totalRuns} runs over ${benchmark.contenderCount} contenders); keeping the existing block`);
+  } else if (!isTimestamp(benchmark.generatedAt)) {
+    console.warn('benchmark report has no usable generatedAt; keeping the existing block');
+  } else {
+    const previous = existing.benchmark ?? {};
+    report('benchmark.generatedAt', previous.generatedAt, benchmark.generatedAt);
+    report('benchmark.models', previous.models, benchmark.models);
+    report('benchmark.scenarios', previous.scenarios, benchmark.scenarios);
+    report('benchmark.contenderCount', previous.contenderCount, benchmark.contenderCount);
+    report('benchmark.totalRuns', previous.totalRuns, benchmark.totalRuns);
+    reportCount('benchmark.contenders', previous.contenders, benchmark.contenders);
+    report('benchmark.costUsd', previous.costUsd, benchmark.costUsd);
+    data.benchmark = benchmark;
+  }
+}
 if (Array.isArray(events)) {
   data.activity.fetchedAt = today;
   report('activity.fetchedAt', existing.activity.fetchedAt, data.activity.fetchedAt);
 }
-if (
+const fetchedSomething =
   user !== null ||
   Array.isArray(reposRaw) ||
   Array.isArray(events) ||
   anyNpmSuccess ||
-  typeof starsGiven === 'number'
-) {
+  typeof starsGiven === 'number';
+if (fetchedSomething) {
   const totalDownloads = data.projects.reduce(
     (sum, project) => sum + (Number.isFinite(project.npmWeeklyDownloads) ? project.npmWeeklyDownloads : 0),
     0,
@@ -307,6 +405,7 @@ if (
   data.history = upsertHistory(data.history, snapshot);
   reportCount('history', existing.history, data.history);
 }
+const dataChanged = JSON.stringify(existing) !== JSON.stringify(data);
 try {
   writeFileSync(TMP_FILE, `${JSON.stringify(data, null, 2)}\n`);
   renameSync(TMP_FILE, DATA_FILE);
@@ -314,6 +413,7 @@ try {
   safeUnlink(TMP_FILE);
   throw err;
 }
+if (dataChanged) updateSitemapLastmod(today);
 console.log('Refresh complete. Changes:');
 for (const line of summary) {
   console.log(`  ${line}`);

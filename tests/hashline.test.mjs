@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSession, readRows, replace, undo, externalEdit } from '../assets/js/hashline.js';
+import { anchorGrep, createSession, insert, readRows, replace, undo, externalEdit } from '../assets/js/hashline.js';
 
 const SOURCE = ['alpha', 'beta', 'gamma', 'delta'];
 
@@ -144,4 +144,104 @@ test('an empty remove_to falls back to remove_from', () => {
   const result = replace(current, { remove_from: current.lines[1].anchor, remove_to: '', replacement_lines: ['beta!'] });
   assert.equal(result.ok, true);
   assert.deepEqual(current.lines.map((line) => line.text), ['alpha', 'beta!', 'gamma', 'delta']);
+});
+
+test('insert adds lines after an anchor and keeps the anchor line', () => {
+  const current = session();
+  const anchor = current.lines[1].anchor;
+  const result = insert(current, { anchor, direction: 'after', lines: ['beta.1', 'beta.2'] });
+  assert.equal(result.ok, true);
+  assert.deepEqual(current.lines.map((line) => line.text), ['alpha', 'beta', 'beta.1', 'beta.2', 'gamma', 'delta']);
+  assert.equal(current.lines[1].anchor, anchor);
+  assert.deepEqual(result.rows.map((row) => row.kind), ['context', 'added', 'added', 'context']);
+  const added = result.rows.filter((row) => row.kind === 'added');
+  assert.equal(new Set(added.map((row) => row.anchor)).size, 2);
+  assert.ok(added.every((row) => current.served.get(row.anchor) === row.text));
+});
+
+test('insert before an anchor preserves the following rows', () => {
+  const current = session();
+  const result = insert(current, { anchor: current.lines[3].anchor, direction: 'before', lines: ['before delta'] });
+  assert.equal(result.ok, true);
+  assert.deepEqual(current.lines.map((line) => line.text), ['alpha', 'beta', 'gamma', 'before delta', 'delta']);
+  assert.deepEqual(result.rows.map((row) => `${row.kind}:${row.text}`), ['added:before delta', 'context:delta']);
+  assert.equal(new Set(result.rows.map((row) => row.anchor)).size, result.rows.length);
+});
+
+test('insert before an anchor serves the anchor and the following line once', () => {
+  const current = session();
+  const anchor = current.lines[1].anchor;
+  const result = insert(current, { anchor, direction: 'before', lines: ['before beta'] });
+  assert.deepEqual(current.lines.map((line) => line.text), ['alpha', 'before beta', 'beta', 'gamma', 'delta']);
+  assert.deepEqual(result.rows.map((row) => `${row.kind}:${row.text}`), ['added:before beta', 'context:beta', 'context:gamma']);
+  assert.equal(new Set(result.rows.map((row) => row.anchor)).size, result.rows.length);
+});
+
+test('insert at the end of the file omits the trailing context row', () => {
+  const current = session();
+  const result = insert(current, { anchor: current.lines[3].anchor, direction: 'after', lines: ['tail'] });
+  assert.deepEqual(result.rows.map((row) => row.kind), ['context', 'added']);
+});
+
+test('insert refuses an unknown anchor and a drifted anchor', () => {
+  const unknown = session();
+  assert.equal(insert(unknown, { anchor: 'zzzz', lines: ['x'] }).code, 'E_STALE_ANCHOR');
+  const drifted = session();
+  const anchor = drifted.lines[2].anchor;
+  externalEdit(drifted, anchor, 'gamma drifted');
+  const refused = insert(drifted, { anchor, direction: 'after', lines: ['x'] });
+  assert.equal(refused.code, 'E_RANGE_STALE');
+  assert.ok(refused.rows.some((row) => row.kind === 'context' && row.text === 'gamma drifted'));
+});
+
+test('insert with no lines is a noop and refuses a NUL byte', () => {
+  const current = session();
+  const noop = insert(current, { anchor: current.lines[0].anchor, lines: [] });
+  assert.equal(noop.ok, true);
+  assert.deepEqual(current.lines.map((line) => line.text), SOURCE);
+  const bad = insert(current, { anchor: current.lines[0].anchor, lines: ['bad\u0000shape'] });
+  assert.equal(bad.code, 'E_BAD_SHAPE');
+});
+
+test('undo reverts an insert and restores the previous anchors', () => {
+  const current = session();
+  const before = current.lines.map((line) => ({ anchor: line.anchor, text: line.text }));
+  insert(current, { anchor: current.lines[0].anchor, direction: 'after', lines: ['inserted'] });
+  assert.equal(current.lines.length, SOURCE.length + 1);
+  assert.equal(undo(current).ok, true);
+  assert.deepEqual(current.lines.map((line) => ({ anchor: line.anchor, text: line.text })), before);
+});
+
+test('anchorGrep returns matches and context with owned anchors', () => {
+  const current = session();
+  const result = anchorGrep(current, { pattern: 'a', context: 1 });
+  assert.equal(result.ok, true);
+  assert.match(result.message, /anchor_grep\('a'\): [1-9]/);
+  const matches = result.rows.filter((row) => row.kind === 'match');
+  assert.ok(matches.length >= 3);
+  for (const row of result.rows) assert.equal(current.served.get(row.anchor), row.text);
+  assert.equal(result.rows[0].line, 1);
+});
+
+test('anchorGrep supports literal and ignoreCase searches', () => {
+  const current = session();
+  const literal = anchorGrep(current, { pattern: 'DELTA', literal: true, ignoreCase: true });
+  assert.equal(literal.rows.filter((row) => row.kind === 'match').length, 1);
+  const caseSensitive = anchorGrep(current, { pattern: 'DELTA', literal: true });
+  assert.equal(caseSensitive.rows.length, 0);
+});
+
+test('anchorGrep refuses an empty or invalid pattern', () => {
+  const current = session();
+  assert.equal(anchorGrep(current, { pattern: '' }).code, 'E_BAD_SHAPE');
+  assert.equal(anchorGrep(current, { pattern: '(' }).code, 'E_BAD_SHAPE');
+});
+
+test('a grep match can be edited without a re-read', () => {
+  const current = session();
+  const result = anchorGrep(current, { pattern: 'gamma' });
+  const match = result.rows.find((row) => row.kind === 'match');
+  const edited = replace(current, { remove_from: match.anchor, replacement_lines: ['gamma!'] });
+  assert.equal(edited.ok, true);
+  assert.deepEqual(current.lines.map((line) => line.text), ['alpha', 'beta', 'gamma!', 'delta']);
 });

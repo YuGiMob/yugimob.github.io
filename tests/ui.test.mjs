@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatNumber } from '../assets/js/ui.js';
+import { extent, formatNumber } from '../assets/js/ui.js';
 
 test('formatNumber groups thousands', () => {
   assert.equal(formatNumber(1234567), '1,234,567');
@@ -12,4 +12,10 @@ test('formatNumber falls back to zero for unusable values', () => {
   assert.equal(formatNumber(Infinity), '0');
   assert.equal(formatNumber(undefined), '0');
   assert.equal(formatNumber('12'), '0');
+});
+
+test('extent returns the low and high values of a series', () => {
+  assert.deepEqual(extent([3, 1, 2]), [1, 3]);
+  assert.deepEqual(extent([5]), [5, 5]);
+  assert.deepEqual(extent([]), [0, 0]);
 });

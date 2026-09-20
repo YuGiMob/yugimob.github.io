@@ -119,6 +119,90 @@ export function replace(session, request) {
   return { ok: true, code: null, message: `replace('${removeFrom}'${removeTo === removeFrom ? '' : `, '${removeTo}'`}): ${added.length} added, ${removed.length} removed`, rows };
 }
 
+export function insert(session, request) {
+  const direction = request.direction === 'before' ? 'before' : 'after';
+  const anchor = String(request.anchor ?? '');
+  const index = session.lines.findIndex((line) => line.anchor === anchor);
+  if (index < 0) {
+    return refuse(session, 'E_STALE_ANCHOR', 'Anchor is not owned in this session. Read the file before editing.');
+  }
+  const line = session.lines[index];
+  if (isStale(session, line)) {
+    return refuse(session, 'E_RANGE_STALE', 'The anchor line changed on disk since it was served. Fresh anchors below.', rangeRows(session, index, index));
+  }
+  const lines = Array.isArray(request.lines) ? request.lines.map(String) : [];
+  if (lines.some((text) => text.includes('\u0000'))) {
+    return refuse(session, 'E_BAD_SHAPE', 'Inserted text contains a NUL byte.', rangeRows(session, index, index));
+  }
+  if (lines.length === 0) {
+    return { ok: true, code: null, message: `insert('${anchor}', ${direction}): nothing to insert`, rows: [] };
+  }
+  session.undo = snapshot(session);
+  const added = lines.map((text) => ({ anchor: allocateAnchor(session), text }));
+  const following = session.lines[index + 1];
+  const at = direction === 'before' ? index : index + 1;
+  session.lines.splice(at, 0, ...added);
+  const rows = [];
+  if (direction === 'before') {
+    for (const addedLine of added) rows.push({ kind: 'added', anchor: addedLine.anchor, text: addedLine.text });
+    rows.push({ kind: 'context', anchor: line.anchor, text: line.text });
+  } else {
+    rows.push({ kind: 'context', anchor: line.anchor, text: line.text });
+    for (const addedLine of added) rows.push({ kind: 'added', anchor: addedLine.anchor, text: addedLine.text });
+  }
+  if (following) rows.push({ kind: 'context', anchor: following.anchor, text: following.text });
+  serveRows(session, rows);
+  return { ok: true, code: null, message: `insert('${anchor}', ${direction}): ${added.length} added`, rows };
+}
+
+export function anchorGrep(session, request) {
+  const pattern = String(request.pattern ?? '');
+  if (pattern.length === 0) {
+    return refuse(session, 'E_BAD_SHAPE', 'anchor_grep needs a pattern.', []);
+  }
+  const literal = request.literal === true;
+  const ignoreCase = request.ignoreCase === true;
+  const contextSize = Number.isInteger(request.context) ? Math.max(0, request.context) : 0;
+  const limit = Number.isInteger(request.limit) ? Math.max(1, request.limit) : 100;
+  let matchesLine;
+  try {
+    if (literal) {
+      const needle = ignoreCase ? pattern.toLowerCase() : pattern;
+      matchesLine = (text) => (ignoreCase ? text.toLowerCase() : text).includes(needle);
+    } else {
+      const expression = new RegExp(pattern, ignoreCase ? 'i' : '');
+      matchesLine = (text) => expression.test(text);
+    }
+  } catch {
+    return refuse(session, 'E_BAD_SHAPE', 'The pattern is not a valid regular expression. Search with literal: true for plain text.', []);
+  }
+  const matches = [];
+  for (let index = 0; index < session.lines.length && matches.length < limit; index += 1) {
+    if (matchesLine(session.lines[index].text)) matches.push(index);
+  }
+  if (matches.length === 0) {
+    return { ok: true, code: null, message: `anchor_grep('${pattern}'): 0 matches`, rows: [] };
+  }
+  const matched = new Set(matches);
+  const emitted = new Set();
+  for (const index of matches) {
+    for (let cursor = index - contextSize; cursor <= index + contextSize; cursor += 1) {
+      if (cursor >= 0 && cursor < session.lines.length) emitted.add(cursor);
+    }
+  }
+  const rows = [...emitted]
+    .sort((a, b) => a - b)
+    .map((index) => ({
+      kind: matched.has(index) ? 'match' : 'context',
+      anchor: session.lines[index].anchor,
+      text: session.lines[index].text,
+      line: index + 1,
+    }));
+  serveRows(session, rows);
+  const word = matches.length === 1 ? 'match' : 'matches';
+  return { ok: true, code: null, message: `anchor_grep('${pattern}'): ${matches.length} ${word}`, rows };
+}
+
 export function undo(session) {
   if (!session.undo) {
     return { ok: false, code: 'E_NOTHING_TO_UNDO', message: '[E_NOTHING_TO_UNDO] No replace to revert.', rows: [] };

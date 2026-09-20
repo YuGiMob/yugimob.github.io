@@ -1,9 +1,17 @@
 import { hydrateAvatar } from './avatar.js';
-import { el, append, link, copyButton, formatNumber, animateValue, svg, setText, setMeta, observeVisibility } from './ui.js';
+import { el, append, link, copyButton, formatNumber, extent, animateValue, svg, setText, setMeta, observeVisibility } from './ui.js';
 import { buildDemo } from './demos.js';
 import { buildPlayground, PLAYGROUND_ID } from './playground.js';
 import { benchmarkChart, historyPanel } from './charts.js';
-import { countWord, formatWindow } from './site-data.js';
+import {
+  activityLine,
+  heroStatRows,
+  problemEntries,
+  problemIndexRows,
+  problemsHeading,
+  projectChipRows,
+  structuredData,
+} from './view-model.js';
 
 export function renderIdentity(data) {
   const identity = data.identity;
@@ -34,22 +42,16 @@ export function renderIntro(showcase) {
 export function renderHeroStats(data) {
   const list = document.getElementById('hero-stats');
   if (!list) return;
-  const totalDownloads = data.projects.reduce((sum, project) => sum + (project.npmWeeklyDownloads || 0), 0);
-  const stats = [
-    ['GitHub stars', data.stats.totalStars ?? 0],
-    ['packages on npm', data.stats.npmPackages ?? 0],
-    ['npm installs / week', totalDownloads],
-  ];
-  for (const [label, value] of stats) {
+  for (const stat of heroStatRows(data)) {
     const item = el('div', 'stat');
     const dd = el('dd', 'stat-value', '0');
-    append(item, el('dt', 'stat-label', label), dd);
+    append(item, el('dt', 'stat-label', stat.label), dd);
     list.appendChild(item);
     let animated = false;
     observeVisibility(dd, () => {
       if (animated) return;
       animated = true;
-      animateValue(dd, value);
+      animateValue(dd, stat.value);
     }, () => {});
   }
 }
@@ -72,11 +74,7 @@ function installActions(project) {
 
 function projectChips(project) {
   const chips = el('div', 'chips');
-  chips.appendChild(metricChip('stars', formatNumber(project.stars ?? 0)));
-  if (project.npmWeeklyDownloads) chips.appendChild(metricChip('installs/wk', formatNumber(project.npmWeeklyDownloads)));
-  if (project.language) chips.appendChild(metricChip('language', project.language));
-  if (project.license) chips.appendChild(metricChip('license', project.license));
-  if (project.pushedAt) chips.appendChild(metricChip('updated', String(project.pushedAt).slice(0, 10)));
+  for (const chip of projectChipRows(project)) chips.appendChild(metricChip(chip.label, chip.value));
   return chips;
 }
 
@@ -112,25 +110,17 @@ function mountDemo(entry) {
   return box;
 }
 
-export function renderProblemIndex(showcase) {
+export function renderProblemIndex(showcase, projects) {
   const list = document.getElementById('problem-index');
   if (!list) return;
-  const rows = showcase.problems.map((problem) => ({
-    href: `#problem-${problem.name}`,
-    headline: problem.headline,
-    tool: problem.name,
-  }));
-  if (showcase.evidence) {
-    rows.push({ href: '#evidence', headline: showcase.evidence.headline, tool: showcase.evidence.name });
-  }
-  rows.forEach((row, index) => {
+  for (const row of problemIndexRows(showcase, projects)) {
     const anchor = el('a', 'index-link');
     anchor.href = row.href;
     const arrow = el('span', 'index-arrow', '→');
     arrow.setAttribute('aria-hidden', 'true');
     append(
       anchor,
-      el('span', 'index-number', String(index + 1).padStart(2, '0')),
+      el('span', 'index-number', row.number),
       el('span', 'index-headline', row.headline),
       el('span', 'index-tool', row.tool),
       arrow,
@@ -138,25 +128,22 @@ export function renderProblemIndex(showcase) {
     const item = el('li', 'index-row');
     item.appendChild(anchor);
     list.appendChild(item);
-  });
+  }
 }
 
-export function renderProblemsHeading(showcase) {
+export function renderProblemsHeading(showcase, projects) {
   const heading = document.getElementById('problems-heading');
   if (!heading) return;
-  const word = countWord(showcase.problems.length + (showcase.evidence ? 1 : 0));
-  heading.textContent = `${word.charAt(0).toUpperCase()}${word.slice(1)} things that kept going wrong`;
+  heading.textContent = problemsHeading(showcase, projects);
 }
 
 export function renderProblems(showcase, projects) {
   const container = document.getElementById('problem-list');
   if (!container) return;
-  showcase.problems.forEach((entry, index) => {
-    const project = projects.get(entry.name);
-    if (!project) return;
+  for (const { entry, project, number } of problemEntries(showcase, projects)) {
     const article = el('article', `problem${entry.size === 'hero' ? ' is-hero' : ''}`);
     article.id = `problem-${entry.name}`;
-    article.appendChild(problemHead(String(index + 1).padStart(2, '0'), entry));
+    article.appendChild(problemHead(number, entry));
     article.appendChild(el('p', 'problem-statement', entry.problem));
     const grid = el('div', 'problem-grid');
     const copy = el('div', 'problem-copy');
@@ -164,10 +151,10 @@ export function renderProblems(showcase, projects) {
     append(grid, copy, mountDemo(entry));
     article.appendChild(grid);
     container.appendChild(article);
-  });
+  }
 }
 
-export function renderEvidence(showcase, projects) {
+export function renderEvidence(showcase, projects, benchmark) {
   const section = document.getElementById('evidence');
   const body = document.getElementById('evidence-body');
   const evidence = showcase.evidence;
@@ -187,8 +174,8 @@ export function renderEvidence(showcase, projects) {
   const copy = el('div', 'problem-copy');
   if (project) copy.appendChild(answerBlock(evidence, project));
   const demoBox = el('div', 'problem-demo');
-  if (evidence.benchmark) {
-    const chart = benchmarkChart(evidence.benchmark);
+  if (benchmark) {
+    const chart = benchmarkChart(benchmark);
     demoBox.appendChild(chart.node);
     observeVisibility(chart.node, () => chart.start(), () => chart.stop());
   }
@@ -217,12 +204,19 @@ export function renderColophon(showcase) {
   }
 }
 
+export function renderDegradedNotice(message) {
+  const notice = document.getElementById('data-notice');
+  if (!notice) return;
+  notice.hidden = false;
+  notice.textContent = message;
+}
+
 function activityChart(daily) {
   const width = 320;
   const height = 44;
   const gap = 3;
   const barWidth = (width - gap * (daily.length - 1)) / daily.length;
-  const peak = Math.max(1, ...daily.map((entry) => entry.pushes));
+  const peak = Math.max(1, extent(daily.map((entry) => entry.pushes))[1]);
   const chart = svg('svg', {
     class: 'activity-chart',
     viewBox: `0 0 ${width} ${height}`,
@@ -254,14 +248,16 @@ export function renderActivity(data) {
   if (!panel || !activity) return;
   panel.appendChild(el('h3', 'activity-title', 'Public activity'));
   const line = el('p', 'activity-line');
-  append(line, `${formatNumber(activity.pushes ?? 0)} pushes to public repositories, `, el('span', 'activity-window', formatWindow(activity.window)), '.');
+  const parts = activityLine(activity);
+  append(line, parts.pushes, el('span', 'activity-window', parts.window), '.');
   panel.appendChild(line);
   const daily = Array.isArray(activity.daily) ? activity.daily : [];
   if (daily.length > 0) {
     panel.appendChild(activityChart(daily));
     const values = daily.map((entry) => entry.pushes);
     const total = values.reduce((sum, value) => sum + value, 0);
-    panel.appendChild(el('p', 'sr-only', `${values.length} days recorded, ${formatNumber(total)} pushes total, between ${formatNumber(Math.min(...values))} and ${formatNumber(Math.max(...values))} per day.`));
+    const [low, high] = extent(values);
+    panel.appendChild(el('p', 'sr-only', `${values.length} days recorded, ${formatNumber(total)} pushes total, between ${formatNumber(low)} and ${formatNumber(high)} per day.`));
   }
   if (activity.fetchedAt) panel.appendChild(el('p', 'activity-note', `GitHub public events, fetched ${activity.fetchedAt}.`));
   const history = Array.isArray(data.history) ? data.history : [];
@@ -281,36 +277,7 @@ export function renderFooter(identity) {
 export function renderStructuredData(data, showcase) {
   const target = document.getElementById('structured-data');
   if (!target) return;
-  const names = [
-    ...showcase.problems.map((problem) => problem.name),
-    ...(showcase.evidence ? [showcase.evidence.name] : []),
-  ];
-  const byName = new Map(data.projects.map((project) => [project.name, project]));
-  const items = names
-    .map((name) => byName.get(name))
-    .filter(Boolean)
-    .map((project, index) => ({
-      '@type': 'ListItem',
-      position: index + 1,
-      item: {
-        '@type': 'SoftwareSourceCode',
-        name: project.name,
-        description: project.description || undefined,
-        codeRepository: project.url,
-        programmingLanguage: project.language || undefined,
-        license: project.license ? `https://spdx.org/licenses/${project.license}` : undefined,
-        url: project.url,
-        sameAs: project.npm ? [`https://www.npmjs.com/package/${project.npm}`] : undefined,
-      },
-    }));
-  const list = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: `${data.identity.displayName} artifacts`,
-    dateModified: data.activity?.fetchedAt || undefined,
-    itemListElement: items,
-  };
-  target.textContent = JSON.stringify(list);
+  target.textContent = JSON.stringify(structuredData(data, showcase));
 }
 
 export function applyVisibility(sections, showcase) {

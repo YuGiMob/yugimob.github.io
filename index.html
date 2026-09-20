@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'; img-src 'self' data: https://avatars.githubusercontent.com; font-src 'self'; style-src 'self'; script-src 'self' 'sha256-+c7ygeXX0iv3FiBH0yOberH5BSTvH4qbocunkFphdnM='; connect-src 'self'">
   <meta name="description" content="Extensions for the pi coding agent by YuGiMob: anchored edits, keyless web tools, Tor routing, guarded commits, and a benchmark that publishes the traces.">
   <title>YuGiMob · Coding-agent extensions that fail loudly</title>
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta property="og:type" content="profile">
   <meta property="og:site_name" content="YuGiMob">
   <meta property="og:title" content="YuGiMob · I make coding agents fail loudly">
@@ -38,6 +40,10 @@
   <link rel="modulepreload" href="assets/js/demos.js">
   <link rel="modulepreload" href="assets/js/render.js">
   <link rel="modulepreload" href="assets/js/site-data.js">
+  <link rel="modulepreload" href="assets/js/view-model.js">
+  <link rel="modulepreload" href="assets/js/fetch-json.js">
+  <link rel="preload" as="fetch" href="data/site-data.json" crossorigin>
+  <link rel="preload" as="fetch" href="data/showcase.json" crossorigin>
   <script type="module" src="assets/js/main.js"></script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"Person","name":"YuGiMob","description":"Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, guarded commits, and a benchmark that publishes the traces.","url":"https://yugimob.github.io/","image":"https://avatars.githubusercontent.com/u/110136195?s=216&v=4","sameAs":["https://github.com/YuGiMob"]}</script>
 </head>
@@ -82,6 +88,7 @@
         </div>
         <h1 class="intro-headline"><span class="intro-claim" id="intro-headline">I make coding agents fail loudly.</span></h1>
         <div id="intro-paragraphs"></div>
+        <p class="notice" id="data-notice" role="status" hidden></p>
         <div class="intro-actions">
           <a class="btn btn-primary" href="#problems">See the problems</a>
           <a class="btn" id="hero-github" href="https://github.com/YuGiMob" target="_blank" rel="noopener noreferrer">GitHub</a>
