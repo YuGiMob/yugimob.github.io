@@ -96,6 +96,9 @@ export function replace(session, request) {
       return refuse(session, 'E_RANGE_STALE', 'The range changed on disk since it was served. Fresh anchors below.', rangeRows(session, fromIndex, toIndex));
     }
   }
+  if (request.replacement_lines != null && !Array.isArray(request.replacement_lines)) {
+    return refuse(session, 'E_BAD_SHAPE', 'replace needs replacement_lines as an array.', rangeRows(session, fromIndex, toIndex));
+  }
   const replacements = Array.isArray(request.replacement_lines) ? request.replacement_lines.map(String) : [];
   if (replacements.some((text) => text.includes('\u0000'))) {
     return refuse(session, 'E_BAD_SHAPE', 'Replacement text contains a NUL byte.', rangeRows(session, fromIndex, toIndex));
@@ -120,7 +123,6 @@ export function replace(session, request) {
 }
 
 export function insert(session, request) {
-  const direction = request.direction === 'before' ? 'before' : 'after';
   const anchor = String(request.anchor ?? '');
   const index = session.lines.findIndex((line) => line.anchor === anchor);
   if (index < 0) {
@@ -129,6 +131,14 @@ export function insert(session, request) {
   const line = session.lines[index];
   if (isStale(session, line)) {
     return refuse(session, 'E_RANGE_STALE', 'The anchor line changed on disk since it was served. Fresh anchors below.', rangeRows(session, index, index));
+  }
+  const rawDirection = request.direction;
+  if (rawDirection != null && rawDirection !== 'before' && rawDirection !== 'after') {
+    return refuse(session, 'E_BAD_SHAPE', "insert needs a direction of 'before' or 'after'.", rangeRows(session, index, index));
+  }
+  const direction = rawDirection === 'before' ? 'before' : 'after';
+  if (request.lines != null && !Array.isArray(request.lines)) {
+    return refuse(session, 'E_BAD_SHAPE', 'insert needs lines as an array.', rangeRows(session, index, index));
   }
   const lines = Array.isArray(request.lines) ? request.lines.map(String) : [];
   if (lines.some((text) => text.includes('\u0000'))) {
@@ -160,8 +170,20 @@ export function anchorGrep(session, request) {
   if (pattern.length === 0) {
     return refuse(session, 'E_BAD_SHAPE', 'anchor_grep needs a pattern.', []);
   }
+  if (request.literal != null && typeof request.literal !== 'boolean') {
+    return refuse(session, 'E_BAD_SHAPE', 'anchor_grep needs literal as a boolean.', []);
+  }
+  if (request.ignoreCase != null && typeof request.ignoreCase !== 'boolean') {
+    return refuse(session, 'E_BAD_SHAPE', 'anchor_grep needs ignoreCase as a boolean.', []);
+  }
   const literal = request.literal === true;
   const ignoreCase = request.ignoreCase === true;
+  if (request.context != null && !Number.isInteger(request.context)) {
+    return refuse(session, 'E_BAD_SHAPE', 'anchor_grep needs context as a whole number.', []);
+  }
+  if (request.limit != null && !Number.isInteger(request.limit)) {
+    return refuse(session, 'E_BAD_SHAPE', 'anchor_grep needs limit as a whole number.', []);
+  }
   const contextSize = Number.isInteger(request.context) ? Math.max(0, request.context) : 0;
   const limit = Number.isInteger(request.limit) ? Math.max(1, request.limit) : 100;
   let matchesLine;

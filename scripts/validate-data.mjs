@@ -4,7 +4,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEMO_IDS } from '../assets/js/demos.js';
 import { PLAYGROUND_ID } from '../assets/js/playground.js';
-import { BENCHMARK_FOCI, BENCHMARK_HISTORY_LIMIT, HISTORY_LIMIT, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS, benchmarkSnapshot, isTimestamp } from './refresh-lib.mjs';
+import { BENCHMARK_FOCI, BENCHMARK_HISTORY_LIMIT, HISTORY_LIMIT, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS, benchmarkSnapshot, isTimestamp, wilsonInterval } from './refresh-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -65,6 +65,11 @@ function readJson(path, label) {
   }
 }
 
+const SCHEMA_ANNOTATIONS = new Set(['$schema', '$id', 'title', 'description', 'default', 'examples', 'deprecated', 'readOnly', 'writeOnly']);
+const SCHEMA_KEYWORDS = new Set(['type', 'enum', 'properties', 'required', 'additionalProperties', 'items', 'minItems', 'minLength', 'pattern', 'format', 'minimum', 'maximum']);
+const SCHEMA_TYPES = new Set(['object', 'array', 'string', 'integer', 'number', 'boolean', 'null']);
+const SCHEMA_FORMATS = new Set(['uri', 'email', 'date-time']);
+
 function isSchemaType(value, type) {
   switch (type) {
     case 'object':
@@ -96,6 +101,27 @@ function matchesFormat(value, format) {
   if (format === 'email') return isEmail(value);
   if (format === 'date-time') return isTimestamp(value);
   return true;
+}
+
+function checkSchemaDocument(schema, path, rootLabel, report) {
+  if (!isPlainObject(schema)) return;
+  const where = label(path, rootLabel);
+  for (const key of Object.keys(schema)) {
+    if (!SCHEMA_KEYWORDS.has(key) && !SCHEMA_ANNOTATIONS.has(key)) report(`${where} schema uses an unsupported keyword ${key}`);
+  }
+  for (const type of schemaTypes(schema) ?? []) {
+    if (!SCHEMA_TYPES.has(type)) report(`${where} schema uses an unsupported type ${type}`);
+  }
+  if (typeof schema.format === 'string' && !SCHEMA_FORMATS.has(schema.format)) {
+    report(`${where} schema uses an unsupported format ${schema.format}`);
+  }
+  for (const [key, child] of Object.entries(schema.properties ?? {})) {
+    checkSchemaDocument(child, path ? `${path}.${key}` : key, rootLabel, report);
+  }
+  if (isPlainObject(schema.items)) checkSchemaDocument(schema.items, path ? `${path}.items` : 'items', rootLabel, report);
+  if (isPlainObject(schema.additionalProperties)) {
+    checkSchemaDocument(schema.additionalProperties, path ? `${path}.*` : '*', rootLabel, report);
+  }
 }
 
 function label(path, rootLabel) {
@@ -197,6 +223,12 @@ function validateContender(contender, labels) {
       fail(`${name} interval does not bracket the pass rate`);
     }
   }
+  if (Number.isInteger(contender.passed) && Number.isInteger(contender.runs) && Number.isFinite(contender.low) && Number.isFinite(contender.high)) {
+    const expected = wilsonInterval(contender.passed, contender.runs);
+    if (Math.abs(contender.low - expected.low) > 0.11 || Math.abs(contender.high - expected.high) > 0.11) {
+      fail(`${name} interval does not match the Wilson interval for passed/runs`);
+    }
+  }
   if (isPlainObject(contender.outcomes) && Number.isInteger(contender.runs)) {
     const total = Object.values(contender.outcomes).reduce((sum, count) => sum + count, 0);
     if (total !== contender.runs) fail(`${name} outcomes do not sum to runs`);
@@ -272,6 +304,8 @@ const showcaseSchema = readJson(showcaseSchemaPath, relative(ROOT, showcaseSchem
 
 if (data !== undefined && dataSchema !== undefined) reportSchema(data, dataSchema, 'site-data');
 if (showcase !== undefined && showcaseSchema !== undefined) reportSchema(showcase, showcaseSchema, 'showcase');
+if (dataSchema !== undefined) checkSchemaDocument(dataSchema, '', 'site-data', (message) => errors.push(message));
+if (showcaseSchema !== undefined) checkSchemaDocument(showcaseSchema, '', 'showcase', (message) => errors.push(message));
 
 const declaredNames = isPlainObject(data) && Array.isArray(data.projects) && data.projects.length > 0
   ? new Set(data.projects.filter((project) => isPlainObject(project) && typeof project.name === 'string').map((project) => project.name))

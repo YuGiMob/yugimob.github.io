@@ -1,32 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { basename, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { ROOT, withRepoCopy as withRepo } from './helpers.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LOADER = join(ROOT, 'tests', 'fake-fetch.mjs');
 const FIXTURES = join(ROOT, 'tests', 'fixtures', 'refresh');
 const DATA_FILE = join('data', 'site-data.json');
 
-function withRepo(run) {
-  const dir = mkdtempSync(join(tmpdir(), 'yugimob-refresh-'));
-  try {
-    const copy = join(dir, 'repo');
-    cpSync(ROOT, copy, {
-      recursive: true,
-      filter: (source) => !['.git', '.omo'].includes(basename(source)),
-    });
-    return run(copy);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-}
-
-function refresh(repo, env = {}) {
-  return spawnSync(process.execPath, ['--import', LOADER, join(repo, 'scripts', 'refresh-data.mjs')], {
+function refresh(repo, env = {}, args = []) {
+  return spawnSync(process.execPath, ['--import', LOADER, join(repo, 'scripts', 'refresh-data.mjs'), ...args], {
     cwd: repo,
     encoding: 'utf8',
     env: { ...process.env, YUGIMOB_FIXTURES: FIXTURES, ...env },
@@ -151,5 +135,53 @@ test('the pre-write validator refuses a candidate the schema rejects', () => {
     assert.match(result.stderr, /failed validate-data/);
     assert.equal(readData(repo).identity.extra, 'nope');
     assert.deepEqual(readdirSync(join(repo, 'data')).filter((file) => file.endsWith('.tmp')), []);
+  });
+});
+
+test('a dry run reports the candidate without writing any file', () => {
+  withRepo((repo) => {
+    const dataBefore = readFileSync(join(repo, DATA_FILE), 'utf8');
+    const llmsBefore = readFileSync(join(repo, 'llms.txt'), 'utf8');
+    const sitemapBefore = readFileSync(join(repo, 'sitemap.xml'), 'utf8');
+
+    const result = refresh(repo, {}, ['--check']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /dry run: the candidate passed validate-data/);
+    assert.match(result.stdout, /dry run: the candidate was not written/);
+    assert.match(result.stdout, /Dry run complete; no files were written/);
+
+    assert.equal(readFileSync(join(repo, DATA_FILE), 'utf8'), dataBefore);
+    assert.equal(readFileSync(join(repo, 'llms.txt'), 'utf8'), llmsBefore);
+    assert.equal(readFileSync(join(repo, 'sitemap.xml'), 'utf8'), sitemapBefore);
+  });
+});
+
+test('a dry run refuses a candidate the schema rejects and writes nothing', () => {
+  withRepo((repo) => {
+    const fixtures = join(repo, 'tests', 'fixtures', 'refresh');
+    const repos = JSON.parse(readFileSync(join(fixtures, 'repos.json'), 'utf8'));
+    repos[0].pushed_at = 'not a date';
+    writeFileSync(join(fixtures, 'repos.json'), JSON.stringify(repos, null, 2));
+    const dataBefore = readFileSync(join(repo, DATA_FILE), 'utf8');
+
+    const result = refresh(repo, { YUGIMOB_FIXTURES: fixtures }, ['--check']);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /failed validate-data/);
+    assert.equal(readFileSync(join(repo, DATA_FILE), 'utf8'), dataBefore);
+  });
+});
+
+test('a refresh without the GitHub API keeps activity, stats, and history but still updates npm', () => {
+  withRepo((repo) => {
+    const before = readData(repo);
+    const result = refresh(repo, { YUGIMOB_NO_GITHUB: '1' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, /GitHub API error/);
+
+    const data = readData(repo);
+    assert.deepEqual(data.history, before.history);
+    assert.deepEqual(data.activity, before.activity);
+    assert.deepEqual(data.stats, before.stats);
+    assert.equal(data.projects.find((project) => project.name === 'pi-hashline-edit-pro').npmWeeklyDownloads, 5123);
   });
 });

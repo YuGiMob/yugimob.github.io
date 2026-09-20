@@ -1,6 +1,6 @@
 import { el, link, setText } from './ui.js';
 import { fetchJson } from './fetch-json.js';
-import { isValidSiteData, isValidBenchmark, fallbackShowcase } from './site-data.js';
+import { isValidSiteData, isValidBenchmark, isValidShowcase, fallbackShowcase } from './site-data.js';
 import {
   applyVisibility,
   renderActivity,
@@ -64,6 +64,8 @@ function setupAnchorAlignment() {
     }
   };
 
+  const onContentVisibility = () => align();
+
   const cancel = () => {
     for (const timerId of timerIds) clearTimeout(timerId);
     timerIds = [];
@@ -72,12 +74,14 @@ function setupAnchorAlignment() {
       observer.disconnect();
       observer = null;
     }
+    document.removeEventListener('contentvisibilityautostatechange', onContentVisibility, true);
   };
 
   const schedule = () => {
     cancel();
     timerIds = [200, 800, 1600].map((delay) => setTimeout(align, delay));
-    timerIds.push(setTimeout(cancel, 2600));
+    timerIds.push(setTimeout(cancel, 4000));
+    document.addEventListener('contentvisibilityautostatechange', onContentVisibility, true);
     if (typeof ResizeObserver === 'function') {
       observer = new ResizeObserver(align);
       observer.observe(document.body);
@@ -116,7 +120,8 @@ async function init() {
     fetchJson(SHOWCASE_URL, 1).catch(() => null),
   ]);
   if (!isValidSiteData(data)) throw new Error('invalid site data');
-  const showcase = showcaseRaw || fallbackShowcase(data);
+  const curatedShowcase = isValidShowcase(showcaseRaw) ? showcaseRaw : null;
+  const showcase = curatedShowcase ?? fallbackShowcase(data);
   const projects = new Map(data.projects.map((project) => [project.name, project]));
   const benchmark = isValidBenchmark(data.benchmark) ? data.benchmark : null;
   if (data.benchmark != null && !benchmark) console.warn('YuGiMob: ignoring an unusable benchmark block');
@@ -134,7 +139,7 @@ async function init() {
   renderFooter(data);
   renderStructuredData(data, showcase);
   document.getElementById('main-content')?.removeAttribute('aria-busy');
-  if (!showcaseRaw) {
+  if (!curatedShowcase) {
     renderDegradedNotice('The curated copy in data/showcase.json could not be loaded, so this page is showing the fallback descriptions from data/site-data.json.');
   }
   setupNav();

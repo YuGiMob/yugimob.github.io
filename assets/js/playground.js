@@ -58,7 +58,6 @@ export function buildPlayground() {
   append(head, fileLabel, el('span', 'pg-head-spacer'), stepLabel);
 
   const claimTitle = el('p', 'pg-claim-title');
-  claimTitle.setAttribute('aria-live', 'polite');
   const claimText = el('p', 'pg-claim-text');
   const call = el('p', 'pg-call');
   const claim = el('div', 'pg-claim');
@@ -156,7 +155,7 @@ export function buildPlayground() {
       code.appendChild(item);
     });
     fileLabel.textContent = `src/anchors.ts · ${session.lines.length} lines`;
-    if (focused != null) focusRow(focused);
+    if (Number.isInteger(focused)) focusRow(focused);
   }
 
   function renderRow(row) {
@@ -320,7 +319,7 @@ export function buildPlayground() {
     },
     {
       title: 'Undo restores the session',
-      text: 'Undo reverts the most recent replace or insert, and only that one: the line inserted in step 3 stays where it is. The record comes back with the bytes.',
+      text: 'Undo reverts the most recent replace or insert, and only that one: the line inserted in step 3 stays where it is. The record comes back with the text it had.',
       action: 'Undo',
       preview: () => ({ path: 'src/anchors.ts' }),
       call: () => 'undo_last_change()',
@@ -329,7 +328,7 @@ export function buildPlayground() {
         flashAnchors = new Set();
         renderCode();
         renderRequest(currentStep().preview);
-        return { status: result.ok ? 'ok' : 'error', message: result.ok ? 'Reverted. The row is byte-identical to the state before the last replace.' : result.message };
+        return { status: result.ok ? 'ok' : 'error', message: result.ok ? 'Reverted. The row is identical to the state it had before the last replace.' : result.message };
       },
     },
   ];

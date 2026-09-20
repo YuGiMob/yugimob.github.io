@@ -18,7 +18,9 @@ import {
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { writeLlmsFile } from './llms-lib.mjs';
+import { updateSitemapFile } from './sitemap-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_FILE = join(ROOT, 'data', 'site-data.json');
@@ -30,6 +32,15 @@ function safeUnlink(path) {
   try {
     unlinkSync(path);
   } catch {}
+}
+
+function assertCandidateValid(candidateFile, message) {
+  try {
+    execFileSync(process.execPath, [VALIDATOR_FILE, candidateFile], { stdio: 'pipe' });
+  } catch (validationError) {
+    if (validationError.stderr) console.error(String(validationError.stderr).trim());
+    throw new Error(message);
+  }
 }
 
 function cleanupStaleTmpFiles() {
@@ -48,29 +59,14 @@ function cleanupStaleTmpFiles() {
 }
 
 function updateSitemapLastmod(date) {
-  if (!existsSync(SITEMAP_FILE)) {
-    console.warn('sitemap.xml is missing; skipped the lastmod update');
+  const result = updateSitemapFile(SITEMAP_FILE, date);
+  if (!result.ok) {
+    if (result.reason === 'missing') console.warn('sitemap.xml is missing; skipped the lastmod update');
+    else if (result.reason === 'no-loc') console.warn('sitemap.xml has no <loc> entry; skipped the lastmod update');
+    else console.warn('sitemap.xml update failed:', result.reason);
     return;
   }
-  const source = readFileSync(SITEMAP_FILE, 'utf8');
-  const previous = source.match(/<lastmod>([^<]+)<\/lastmod>/)?.[1];
-  if (!source.includes('</loc>')) {
-    console.warn('sitemap.xml has no <loc> entry; skipped the lastmod update');
-    return;
-  }
-  const next = previous
-    ? source.replace(/<lastmod>[^<]*<\/lastmod>/, `<lastmod>${date}</lastmod>`)
-    : source.replace('</loc>', `</loc>\n    <lastmod>${date}</lastmod>`);
-  if (next === source) return;
-  const tmp = `${SITEMAP_FILE}.${process.pid}.tmp`;
-  try {
-    writeFileSync(tmp, next);
-    renameSync(tmp, SITEMAP_FILE);
-    report('sitemap.lastmod', previous, date);
-  } catch (err) {
-    safeUnlink(tmp);
-    console.warn('sitemap.xml update failed:', err.message);
-  }
+  if (result.changed) report('sitemap.lastmod', result.previous, date);
 }
 
 cleanupStaleTmpFiles();
@@ -86,6 +82,7 @@ const REPO_PAGES = 5;
 const PAGE_SIZE = 100;
 const FETCH_TIMEOUT_MS = 15000;
 const UNLISTED_REPOS = new Set(['pi-jina-webtools', 'pi-msg-queue', 'pi-tps-status', 'mypi']);
+const DRY_RUN = process.argv.includes('--check');
 let data = null;
 let fileUnusable = false;
 const fileExists = existsSync(DATA_FILE);
@@ -295,7 +292,6 @@ if (Array.isArray(events)) {
   if (activity.daily.length > 0) data.activity.daily = activity.daily;
   reportCount('activity.daily', existing.activity.daily, data.activity.daily);
 }
-let anyNpmSuccess = false;
 const npmResults = await Promise.all(
   npmPackages.map((pkg) =>
     getJson(
@@ -309,7 +305,6 @@ npmPackages.forEach((pkg, index) => {
   const json = npmResults[index];
   const project = projectByNpm.get(pkg);
   if (!project || !json || typeof json.downloads !== 'number') return;
-  anyNpmSuccess = true;
   const prev = existingByName.get(project.name);
   report(`projects.${project.name}.npmWeeklyDownloads`, prev?.npmWeeklyDownloads, json.downloads);
   project.npmWeeklyDownloads = json.downloads;
@@ -367,12 +362,8 @@ if (Array.isArray(events)) {
   data.activity.fetchedAt = today;
   report('activity.fetchedAt', existing.activity.fetchedAt, data.activity.fetchedAt);
 }
-const fetchedSomething =
-  user !== null ||
-  Array.isArray(reposRaw) ||
-  Array.isArray(events) ||
-  anyNpmSuccess;
-if (fetchedSomething) {
+const reposFresh = Array.isArray(reposRaw);
+if (reposFresh) {
   const totalDownloads = data.projects.reduce(
     (sum, project) => sum + (Number.isFinite(project.npmWeeklyDownloads) ? project.npmWeeklyDownloads : 0),
     0,
@@ -386,15 +377,10 @@ if (fetchedSomething) {
   reportCount('history', existing.history, data.history);
 }
 const dataChanged = JSON.stringify(existing) !== JSON.stringify(data);
-if (dataChanged) {
+if (dataChanged && !DRY_RUN) {
   try {
     writeFileSync(TMP_FILE, `${JSON.stringify(data, null, 2)}\n`);
-    try {
-      execFileSync(process.execPath, [VALIDATOR_FILE, TMP_FILE], { stdio: 'pipe' });
-    } catch (validationError) {
-      if (validationError.stderr) console.error(String(validationError.stderr).trim());
-      throw new Error('the refreshed data failed validate-data; the existing file was left untouched');
-    }
+    assertCandidateValid(TMP_FILE, 'the refreshed data failed validate-data; the existing file was left untouched');
     renameSync(TMP_FILE, DATA_FILE);
   } catch (err) {
     safeUnlink(TMP_FILE);
@@ -402,9 +388,21 @@ if (dataChanged) {
   }
   if (data.history.at(-1)?.date === today) updateSitemapLastmod(today);
 }
-if (writeLlmsFile(ROOT)) summary.push('llms.txt: rewritten');
+if (DRY_RUN && dataChanged) {
+  const candidate = join(tmpdir(), `yugimob-site-data-${process.pid}.tmp`);
+  try {
+    writeFileSync(candidate, `${JSON.stringify(data, null, 2)}\n`);
+    assertCandidateValid(candidate, 'the dry-run candidate failed validate-data; nothing was written');
+    summary.push('dry run: the candidate passed validate-data');
+  } finally {
+    safeUnlink(candidate);
+  }
+}
+if (DRY_RUN) summary.push(dataChanged ? 'dry run: the candidate was not written' : 'dry run: nothing to write');
+else if (writeLlmsFile(ROOT)) summary.push('llms.txt: rewritten');
 console.log('Refresh complete. Changes:');
 for (const line of summary) {
   console.log(`  ${line}`);
 }
-console.log(dataChanged ? `Data written to ${DATA_FILE}` : `No data changes; ${DATA_FILE} left untouched`);
+if (DRY_RUN) console.log('Dry run complete; no files were written');
+else console.log(dataChanged ? `Data written to ${DATA_FILE}` : `No data changes; ${DATA_FILE} left untouched`);

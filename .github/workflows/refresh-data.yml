@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: refresh-site-data
@@ -14,6 +14,8 @@ concurrency:
 
 jobs:
   refresh:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -41,6 +43,9 @@ jobs:
             cat "$RUNNER_TEMP/refresh.log"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail when the refreshed data is still stale
+        run: node scripts/check-freshness.mjs
 
       - name: Commit changes
         run: |

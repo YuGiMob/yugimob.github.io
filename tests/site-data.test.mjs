@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isValidSiteData, isValidBenchmark, fallbackShowcase, countWord, formatWindow } from '../assets/js/site-data.js';
+import { isValidSiteData, isValidBenchmark, isValidShowcase, fallbackShowcase, countWord, formatWindow } from '../assets/js/site-data.js';
 
 const VALID = {
   identity: {
@@ -73,4 +73,18 @@ test('isValidBenchmark rejects a malformed block and accepts a complete one', ()
 test('isValidSiteData tolerates an unusable benchmark block', () => {
   assert.equal(isValidSiteData({ ...VALID, benchmark: 'none' }), true);
   assert.equal(isValidSiteData({ ...VALID, benchmark: { contenders: [], focusCounts: {} } }), true);
+});
+
+test('isValidShowcase accepts a curated document and rejects shapeless ones', () => {
+  const intro = { headline: 'A headline.', paragraphs: ['A paragraph.'] };
+  const problems = [{ name: 'tool', headline: 'A problem.', highlights: ['A highlight'] }];
+  assert.equal(isValidShowcase({ intro, problems }), true);
+  assert.equal(isValidShowcase(fallbackShowcase(VALID)), true);
+  assert.equal(isValidShowcase(null), false);
+  assert.equal(isValidShowcase([]), false);
+  assert.equal(isValidShowcase({}), false);
+  assert.equal(isValidShowcase({ intro, problems: [] }), false);
+  assert.equal(isValidShowcase({ intro: { headline: 'A headline.' }, problems }), false);
+  assert.equal(isValidShowcase({ intro, problems: [{ name: 'tool' }] }), false);
+  assert.equal(isValidShowcase({ intro, problems: [{ name: 'tool', headline: 'A problem.', highlights: [] }] }), false);
 });

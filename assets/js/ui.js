@@ -34,12 +34,12 @@ export function link(href, text, className) {
 
 export function setText(id, value) {
   const node = document.getElementById(id);
-  if (node && value) node.textContent = value;
+  if (node && value != null) node.textContent = value;
 }
 
 export function setMeta(selector, value) {
   const node = document.querySelector(selector);
-  if (node && value) node.setAttribute('content', value);
+  if (node && value != null) node.setAttribute('content', value);
 }
 
 export function observeVisibility(element, onShow, onHide) {

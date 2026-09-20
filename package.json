@@ -9,11 +9,16 @@
   },
   "scripts": {
     "test": "node --test \"tests/*.test.mjs\"",
-    "coverage": "node --test --experimental-test-coverage --test-coverage-exclude=\"assets/js/{demos,playground,charts,ui,avatar,render,main}.js\" --test-coverage-exclude=\"tests/*.test.mjs\" --test-coverage-lines=95 --test-coverage-branches=82 --test-coverage-functions=92 \"tests/*.test.mjs\"",
-    "validate": "node scripts/validate-data.mjs && node scripts/validate-site.mjs",
+    "coverage": "node --test --experimental-test-coverage --test-coverage-exclude=\"assets/js/{demos,playground,main}.js\" --test-coverage-exclude=\"tests/*.test.mjs\" --test-coverage-lines=95 --test-coverage-branches=82 --test-coverage-functions=92 \"tests/*.test.mjs\"",
+    "validate:data": "node scripts/validate-data.mjs",
+    "validate:site": "node scripts/validate-site.mjs",
+    "validate:style": "node scripts/validate-style.mjs",
+    "validate": "npm run validate:style && npm run validate:data && npm run validate:site",
     "check": "npm run validate && npm run coverage",
     "refresh": "node scripts/refresh-data.mjs",
+    "refresh:check": "node scripts/refresh-data.mjs --check",
     "build:llms": "node scripts/build-llms.mjs",
+    "csp": "node scripts/build-csp.mjs",
     "links": "node scripts/check-links.mjs",
     "serve": "python3 -m http.server 8123"
   }

@@ -2149,6 +2149,13 @@ main[aria-busy='true'] #hero-stats:empty::before {
   font-size: 1.0625rem;
 }
 
+.notfound-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
 @media (max-width: 1080px) {
   .problem-grid,
   .problem.is-hero .problem-grid,

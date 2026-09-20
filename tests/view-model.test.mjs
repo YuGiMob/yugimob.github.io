@@ -93,15 +93,16 @@ test('projectChipRows formats the numbers and skips absent fields', () => {
   ]);
 });
 
-test('activityLine expands the window range', () => {
-  assert.deepEqual(activityLine(DATA.activity), { pushes: '7 pushes to public repositories, ', window: '2026-09-03 to 2026-09-17' });
-  assert.deepEqual(activityLine({}), { pushes: '0 pushes to public repositories, ', window: undefined });
+test('activityLine expands the window range and drops a single date', () => {
+  assert.deepEqual(activityLine(DATA.activity), { pushes: '7 pushes to public repositories', window: '2026-09-03 to 2026-09-17' });
+  assert.deepEqual(activityLine({}), { pushes: '0 pushes to public repositories', window: '' });
+  assert.deepEqual(activityLine({ pushes: 0, window: '2026-09-20' }), { pushes: '0 pushes to public repositories', window: '' });
 });
 
 test('structuredData lists the showcase projects in order and drops unknown names', () => {
   const list = structuredData(DATA, SHOWCASE);
   assert.equal(list['@type'], 'ItemList');
-  assert.equal(list.name, 'Tester artifacts');
+  assert.equal(list.name, 'Tester projects');
   assert.equal(list.dateModified, '2026-09-18');
   assert.deepEqual(list.itemListElement.map((item) => item.item.name), ['tool-a', 'tool-b']);
   assert.equal(list.itemListElement[0].position, 1);

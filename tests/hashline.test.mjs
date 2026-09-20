@@ -1,19 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { anchorGrep, createSession, insert, readRows, replace, undo, externalEdit } from '../assets/js/hashline.js';
+import { seededRandom } from './helpers.mjs';
 
 const SOURCE = ['alpha', 'beta', 'gamma', 'delta'];
 
-function seededRandom() {
-  let state = 123456789;
-  return () => {
-    state = (state * 1103515245 + 12345) % 2147483648;
-    return state / 2147483648;
-  };
-}
-
 function session() {
-  return createSession(SOURCE, seededRandom());
+  return createSession(SOURCE, seededRandom(123456789));
 }
 
 const sortedEntries = (map) => [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
@@ -244,4 +237,69 @@ test('a grep match can be edited without a re-read', () => {
   const edited = replace(current, { remove_from: match.anchor, replacement_lines: ['gamma!'] });
   assert.equal(edited.ok, true);
   assert.deepEqual(current.lines.map((line) => line.text), ['alpha', 'beta', 'gamma!', 'delta']);
+});
+
+test('replace refuses a replacement_lines value that is not an array', () => {
+  const current = session();
+  const before = current.lines.map((line) => ({ anchor: line.anchor, text: line.text }));
+  const refused = replace(current, { remove_from: current.lines[1].anchor, replacement_lines: 'beta!' });
+  assert.equal(refused.ok, false);
+  assert.equal(refused.code, 'E_BAD_SHAPE');
+  assert.match(refused.message, /^\[E_BAD_SHAPE\]/);
+  assert.deepEqual(current.lines.map((line) => ({ anchor: line.anchor, text: line.text })), before);
+});
+
+test('replace still allows an explicit empty replacement to delete a range', () => {
+  const current = session();
+  const result = replace(current, { remove_from: current.lines[1].anchor, replacement_lines: [] });
+  assert.equal(result.ok, true);
+  assert.deepEqual(current.lines.map((line) => line.text), ['alpha', 'gamma', 'delta']);
+});
+
+test('insert refuses an unknown direction and a non-array lines value', () => {
+  const current = session();
+  const before = current.lines.map((line) => ({ anchor: line.anchor, text: line.text }));
+  const badDirection = insert(current, { anchor: current.lines[1].anchor, direction: 'middle', lines: ['x'] });
+  assert.equal(badDirection.code, 'E_BAD_SHAPE');
+  const badLines = insert(current, { anchor: current.lines[1].anchor, direction: 'after', lines: 'x' });
+  assert.equal(badLines.code, 'E_BAD_SHAPE');
+  assert.deepEqual(current.lines.map((line) => ({ anchor: line.anchor, text: line.text })), before);
+});
+
+test('insert still defaults an omitted direction to after', () => {
+  const current = session();
+  const result = insert(current, { anchor: current.lines[0].anchor, lines: ['tail'] });
+  assert.equal(result.ok, true);
+  assert.deepEqual(current.lines.map((line) => line.text), ['alpha', 'tail', 'beta', 'gamma', 'delta']);
+});
+
+test('anchorGrep refuses non-integer context, limit, and non-boolean flags', () => {
+  const current = session();
+  assert.equal(anchorGrep(current, { pattern: 'a', context: '1' }).code, 'E_BAD_SHAPE');
+  assert.equal(anchorGrep(current, { pattern: 'a', limit: 1.5 }).code, 'E_BAD_SHAPE');
+  assert.equal(anchorGrep(current, { pattern: 'a', literal: 'yes' }).code, 'E_BAD_SHAPE');
+  assert.equal(anchorGrep(current, { pattern: 'a', ignoreCase: 1 }).code, 'E_BAD_SHAPE');
+  assert.equal(anchorGrep(current, { pattern: 'a', context: 1, limit: 2 }).ok, true);
+});
+
+test('optional request values may be null and fall back to their defaults', () => {
+  const current = session();
+  const deleted = replace(current, { remove_from: current.lines[1].anchor, replacement_lines: null });
+  assert.equal(deleted.ok, true);
+  assert.deepEqual(current.lines.map((line) => line.text), ['alpha', 'gamma', 'delta']);
+
+  const noop = insert(current, { anchor: current.lines[0].anchor, direction: null, lines: null });
+  assert.equal(noop.ok, true);
+  assert.deepEqual(current.lines.map((line) => line.text), ['alpha', 'gamma', 'delta']);
+
+  const grep = anchorGrep(current, { pattern: 'a', context: null, limit: null, literal: null, ignoreCase: null });
+  assert.equal(grep.ok, true);
+});
+
+test('a refused insert re-serves the anchor range', () => {
+  const current = session();
+  const anchor = current.lines[1].anchor;
+  const result = insert(current, { anchor, direction: 'middle', lines: ['x'] });
+  assert.equal(result.code, 'E_BAD_SHAPE');
+  assert.ok(result.rows.some((row) => row.kind === 'context' && row.anchor === anchor && row.text === 'beta'));
 });

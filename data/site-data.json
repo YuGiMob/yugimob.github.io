@@ -249,8 +249,8 @@
   },
   "sections": {
     "showAbout": true,
-    "showArtifacts": true,
-    "showAbilityScores": true,
+    "showProblems": true,
+    "showHeroStats": true,
     "showCampfire": true
   },
   "history": [

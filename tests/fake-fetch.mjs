@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 const FIXTURES = process.env.YUGIMOB_FIXTURES;
 const REPORT = process.env.YUGIMOB_LLM_REPORT ?? 'llm-report.json';
+const NO_GITHUB = process.env.YUGIMOB_NO_GITHUB === '1';
 
 function fixtureText(name) {
   return readFileSync(join(FIXTURES, name), 'utf8');
@@ -38,6 +39,7 @@ function pageOf(url) {
 
 globalThis.fetch = async (url) => {
   const target = String(url);
+  if (NO_GITHUB && target.startsWith('https://api.github.com/')) return jsonResponse(null, 503);
   if (target.startsWith('https://api.github.com/users/YuGiMob/repos')) {
     return pageOf(target) === 1 ? jsonResponse(fixtureJson('repos.json')) : jsonResponse([]);
   }

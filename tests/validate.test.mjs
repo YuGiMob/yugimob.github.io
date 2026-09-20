@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { fileURLToPath } from 'node:url';
-import { basename, dirname, join } from 'node:path';
+import { join } from 'node:path';
+import { ROOT, withRepoCopy } from './helpers.mjs';
+import { isValidSiteData } from '../assets/js/site-data.js';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.json'), 'utf8'));
 const SHOWCASE = JSON.parse(readFileSync(join(ROOT, 'data', 'showcase.json'), 'utf8'));
 
@@ -24,18 +24,7 @@ function runValidator(data, showcase) {
 }
 
 function runSiteValidator(mutate) {
-  const dir = mkdtempSync(join(tmpdir(), 'yugimob-site-'));
-  try {
-    const copy = join(dir, 'repo');
-    cpSync(ROOT, copy, {
-      recursive: true,
-      filter: (source) => !['.git', '.omo'].includes(basename(source)),
-    });
-    if (mutate) mutate(copy);
-    return spawnSync(process.execPath, [join(ROOT, 'scripts', 'validate-site.mjs'), copy], { encoding: 'utf8' });
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+  return withRepoCopy((copy) => spawnSync(process.execPath, [join(ROOT, 'scripts', 'validate-site.mjs'), copy], { encoding: 'utf8' }), mutate);
 }
 
 test('the committed data files pass the validator', () => {
@@ -475,4 +464,127 @@ test('the site validator refuses a nav order that does not match the section ord
   });
   assert.equal(nav.status, 1);
   assert.match(nav.stderr, /nav order does not match the section order/);
+});
+
+function runDataValidatorOnCopy(mutate) {
+  return withRepoCopy((copy) => spawnSync(process.execPath, [join(copy, 'scripts', 'validate-data.mjs')], { encoding: 'utf8' }), mutate);
+}
+
+test('the data validator refuses schema keywords it cannot enforce', () => {
+  const keyword = runDataValidatorOnCopy((dir) => {
+    const path = join(dir, 'data', 'site-data.schema.json');
+    const schema = JSON.parse(readFileSync(path, 'utf8'));
+    schema.properties.identity.properties.displayName.oneOf = [{ type: 'string' }];
+    writeFileSync(path, JSON.stringify(schema, null, 2));
+  });
+  assert.equal(keyword.status, 1);
+  assert.match(keyword.stderr, /identity\.displayName schema uses an unsupported keyword oneOf/);
+
+  const format = runDataValidatorOnCopy((dir) => {
+    const path = join(dir, 'data', 'showcase.schema.json');
+    const schema = JSON.parse(readFileSync(path, 'utf8'));
+    schema.properties.intro.properties.headline.format = 'slug';
+    writeFileSync(path, JSON.stringify(schema, null, 2));
+  });
+  assert.equal(format.status, 1);
+  assert.match(format.stderr, /intro\.headline schema uses an unsupported format slug/);
+
+  const type = runDataValidatorOnCopy((dir) => {
+    const path = join(dir, 'data', 'showcase.schema.json');
+    const schema = JSON.parse(readFileSync(path, 'utf8'));
+    schema.properties.principles.items.type = 'text';
+    writeFileSync(path, JSON.stringify(schema, null, 2));
+  });
+  assert.equal(type.status, 1);
+  assert.match(type.stderr, /principles\.items schema uses an unsupported type text/);
+});
+
+test('the data validator refuses an interval that is not the Wilson interval', () => {
+  const data = structuredClone(DATA);
+  data.benchmark.contenders[0].low = 90;
+  data.benchmark.contenders[0].high = 100;
+  const result = runValidator(data, SHOWCASE);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /interval does not match the Wilson interval for passed\/runs/);
+});
+
+test('the site validator refuses static copy that drifts from the data files', () => {
+  const title = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('Coding-agent extensions that fail loudly</title>', 'A stale title</title>'));
+  });
+  assert.equal(title.status, 1);
+  assert.match(title.stderr, /the title should read/);
+
+  const heading = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('Six things that kept going wrong', 'Five things'));
+  });
+  assert.equal(heading.status, 1);
+  assert.match(heading.stderr, /#problems-heading should read/);
+
+  const inline = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('<dl class="intro-stats" id="hero-stats"></dl>', '<dl class="intro-stats" id="hero-stats" style="color:red"></dl>'));
+  });
+  assert.equal(inline.status, 1);
+  assert.match(inline.stderr, /uses an inline style/);
+});
+
+test('the site validator refuses a manifest project with no showcase entry', () => {
+  const result = runSiteValidator((dir) => {
+    const path = join(dir, 'data', 'showcase.json');
+    const showcase = JSON.parse(readFileSync(path, 'utf8'));
+    showcase.problems = showcase.problems.filter((problem) => problem.name !== 'pi-tor-proxy');
+    writeFileSync(path, JSON.stringify(showcase, null, 2));
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /no entry for the manifest project pi-tor-proxy/);
+});
+
+test('the site validator refuses an expiring security.txt', () => {
+  const result = runSiteValidator((dir) => {
+    const path = join(dir, '.well-known', 'security.txt');
+    writeFileSync(path, readFileSync(path, 'utf8').replace(/^Expires: .*$/m, 'Expires: 2020-01-01T00:00:00.000Z'));
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Expires is less than 60 days away/);
+});
+
+test('the site validator refuses a palette pair below the contrast minimum', () => {
+  const result = runSiteValidator((dir) => {
+    const path = join(dir, 'assets', 'css', 'style.css');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('--ink: #1b1814;', '--ink: #b9b3a8;'));
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /light ink on paper is \d+\.\d+:1, below 4\.5:1/);
+});
+
+test('the contrast check measures the base palette, not a prefers-contrast override', () => {
+  const result = runSiteValidator((dir) => {
+    const path = join(dir, 'assets', 'css', 'style.css');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('--ink-3: #71695b;', '--ink-3: #b9b3a8;'));
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /light ink-3 on paper is \d+\.\d+:1, below 4\.5:1/);
+});
+
+test('the contrast check measures the base dark palette, not the nested prefers-contrast override', () => {
+  const result = runSiteValidator((dir) => {
+    const path = join(dir, 'assets', 'css', 'style.css');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('--ink-3: #9e9484;', '--ink-3: #5a5348;'));
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /dark ink-3 on paper is \d+\.\d+:1, below 4\.5:1/);
+});
+
+test('the runtime guard rejects a document missing any schema-required key', () => {
+  const schema = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.schema.json'), 'utf8'));
+  const data = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.json'), 'utf8'));
+  assert.equal(isValidSiteData(data), true);
+  for (const key of schema.required) {
+    const broken = structuredClone(data);
+    delete broken[key];
+    assert.equal(isValidSiteData(broken), false, `the guard accepted a document without ${key}`);
+  }
 });

@@ -35,6 +35,21 @@ test('buildDaily counts events and pushes per day in date order', () => {
   ]);
 });
 
+test('buildDaily fills the days between the first and last event with zeroes', () => {
+  const daily = buildDaily([push('2026-09-11'), push('2026-09-13')]);
+  assert.deepEqual(daily, [
+    { date: '2026-09-11', events: 1, pushes: 1 },
+    { date: '2026-09-12', events: 0, pushes: 0 },
+    { date: '2026-09-13', events: 1, pushes: 1 },
+  ]);
+});
+
+test('buildDaily caps the filled range at the newest days', () => {
+  const daily = buildDaily([push('2026-08-01'), push('2026-08-10')], 3);
+  assert.deepEqual(daily.map((entry) => entry.date), ['2026-08-08', '2026-08-09', '2026-08-10']);
+  assert.equal(daily[0].pushes, 0);
+});
+
 test('buildDaily keeps only the most recent days', () => {
   const days = ['2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04'];
   const daily = buildDaily(days.map((date) => push(date)), 2);
@@ -50,6 +65,15 @@ test('buildActivity abbreviates a same-month window', () => {
 test('buildActivity keeps a cross-month window explicit', () => {
   const activity = buildActivity([push('2026-08-31'), push('2026-09-02')], '2026-09-03');
   assert.equal(activity.window, '2026-08-31..2026-09-02');
+});
+
+test('buildActivity caps the window and the pushes together', () => {
+  const start = Date.parse('2026-01-01T00:00:00Z');
+  const events = Array.from({ length: 200 }, (unused, index) => push(new Date(start + index * 86400000).toISOString().slice(0, 10)));
+  const activity = buildActivity(events, '2026-08-01', 120);
+  assert.equal(activity.daily.length, 120);
+  assert.equal(activity.pushes, 120);
+  assert.equal(activity.window, `${activity.daily[0].date}..${activity.daily[119].date}`);
 });
 
 test('buildActivity falls back to today with no events', () => {

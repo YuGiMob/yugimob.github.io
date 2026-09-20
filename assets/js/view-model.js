@@ -62,9 +62,10 @@ export function projectChipRows(project) {
 }
 
 export function activityLine(activity) {
+  const range = typeof activity.window === 'string' && activity.window.includes('..') ? formatWindow(activity.window) : '';
   return {
-    pushes: `${formatNumber(activity.pushes ?? 0)} pushes to public repositories, `,
-    window: formatWindow(activity.window),
+    pushes: `${formatNumber(activity.pushes ?? 0)} pushes to public repositories`,
+    window: range,
   };
 }
 
@@ -125,7 +126,7 @@ export function structuredData(data, showcase) {
   return {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: `${data.identity.displayName} artifacts`,
+    name: `${data.identity.displayName} projects`,
     dateModified: data.activity?.fetchedAt || undefined,
     itemListElement: items,
   };

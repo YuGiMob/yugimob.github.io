@@ -81,8 +81,9 @@ function webToolsDemo() {
   wide.svgRoot.setAttribute('viewBox', '0 0 520 240');
   wide.svgRoot.classList.add('is-wide');
   const columns = [126, 260, 394];
+  const wideLaneY = (index) => 10 + index * 88;
   lanes.forEach((lane, index) => {
-    const y = 10 + index * 88;
+    const y = wideLaneY(index);
     wide.plate(6, y, 104, 44, 'is-tool');
     wide.text(58, y + 26, 'flow-label is-tool', lane.tool);
     lane.stages.forEach((stage, stageIndex) => {
@@ -94,26 +95,35 @@ function webToolsDemo() {
     });
   });
   wide.text(260, 68, 'flow-sub', 'duckduckgo · brave · google · mojeek · yahoo · yandex · wikipedia');
-  wide.wire('M 319 142 L 319 180', true);
-  wide.text(327, 166, 'flow-edge-label', '403 · JS page', 'start');
+  const wideFetchBottom = wideLaneY(1) + 44;
+  const wideFallbackTo = wideLaneY(2) - 6;
+  wide.wire(`M 319 ${wideFetchBottom} L 319 ${wideFallbackTo}`, true);
+  wide.text(327, (wideFetchBottom + wideFallbackTo) / 2, 'flow-edge-label', '403 · JS page', 'start');
 
   const tall = diagram('flow-tall');
   tall.svgRoot.setAttribute('viewBox', '0 0 280 620');
   tall.svgRoot.classList.add('is-tall');
+  const tallLaneTops = [];
+  const TALL_STAGE = 66;
+  const TALL_PLATE = 48;
+  const TALL_LANE_GAP = 30;
   let top = 32;
   for (const lane of lanes) {
+    tallLaneTops.push(top);
     tall.text(12, top - 8, 'flow-label is-tool', lane.tool, 'start');
     lane.stages.forEach((stage, index) => {
-      const y = top + index * 66;
-      tall.plate(10, y, 260, 48);
+      const y = top + index * TALL_STAGE;
+      tall.plate(10, y, 260, TALL_PLATE);
       tall.text(140, y + 21, 'flow-label', stage[0]);
       tall.text(140, y + 38, 'flow-sub', stage[1]);
-      if (index < lane.stages.length - 1) tall.wire(`M 140 ${y + 48} L 140 ${y + 62}`);
+      if (index < lane.stages.length - 1) tall.wire(`M 140 ${y + TALL_PLATE} L 140 ${y + TALL_STAGE - 4}`);
     });
-    top += lane.stages.length * 66 + 30;
+    top += lane.stages.length * TALL_STAGE + TALL_LANE_GAP;
   }
-  tall.wire('M 140 440 L 140 484', true);
-  tall.text(148, 466, 'flow-edge-label', '403 · JS page', 'start');
+  const tallFetchBottom = tallLaneTops[1] + (lanes[1].stages.length - 1) * TALL_STAGE + TALL_PLATE;
+  const tallFallbackTo = tallLaneTops[2] - 4;
+  tall.wire(`M 140 ${tallFetchBottom} L 140 ${tallFallbackTo}`, true);
+  tall.text(148, (tallFetchBottom + tallFallbackTo) / 2, 'flow-edge-label', '403 · JS page', 'start');
 
   const note = el('p', 'flow-note', 'web_fetch · local files and private addresses allowed by default');
   append(stage, wide.svgRoot, tall.svgRoot, note);
@@ -354,7 +364,7 @@ function workflowDemo() {
     'finally: msg 17, commit',
   ].join('\n');
 
-  function run() {
+  function run(announceRun) {
     if (!runtimeRef) return;
     runtimeRef.reset();
     clear();
@@ -374,16 +384,16 @@ function workflowDemo() {
       output.textContent = plan;
       output.classList.add('is-visible');
       status.textContent = 'done · 2 rounds · committed from msg 17';
-      announce('workflow done · 2 rounds · committed from msg 17');
+      if (announceRun) announce('workflow done · 2 rounds · committed from msg 17');
       return;
     }
-    announce('workflow started · 2 rounds');
+    if (announceRun) announce('workflow started · 2 rounds');
     sequence.forEach((step, index) => {
       runtimeRef.after(() => {
         if (index > 0) itemNodes.get(sequence[index - 1].id).classList.replace('is-active', 'is-done');
         itemNodes.get(step.id).classList.add('is-active');
         status.textContent = step.status;
-        if (step.id === 'start') announce('loop 1 of 2 · context reset');
+        if (announceRun && step.id === 'start') announce('loop 1 of 2 · context reset');
       }, 240 + index * 780);
     });
     runtimeRef.after(() => {
@@ -391,16 +401,15 @@ function workflowDemo() {
       output.textContent = plan;
       output.classList.add('is-visible');
       status.textContent = 'done · 2 rounds · committed from msg 17';
-      announce('workflow done · 2 rounds · committed from msg 17');
+      if (announceRun) announce('workflow done · 2 rounds · committed from msg 17');
     }, 240 + sequence.length * 780);
   }
-
-  runButton.addEventListener('click', run);
+  runButton.addEventListener('click', () => run(true));
   resetButton.addEventListener('click', clear);
 
   return createController(root, (runtime) => {
     runtimeRef = runtime;
-    if (!reducedMotion()) runtime.after(run, 900);
+    if (!reducedMotion()) runtime.after(() => run(false), 900);
   }, () => {
     runtimeRef = null;
   });

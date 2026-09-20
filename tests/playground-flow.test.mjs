@@ -8,18 +8,11 @@ import {
   PLAYGROUND_SOURCE,
   PLAYGROUND_TARGET,
 } from '../assets/js/playground.js';
+import { seededRandom } from './helpers.mjs';
 import { anchorGrep, createSession, externalEdit, insert, isStale, replace, undo } from '../assets/js/hashline.js';
 
-function seededRandom() {
-  let state = 987654321;
-  return () => {
-    state = (state * 1103515245 + 12345) % 2147483648;
-    return state / 2147483648;
-  };
-}
-
 function session() {
-  return createSession(PLAYGROUND_SOURCE, seededRandom());
+  return createSession(PLAYGROUND_SOURCE, seededRandom(987654321));
 }
 
 test('the guided run replaces, inserts, greps, refuses, retries, and undoes', () => {

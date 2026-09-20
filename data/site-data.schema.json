@@ -155,12 +155,12 @@
     },
     "sections": {
       "type": "object",
-      "required": ["showAbout", "showArtifacts", "showAbilityScores", "showCampfire"],
+      "required": ["showAbout", "showProblems", "showHeroStats", "showCampfire"],
       "additionalProperties": false,
       "properties": {
         "showAbout": { "type": "boolean" },
-        "showArtifacts": { "type": "boolean" },
-        "showAbilityScores": { "type": "boolean" },
+        "showProblems": { "type": "boolean" },
+        "showHeroStats": { "type": "boolean" },
         "showCampfire": { "type": "boolean" }
       }
     },

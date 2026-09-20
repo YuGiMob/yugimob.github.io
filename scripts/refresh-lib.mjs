@@ -2,6 +2,7 @@ export const HISTORY_LIMIT = 120;
 export const MAX_ACTIVITY_DAYS = 120;
 export const MAX_HIGHLIGHTS = 5;
 export const BENCHMARK_HISTORY_LIMIT = 120;
+export const MAX_HISTORY_AGE_DAYS = 2;
 
 export const BENCHMARK_REPOSITORY = 'https://github.com/YuGiMob/pi-edit-benchmark';
 export const BENCHMARK_REPORT_URL = `${BENCHMARK_REPOSITORY}/blob/main/results/llm-report.json`;
@@ -34,6 +35,16 @@ export function buildHighlights(events, limit = MAX_HIGHLIGHTS) {
   return highlights;
 }
 
+const DAY_MS = 86400000;
+
+function dayRange(first, last) {
+  const days = [];
+  for (let time = Date.parse(`${first}T00:00:00Z`); time <= Date.parse(`${last}T00:00:00Z`); time += DAY_MS) {
+    days.push(new Date(time).toISOString().slice(0, 10));
+  }
+  return days;
+}
+
 export function buildDaily(events, maxDays = MAX_ACTIVITY_DAYS) {
   const byDay = new Map();
   for (const event of events) {
@@ -44,28 +55,27 @@ export function buildDaily(events, maxDays = MAX_ACTIVITY_DAYS) {
     if (event.type === 'PushEvent') entry.pushes += 1;
     byDay.set(date, entry);
   }
-  return [...byDay.values()]
-    .sort((a, b) => a.date.localeCompare(b.date))
+  const dates = [...byDay.keys()].sort();
+  if (dates.length === 0) return [];
+  return dayRange(dates[0], dates[dates.length - 1])
+    .map((date) => byDay.get(date) ?? { date, events: 0, pushes: 0 })
     .slice(-maxDays);
 }
 
 export function buildActivity(events, today, maxDays = MAX_ACTIVITY_DAYS) {
-  const pushes = events.filter((event) => event.type === 'PushEvent').length;
-  const dates = events
-    .map((event) => (event.created_at ? String(event.created_at).slice(0, 10) : null))
-    .filter(Boolean)
-    .sort();
+  const daily = buildDaily(events, maxDays);
+  const pushes = daily.reduce((sum, entry) => sum + entry.pushes, 0);
+  const first = daily[0]?.date;
+  const last = daily[daily.length - 1]?.date;
   let window = today;
-  if (dates.length > 0) {
-    const min = dates[0];
-    const max = dates[dates.length - 1];
-    window = min.slice(0, 7) === max.slice(0, 7) ? `${min}..${max.slice(8)}` : `${min}..${max}`;
+  if (first && last) {
+    window = first.slice(0, 7) === last.slice(0, 7) ? `${first}..${last.slice(8)}` : `${first}..${last}`;
   }
   return {
     pushes,
     highlights: buildHighlights(events),
     window,
-    daily: buildDaily(events, maxDays),
+    daily,
   };
 }
 
@@ -80,6 +90,13 @@ export function upsertHistory(history, snapshot, limit = HISTORY_LIMIT) {
 
 export function isTimestamp(value) {
   return typeof value === 'string' && !Number.isNaN(new Date(value).getTime());
+}
+
+export function historyAgeDays(history, now = Date.now()) {
+  const newest = Array.isArray(history) && history.length > 0 ? history[history.length - 1] : null;
+  if (!newest || typeof newest.date !== 'string') return null;
+  const then = Date.parse(newest.date);
+  return Number.isFinite(then) ? Math.max(0, Math.floor((now - then) / DAY_MS)) : null;
 }
 
 export function parseScenarioFocus(source) {

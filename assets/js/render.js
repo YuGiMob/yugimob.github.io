@@ -15,6 +15,10 @@ import {
   structuredData,
 } from './view-model.js';
 
+function problemId(name) {
+  return `problem-${name}`;
+}
+
 export function renderIdentity(data) {
   const identity = data.identity;
   hydrateAvatar(document.getElementById('avatar'), identity.avatarUrl, identity.displayName);
@@ -179,7 +183,7 @@ export function renderProblems(showcase, projects) {
   if (!container) return;
   for (const { entry, project, number } of problemEntries(showcase, projects)) {
     const article = el('article', `problem${entry.size === 'hero' ? ' is-hero' : ''}`);
-    article.id = `problem-${entry.name}`;
+    article.id = problemId(entry.name);
     article.appendChild(problemHead(number, entry));
     article.appendChild(el('p', 'problem-statement', entry.problem));
     const grid = el('div', 'problem-grid');
@@ -205,7 +209,7 @@ export function renderEvidence(showcase, projects, benchmark, benchmarkHistory) 
   setText('evidence-heading', evidence.headline);
   if (evidence.intro) body.appendChild(el('p', 'section-lede', evidence.intro));
   const article = el('div', 'evidence');
-  article.id = `problem-${evidence.name}`;
+  article.id = problemId(evidence.name);
   article.appendChild(el('p', 'problem-statement', evidence.problem));
   const grid = el('div', 'problem-grid');
   const copy = el('div', 'problem-copy');
@@ -282,7 +286,9 @@ export function renderActivity(data) {
   panel.appendChild(el('h3', 'activity-title', 'Public activity'));
   const line = el('p', 'activity-line');
   const parts = activityLine(activity);
-  append(line, parts.pushes, el('span', 'activity-window', parts.window), '.');
+  append(line, parts.pushes);
+  if (parts.window) append(line, ', ', el('span', 'activity-window', parts.window));
+  append(line, '.');
   panel.appendChild(line);
   const daily = Array.isArray(activity.daily) ? activity.daily : [];
   if (daily.length > 0) {
@@ -336,11 +342,11 @@ export function applyVisibility(sections, showcase) {
     const node = document.getElementById(id);
     if (node) node.hidden = hidden;
   };
-  const showArtifacts = sections.showArtifacts ?? true;
-  setHidden('problems', !showArtifacts);
-  setHidden('evidence', !(showArtifacts && Boolean(showcase.evidence)));
+  const showProblems = sections.showProblems ?? true;
+  setHidden('problems', !showProblems);
+  setHidden('evidence', !(showProblems && Boolean(showcase.evidence)));
   setHidden('colophon', !(sections.showAbout ?? true));
   setHidden('campfire', !(sections.showCampfire ?? true));
   const stats = document.getElementById('hero-stats');
-  if (stats) stats.hidden = !(sections.showAbilityScores ?? true);
+  if (stats) stats.hidden = !(sections.showHeroStats ?? true);
 }

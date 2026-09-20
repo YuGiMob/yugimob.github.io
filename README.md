@@ -75,8 +75,16 @@ scripts/llms-lib.mjs            llms.txt content builder and atomic writer
 scripts/validate-data.mjs       offline validation for both data files
 scripts/validate-site.mjs       HTML, module, README, and CSS reference checks
 scripts/check-links.mjs         monthly external-link check
+scripts/validate-style.mjs      comment, line ending, and whitespace checks
+scripts/link-lib.mjs            link collection, probing, and verdicts
+scripts/build-csp.mjs           refresh the inline JSON-LD CSP hash
+scripts/csp-lib.mjs             script-src directive and hash helpers
+scripts/sitemap-lib.mjs         sitemap lastmod reader and atomic writer
+scripts/contrast-lib.mjs        WCAG contrast helpers for the palette check
+scripts/check-freshness.mjs     fail when the newest history snapshot is too old
 tests/                          node:test unit and integration tests
 package.json                    scripts only, no runtime dependencies
+.nvmrc                          the Node version CI and local runs share
 .github/workflows/refresh-data.yml  daily refresh and commit
 .github/workflows/validate.yml      validation on push and pull request
 .github/workflows/links.yml         monthly external-link check
@@ -128,7 +136,9 @@ weekly npm downloads, stats, activity (window, pushes, highlights, per-day
 events), and `history`: one snapshot per day with total stars and total weekly
 downloads. The About panel renders the highlights and the public-repo and
 forks-received totals, and the footer prints a notice when either the activity
-or the benchmark snapshot is more than three days old.
+or the benchmark snapshot is more than three days old. The `stats` totals cover
+every public repository the API returns, forks and the site repository included,
+so they can differ from the sum of the curated project cards.
 
 It also holds the `benchmark` block behind the evidence chart. The refresh
 pulls the committed run report from pi-edit-benchmark, joins every run to the
@@ -156,6 +166,9 @@ both a problem and the evidence.
 ```
 node scripts/refresh-data.mjs
 ```
+
+`npm run refresh:check` runs the same pipeline with `--check` and writes nothing,
+so a candidate can be reviewed before it lands.
 
 The script fetches the GitHub user, repos, and public events, npm weekly
 downloads for every package in the manifest, and the committed
@@ -187,7 +200,9 @@ at 120 entries) and rebuilds `activity.daily` from the most recent public
 events, paginating up to the GitHub API's 300-event maximum and capping the
 window at 120 days.
 When a fetch reaches an API pagination cap, the run prints a warning so the
-truncated window is visible in the log.
+truncated window is visible in the log. A run that could not read the repos leaves
+`history` and `stats` untouched, so an outage cannot stamp yesterday's numbers with
+today's date; activity still follows the public events when those arrive.
 
 If the benchmark report or its scenario sources cannot be fetched, the run
 warns and keeps the existing block rather than writing a partial chart. A
@@ -199,8 +214,9 @@ only touches other machine fields leaves the sitemap alone.
 The site refreshes itself daily through
 `.github/workflows/refresh-data.yml` (06:00 UTC), which runs the script,
 validates both data files, and commits `data/site-data.json` and `sitemap.xml`
-only when one of them changed. It can also be triggered manually from the Actions
-tab.
+only when one of them changed, and fails when the newest history snapshot is
+still more than two days old, so an outage cannot pass silently. It can also be
+triggered manually from the Actions tab.
 
 ## Validating
 
@@ -208,11 +224,16 @@ tab.
 npm run validate
 ```
 
-`npm run validate` runs both checkers. The data validator walks both JSON files
+`npm run validate` runs three checkers. The style checker refuses comments in
+any script and enforces LF endings, spaces for indentation, no trailing
+whitespace, and a final newline. Its comment scan reads strings, templates,
+and regexes as text, so a comment inside a template-literal expression is not
+reached. The data validator walks both JSON files
 against the schema files themselves, so a rule lives in one place, then
 cross-references showcase names with the manifest, verifies every `demo` id,
 and re-derives the benchmark arithmetic (contender counts, `models × scenarios`,
-outcome totals, and the interval around each pass rate), and refuses histories,
+outcome totals, and recomputes the Wilson interval around each pass rate), and
+refuses histories,
 daily activity, benchmark history, or highlight lists beyond the documented
 caps. It prints
 `validate: ok` and lists every failure it finds in one run. The site validator
@@ -225,10 +246,19 @@ inline JSON-LD block, that the avatar path exists and its origin is allowed,
 the sitemap `lastmod` against the newest history date, the nav order against
 the section order, title and description lengths, and a set of static
 accessibility rules (`lang`, `img` alt text, `aria` references, `target=_blank`
-rel, heading order, a single `main`), then prints `validate:site: ok`. The
-schema files also
+rel, heading order, a single `main`), then prints `validate:site: ok`. It also
+refuses static copy that drifts from the data files (`<title>`, meta description,
+social tags, `#display-name`, `#class-title`, `#intro-headline`, and
+`#problems-heading`), inline `style` and event-handler attributes the CSP forbids,
+a sitemap or `robots.txt` that disagrees with the canonical URL, a `security.txt`
+that expires within 60 days, a palette pair below the 4.5:1 contrast minimum, an
+asset group over its weight budget, an image whose real dimensions differ from
+the declared ones, and a manifest project with no showcase entry. The
+schema walker refuses a keyword or format it does not
+implement, so a rule can never be silently unenforced. The schema files also
 drive editor validation through the `$schema` keys in both data files. The
-workflow runs both on every refresh and on push. A separate test keeps
+workflow runs all three on every refresh and on push. `npm run csp` rewrites the
+CSP hash in place after the inline JSON-LD changes. A separate test keeps
 `llms.txt` in step with the two data files, and `npm run build:llms` regenerates
 it by hand.
 
@@ -241,21 +271,24 @@ npm test
 The suite runs on `node --test` with no dependencies: unit tests for the
 anchored-edit session model, the guided playground flow, the avatar srcset
 helper, the retrying fetch, the data guards, the view-model derivations, the
-chart transforms, the visibility rules, and the refresh activity, history, and
-benchmark helpers, plus a parse check for every script
-and integration checks that the committed data and site structure pass their
-validators and that the validator refuses broken input. The refresh pipeline
-is also driven end to end against committed API fixtures, so the fetch, the
-benchmark gate, the atomic write, and the llms regeneration are all exercised.
+chart transforms, the visibility rules, the sitemap lastmod writer, and the
+refresh activity, history, and benchmark helpers, plus a parse check for every
+script and integration checks that the committed data and site structure pass
+their validators and that each validator refuses broken input, including
+comments, CRLF, a stale CSP hash, and static copy that drifted from the data.
+The refresh pipeline is also driven end to end against committed API fixtures,
+with and without the GitHub API and in dry-run mode, so the fetch, the benchmark
+gate, the atomic write, the sitemap update, and the llms regeneration are all
+exercised.
 
 `npm run check` runs validation and the tests together. `npm run coverage`
 adds `--experimental-test-coverage` (Node 22.8 or newer) with thresholds on
-lines, branches, and functions. Test files and the DOM-bound modules
-(`render.js`, `main.js`, `demos.js`, `playground.js`, `charts.js`, `ui.js`,
-`avatar.js`) are excluded from the gate: they are exercised through the site
-validator and by hand, while the gate covers the logic modules that the unit
-suite actually drives. `npm run check` uses the coverage run, so CI fails when
-the covered code slips.
+lines, branches, and functions. Test files and the three modules that only wire
+the page together (`main.js`, `demos.js`, and `playground.js`) are excluded from
+the gate; everything else, including the rendering, chart, and UI modules, is
+driven through a small dependency-free DOM double that the suite installs and
+restores. `npm run check` uses the coverage run, so CI fails when the covered
+code slips.
 
 ## Serving locally
 

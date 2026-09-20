@@ -18,6 +18,21 @@ export function isValidSiteData(data) {
   return true;
 }
 
+export function isValidShowcase(showcase) {
+  if (!showcase || typeof showcase !== 'object' || Array.isArray(showcase)) return false;
+  const intro = showcase.intro;
+  if (!intro || typeof intro !== 'object' || Array.isArray(intro)) return false;
+  if (typeof intro.headline !== 'string' || !Array.isArray(intro.paragraphs)) return false;
+  if (!Array.isArray(showcase.problems) || showcase.problems.length === 0) return false;
+  for (const problem of showcase.problems) {
+    if (!problem || typeof problem !== 'object' || Array.isArray(problem)) return false;
+    if (typeof problem.name !== 'string' || problem.name.length === 0) return false;
+    if (typeof problem.headline !== 'string' || problem.headline.length === 0) return false;
+    if (!Array.isArray(problem.highlights) || problem.highlights.length === 0) return false;
+  }
+  return true;
+}
+
 export function isValidBenchmark(benchmark) {
   if (!benchmark || typeof benchmark !== 'object' || Array.isArray(benchmark)) return false;
   if (!Array.isArray(benchmark.contenders)) return false;

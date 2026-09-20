@@ -1,6 +1,63 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { benchmarkTableRows, historyTableRows, sortedContenders, sparklinePoints } from '../assets/js/charts.js';
+import { benchmarkChart, benchmarkTableRows, benchmarkTrend, historyPanel, historyTableRows, sortedContenders, sparklinePoints } from '../assets/js/charts.js';
+import { findAll, withDom } from './dom.mjs';
+
+const BENCHMARK = {
+  source: 'https://github.com/YuGiMob/pi-edit-benchmark',
+  reportUrl: 'https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/llm-report.json',
+  tracesUrl: 'https://github.com/YuGiMob/pi-edit-benchmark/tree/main/results/traces',
+  generatedAt: '2026-09-20T12:03:04.357Z',
+  models: 2,
+  scenarios: 3,
+  focusCounts: { core: 1, staleness: 1, 'served-state': 1 },
+  contenderCount: 2,
+  runsPerContender: 6,
+  totalRuns: 12,
+  costUsd: 0.5,
+  contenders: [
+    {
+      id: 'tool-a',
+      label: 'tool-a',
+      version: '1.2.3',
+      highlight: true,
+      overall: 90,
+      safety: 88,
+      served: 92,
+      low: 80,
+      high: 95,
+      runs: 10,
+      passed: 9,
+      errors: 1,
+      outcomes: { applied: 5, recovered: 4, error: 1 },
+      traceUrl: 'https://github.com/tester/trace-a.json',
+    },
+    {
+      id: 'tool-b',
+      label: 'tool-b',
+      version: null,
+      highlight: false,
+      overall: 50,
+      safety: null,
+      served: null,
+      low: 40,
+      high: 60,
+      runs: 10,
+      passed: 5,
+      errors: 0,
+      outcomes: { applied: 10 },
+      traceUrl: 'https://github.com/tester/trace-b.json',
+    },
+  ],
+};
+
+const HISTORY = [
+  { date: '2026-09-18', totalStars: 10, totalDownloads: 3000 },
+  { date: '2026-09-20', totalStars: 12, totalDownloads: 3456 },
+];
+
+const classes = (node, name) => findAll(node, (entry) => entry.classList?.contains(name) === true);
+const tags = (node, tagName) => findAll(node, (entry) => entry.tagName === tagName);
 
 test('sortedContenders orders by overall then safety and keeps the input intact', () => {
   const contenders = [
@@ -12,6 +69,14 @@ test('sortedContenders orders by overall then safety and keeps the input intact'
   assert.deepEqual(contenders.map((entry) => entry.label), ['b', 'a', 'c']);
 });
 
+test('sortedContenders treats a missing safety score as zero', () => {
+  const contenders = [
+    { label: 'unknown', overall: 90, safety: null },
+    { label: 'known', overall: 90, safety: 40 },
+  ];
+  assert.deepEqual(sortedContenders(contenders).map((entry) => entry.label), ['known', 'unknown']);
+});
+
 test('sparklinePoints spans the full width and inverts the y axis', () => {
   assert.equal(sparklinePoints([0, 10]), '0.0 26.0 120.0 2.0');
 });
@@ -19,14 +84,6 @@ test('sparklinePoints spans the full width and inverts the y axis', () => {
 test('sparklinePoints flattens a constant series', () => {
   assert.equal(sparklinePoints([7, 7, 7]), '0.0 26.0 60.0 26.0 120.0 26.0');
   assert.equal(sparklinePoints([7]), '0.0 26.0 120.0 26.0');
-});
-
-test('sortedContenders treats a missing safety score as zero', () => {
-  const contenders = [
-    { label: 'unknown', overall: 90, safety: null },
-    { label: 'known', overall: 90, safety: 40 },
-  ];
-  assert.deepEqual(sortedContenders(contenders).map((entry) => entry.label), ['known', 'unknown']);
 });
 
 test('benchmarkTableRows formats every contender in rank order', () => {
@@ -53,4 +110,122 @@ test('historyTableRows drops unusable snapshots and sorts by date', () => {
     { date: '2026-09-20', stars: '12', downloads: '3,456' },
   ]);
   assert.deepEqual(historyTableRows(null), []);
+});
+
+test('benchmarkChart renders rows, meters, outcomes, legends, sources, and a table', () => {
+  withDom((dom) => {
+    const controller = benchmarkChart(BENCHMARK, []);
+    const { node } = controller;
+    assert.equal(node.tagName, 'ARTICLE');
+    assert.ok(node.classList.contains('chart'));
+    assert.match(node.textContent, /Pass rate by editing tool/);
+    assert.match(node.textContent, /2 models × 3 scenarios × 2 contenders/);
+    assert.match(node.textContent, /\$0.50 in API cost/);
+
+    const rows = classes(node, 'bench-row');
+    assert.equal(rows.length, 2);
+    assert.equal(classes(rows[0], 'bench-row').length, 1);
+    assert.ok(classes(node, 'is-highlight').length >= 1);
+    assert.match(node.textContent, /this project/);
+    assert.match(node.textContent, /1 error/);
+    assert.match(node.textContent, /90\.0% overall/);
+
+    const fills = classes(node, 'meter-fill');
+    assert.deepEqual(fills.map((entry) => entry.style.values.get('--pct')), ['90%', '88%', '92%', '50%', '0%', '0%']);
+    const whiskers = classes(node, 'meter-whisker');
+    assert.equal(whiskers[0].style.values.get('--low'), '80%');
+    assert.equal(whiskers[0].style.values.get('--high'), '95%');
+
+    const segments = classes(node, 'outcome-segment');
+    assert.equal(segments[0].style.values.get('--share'), '5');
+    assert.equal(segments[0].title, '5 applied');
+
+    const links = tags(node, 'A');
+    assert.deepEqual(
+      links.map((entry) => entry.getAttribute('href')),
+      [
+        'https://github.com/tester/trace-a.json',
+        'https://github.com/tester/trace-b.json',
+        'https://github.com/YuGiMob/pi-edit-benchmark',
+        BENCHMARK.reportUrl,
+        BENCHMARK.tracesUrl,
+        'data/site-data.json',
+      ],
+    );
+    assert.match(node.textContent, /generated 2026-09-20/);
+
+    const table = classes(node, 'chart-data');
+    assert.equal(table.length, 1);
+    assert.equal(tags(table[0], 'TR').length, 3);
+    assert.equal(tags(table[0], 'TH').length, 9);
+
+  });
+});
+
+test('benchmarkChart turns live after the start delay and off again on stop', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  withDom(() => {
+    const controller = benchmarkChart(BENCHMARK, []);
+    controller.start();
+    assert.equal(controller.node.classList.contains('is-live'), false);
+    t.mock.timers.tick(120);
+    assert.equal(controller.node.classList.contains('is-live'), true);
+    controller.stop();
+    assert.equal(controller.node.classList.contains('is-live'), false);
+  });
+});
+
+test('benchmarkChart tolerates an empty contender list', () => {
+  withDom(() => {
+    const controller = benchmarkChart({ ...BENCHMARK, contenders: [] }, []);
+    assert.equal(classes(controller.node, 'bench-row').length, 0);
+    assert.equal(classes(controller.node, 'chart-data').length, 0);
+  });
+});
+
+test('benchmarkChart adds the pass-rate trend when history has two reports', () => {
+  withDom(() => {
+    const single = benchmarkChart(BENCHMARK, [{ date: '2026-09-20', overall: 90, safety: 88, served: 92 }]);
+    assert.equal(classes(single.node, 'bench-trend').length, 0);
+
+    const history = [
+      { date: '2026-09-18', overall: 80, safety: 70, served: 60 },
+      { date: '2026-09-20', overall: 90, safety: 88, served: 92 },
+    ];
+    const controller = benchmarkChart(BENCHMARK, history);
+    const trend = classes(controller.node, 'bench-trend');
+    assert.equal(trend.length, 1);
+    assert.match(trend[0].textContent, /2 benchmark reports since 2026-09-18/);
+    assert.equal(classes(trend[0], 'growth-row').length, 3);
+    assert.match(trend[0].textContent, /\+10\.0%/);
+  });
+});
+
+test('historyPanel renders sparklines and a table and refuses unusable snapshots', () => {
+  withDom(() => {
+    assert.equal(historyPanel([]), null);
+    assert.equal(historyPanel([{ date: '2026-09-20', totalStars: null, totalDownloads: null }]), null);
+
+    const panel = historyPanel(HISTORY);
+    assert.match(panel.textContent, /Since the first snapshot/);
+    assert.match(panel.textContent, /GitHub stars/);
+    assert.match(panel.textContent, /2 snapshots since 2026-09-18/);
+    assert.equal(classes(panel, 'growth-row').length, 2);
+    assert.equal(tags(panel, 'POLYLINE').length, 2);
+    assert.equal(classes(panel, 'chart-data').length, 1);
+    assert.match(panel.textContent, /\+2/);
+  });
+});
+
+test('historyPanel describes a single snapshot without a delta', () => {
+  withDom(() => {
+    const panel = historyPanel([{ date: '2026-09-20', totalStars: 12, totalDownloads: 3456 }]);
+    assert.match(panel.textContent, /1 snapshot since 2026-09-20/);
+  });
+});
+
+test('benchmarkTrend returns null without two usable reports', () => {
+  assert.equal(benchmarkTrend([]), null);
+  assert.equal(benchmarkTrend([{ date: '2026-09-20', overall: 90 }]), null);
+  assert.equal(benchmarkTrend([{ date: '2026-09-19' }, { date: '2026-09-20', overall: 90 }]), null);
 });
