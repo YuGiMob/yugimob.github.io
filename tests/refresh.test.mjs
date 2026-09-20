@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { buildActivity, buildDaily, buildHighlights, upsertHistory } from '../scripts/refresh-lib.mjs';
+import { benchmarkSnapshot, buildActivity, buildDaily, buildHighlights, upsertHistory } from '../scripts/refresh-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -17,6 +17,14 @@ function watch(repo = 'other/project') {
 
 function issue(action = 'closed', number = 7, repo = 'tester/tool') {
   return { type: 'IssuesEvent', payload: { action, issue: { number } }, repo: { name: repo } };
+}
+
+function release(tag = 'v1.2.0', repo = 'tester/tool') {
+  return { type: 'ReleaseEvent', payload: { action: 'published', release: { tag_name: tag } }, repo: { name: repo } };
+}
+
+function merge(number = 12, repo = 'tester/tool') {
+  return { type: 'PullRequestEvent', payload: { action: 'closed', pull_request: { number, merged: true } }, repo: { name: repo } };
 }
 
 test('buildDaily counts events and pushes per day in date order', () => {
@@ -57,6 +65,33 @@ test('buildHighlights maps stars and issues and respects the limit', () => {
     'opened issue #45 on tester/tool',
   ]);
   assert.deepEqual(buildHighlights(events, 2).length, 2);
+});
+
+test('buildHighlights reports releases and merged pull requests', () => {
+  const events = [release('v4.3.5'), merge(56), release('v4.3.4')];
+  assert.deepEqual(buildHighlights(events), [
+    'published release v4.3.5 of tester/tool',
+    'merged pull request #56 on tester/tool',
+    'published release v4.3.4 of tester/tool',
+  ]);
+  assert.deepEqual(buildHighlights([{ type: 'PullRequestEvent', payload: { action: 'closed', pull_request: { number: 1, merged: false } }, repo: { name: 'tester/tool' } }]), []);
+});
+
+test('benchmarkSnapshot reads the highlighted contender on the report date', () => {
+  const benchmark = {
+    generatedAt: '2026-09-20T12:03:04.357Z',
+    contenders: [
+      { highlight: false, overall: 10 },
+      { highlight: true, overall: 97.8, safety: 98.9, served: 92.1 },
+    ],
+  };
+  assert.deepEqual(benchmarkSnapshot(benchmark), { date: '2026-09-20', overall: 97.8, safety: 98.9, served: 92.1 });
+});
+
+test('benchmarkSnapshot refuses a report without a highlighted contender or a date', () => {
+  assert.equal(benchmarkSnapshot(null), null);
+  assert.equal(benchmarkSnapshot({ generatedAt: '2026-09-20T12:03:04.357Z', contenders: [{ highlight: false }] }), null);
+  assert.equal(benchmarkSnapshot({ generatedAt: 'not a date', contenders: [{ highlight: true, overall: 1 }] }), null);
 });
 
 test('upsertHistory replaces a same-date snapshot and sorts', () => {

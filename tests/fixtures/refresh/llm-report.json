@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-09-21T09:00:00.000Z",
+  "models": [{ "id": "test-model" }],
+  "runs": [
+    {
+      "contenderId": "pi-hashline-edit-pro",
+      "contenderVersion": "4.3.6",
+      "scenarioId": "single-line",
+      "pass": true,
+      "outcome": "applied",
+      "costUsd": 0.01,
+      "tracePath": "/repo/results/traces/test-model/pi-hashline-edit-pro-single-line.json"
+    },
+    {
+      "contenderId": "builtin-edit",
+      "contenderVersion": "0.85.1",
+      "scenarioId": "single-line",
+      "pass": true,
+      "outcome": "applied",
+      "costUsd": 0.01,
+      "tracePath": "/repo/results/traces/test-model/builtin-edit-single-line.json"
+    }
+  ]
+}

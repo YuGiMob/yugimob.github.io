@@ -1,0 +1,92 @@
+[
+  {
+    "name": "pi-hashline-edit-pro",
+    "description": "Hash-anchored read/replace/undo tools for the pi coding agent",
+    "language": "TypeScript",
+    "stargazers_count": 101,
+    "forks_count": 31,
+    "fork": false,
+    "pushed_at": "2026-09-21T08:00:00Z",
+    "license": { "spdx_id": "MIT" }
+  },
+  {
+    "name": "pi-tor-proxy",
+    "description": "Routes pi agent requests through Tor",
+    "language": "TypeScript",
+    "stargazers_count": 4,
+    "forks_count": 0,
+    "fork": false,
+    "pushed_at": "2026-08-28T06:40:51Z",
+    "license": { "spdx_id": "MIT" }
+  },
+  {
+    "name": "pi-git-commit",
+    "description": "Safe commit flow for pi",
+    "language": "TypeScript",
+    "stargazers_count": 2,
+    "forks_count": 1,
+    "fork": false,
+    "pushed_at": "2026-09-19T21:35:50Z",
+    "license": { "spdx_id": "MIT" }
+  },
+  {
+    "name": "pi-msg-workflow",
+    "description": "Numbered message and command stores for pi",
+    "language": "TypeScript",
+    "stargazers_count": 1,
+    "forks_count": 0,
+    "fork": false,
+    "pushed_at": "2026-09-17T19:29:16Z",
+    "license": { "spdx_id": "MIT" }
+  },
+  {
+    "name": "pi-unsloth-webtools",
+    "description": "web_search, web_fetch, and web_render tools for pi",
+    "language": "TypeScript",
+    "stargazers_count": 3,
+    "forks_count": 0,
+    "fork": false,
+    "pushed_at": "2026-09-18T06:19:01Z",
+    "license": { "spdx_id": "AGPL-3.0" }
+  },
+  {
+    "name": "pi-edit-benchmark",
+    "description": "Real-LLM tool-calling benchmark for pi editing extensions",
+    "language": "TypeScript",
+    "stargazers_count": 0,
+    "forks_count": 0,
+    "fork": false,
+    "pushed_at": "2026-09-20T12:38:46Z",
+    "license": null
+  },
+  {
+    "name": "mypi",
+    "description": "Personal pi configuration",
+    "language": "Shell",
+    "stargazers_count": 0,
+    "forks_count": 0,
+    "fork": false,
+    "pushed_at": "2026-09-01T00:00:00Z",
+    "license": null
+  },
+  {
+    "name": "someone-else-tool",
+    "description": "A fork that must be skipped",
+    "language": "TypeScript",
+    "stargazers_count": 0,
+    "forks_count": 0,
+    "fork": true,
+    "pushed_at": "2026-09-01T00:00:00Z",
+    "license": null
+  },
+  {
+    "name": "YuGiMob.github.io",
+    "description": "This site",
+    "language": "JavaScript",
+    "stargazers_count": 0,
+    "forks_count": 0,
+    "fork": false,
+    "pushed_at": "2026-09-20T00:00:00Z",
+    "license": null
+  }
+]

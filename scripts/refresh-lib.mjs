@@ -1,6 +1,7 @@
 export const HISTORY_LIMIT = 120;
 export const MAX_ACTIVITY_DAYS = 120;
 export const MAX_HIGHLIGHTS = 5;
+export const BENCHMARK_HISTORY_LIMIT = 120;
 
 export const BENCHMARK_REPOSITORY = 'https://github.com/YuGiMob/pi-edit-benchmark';
 export const BENCHMARK_REPORT_URL = `${BENCHMARK_REPOSITORY}/blob/main/results/llm-report.json`;
@@ -24,6 +25,10 @@ export function buildHighlights(events, limit = MAX_HIGHLIGHTS) {
       highlights.push(`starred ${repoName}`);
     } else if (event.type === 'IssuesEvent' && event.payload && event.payload.action && event.payload.issue && repoName) {
       highlights.push(`${event.payload.action} issue #${event.payload.issue.number} on ${repoName}`);
+    } else if (event.type === 'ReleaseEvent' && event.payload && event.payload.action === 'published' && event.payload.release && repoName) {
+      highlights.push(`published release ${event.payload.release.tag_name} of ${repoName}`);
+    } else if (event.type === 'PullRequestEvent' && event.payload && event.payload.pull_request && event.payload.pull_request.merged && repoName) {
+      highlights.push(`merged pull request #${event.payload.pull_request.number} on ${repoName}`);
     }
   }
   return highlights;
@@ -198,6 +203,18 @@ export function summarizeBenchmark(report, focusById = new Map(), highlighted = 
     totalRuns: runs.length,
     costUsd: Math.round(costUsd * 10000) / 10000,
     contenders: rows,
+  };
+}
+
+export function benchmarkSnapshot(benchmark) {
+  if (!benchmark || !isTimestamp(benchmark.generatedAt)) return null;
+  const highlighted = Array.isArray(benchmark.contenders) ? benchmark.contenders.find((entry) => entry && entry.highlight === true) : null;
+  if (!highlighted) return null;
+  return {
+    date: String(benchmark.generatedAt).slice(0, 10),
+    overall: highlighted.overall,
+    safety: highlighted.safety ?? null,
+    served: highlighted.served ?? null,
   };
 }
 

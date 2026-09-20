@@ -266,6 +266,31 @@ test('the validator refuses history, daily, and highlight counts beyond the caps
   assert.match(runValidator(manyHighlights, SHOWCASE).stderr, /activity\.highlights has 6 entries; the cap is 5/);
 });
 
+test('the validator refuses benchmark history beyond the cap and out of order', () => {
+  const day = 86400000;
+  const start = Date.parse('2026-01-01');
+  const dateAt = (index) => new Date(start + index * day).toISOString().slice(0, 10);
+  const snapshot = (index) => ({ date: dateAt(index), overall: 1, safety: null, served: null });
+  const longHistory = structuredClone(DATA);
+  longHistory.benchmarkHistory = Array.from({ length: 121 }, (unused, index) => snapshot(index));
+  assert.match(runValidator(longHistory, SHOWCASE).stderr, /benchmarkHistory has 121 entries; the cap is 120/);
+  const unsorted = structuredClone(DATA);
+  unsorted.benchmarkHistory = [snapshot(1), snapshot(0)];
+  assert.match(runValidator(unsorted, SHOWCASE).stderr, /benchmarkHistory dates must be unique and sorted/);
+  const badScore = structuredClone(DATA);
+  badScore.benchmarkHistory = [{ date: '2026-01-01', overall: 101, safety: null, served: null }];
+  assert.match(runValidator(badScore, SHOWCASE).stderr, /benchmarkHistory\.0\.overall invalid/);
+});
+
+test('the validator refuses benchmark history that drifts from the current report', () => {
+  const drifted = structuredClone(DATA);
+  drifted.benchmarkHistory[drifted.benchmarkHistory.length - 1].overall = 42;
+  assert.match(runValidator(drifted, SHOWCASE).stderr, /benchmarkHistory newest entry does not match the highlighted contender/);
+  const misdated = structuredClone(DATA);
+  misdated.benchmarkHistory[misdated.benchmarkHistory.length - 1].date = '2026-09-19';
+  assert.match(runValidator(misdated, SHOWCASE).stderr, /benchmarkHistory newest entry is dated 2026-09-19/);
+});
+
 test('the site validator refuses a stale CSP hash and an un-preloaded module', () => {
   const staleHash = runSiteValidator((dir) => {
     const path = join(dir, 'index.html');
@@ -345,6 +370,68 @@ test('the site validator refuses a target=_blank link without rel and a missing 
   });
   assert.equal(lang.status, 1);
   assert.match(lang.stderr, /<html> is missing a lang attribute/);
+});
+
+test('the site validator refuses a CSP without Trusted Types and a DOM sink', () => {
+  const noTrustedTypes = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace("; require-trusted-types-for 'script'", ''));
+  });
+  assert.equal(noTrustedTypes.status, 1);
+  assert.match(noTrustedTypes.stderr, /CSP does not require Trusted Types/);
+
+  const sink = runSiteValidator((dir) => {
+    const path = join(dir, 'assets', 'js', 'ui.js');
+    writeFileSync(path, `${readFileSync(path, 'utf8')}\ndocument.body.innerHTML = 'x';\n`);
+  });
+  assert.equal(sink.status, 1);
+  assert.match(sink.stderr, /uses a DOM sink that Trusted Types forbids/);
+
+  const fragment = runSiteValidator((dir) => {
+    const path = join(dir, 'assets', 'js', 'ui.js');
+    writeFileSync(path, `${readFileSync(path, 'utf8')}\nrange.createContextualFragment('<b>x</b>');\n`);
+  });
+  assert.equal(fragment.status, 1);
+  assert.match(fragment.stderr, /uses a DOM sink that Trusted Types forbids \(createContextualFragment\)/);
+
+  const handler = runSiteValidator((dir) => {
+    const path = join(dir, 'assets', 'js', 'ui.js');
+    writeFileSync(path, `${readFileSync(path, 'utf8')}\nnode.setAttribute("onclick", "x");\n`);
+  });
+  assert.equal(handler.status, 1);
+  assert.match(handler.stderr, /uses a DOM sink that Trusted Types forbids \(setAttribute\("onclick"\)/);
+
+  const scriptText = runSiteValidator((dir) => {
+    const path = join(dir, 'assets', 'js', 'render.js');
+    writeFileSync(path, readFileSync(path, 'utf8').replace(
+      'target.replaceChildren(document.createTextNode(JSON.stringify(structuredData(data, showcase))));',
+      'target.textContent = JSON.stringify(structuredData(data, showcase));',
+    ));
+  });
+  assert.equal(scriptText.status, 1);
+  assert.match(scriptText.stderr, /uses a DOM sink that Trusted Types forbids \(target\.textContent\)/);
+
+  const createdScript = runSiteValidator((dir) => {
+    const path = join(dir, 'assets', 'js', 'ui.js');
+    writeFileSync(path, `${readFileSync(path, 'utf8')}\nconst loader = document.createElement('script');\n`);
+  });
+  assert.equal(createdScript.status, 1);
+  assert.match(createdScript.stderr, /uses a DOM sink that Trusted Types forbids \(createElement\('script'\)\)/);
+});
+
+test('the site validator refuses a missing or incomplete llms.txt', () => {
+  const missing = runSiteValidator((dir) => {
+    rmSync(join(dir, 'llms.txt'));
+  });
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /llms\.txt unreadable/);
+
+  const stray = runSiteValidator((dir) => {
+    const path = join(dir, 'llms.txt');
+    writeFileSync(path, readFileSync(path, 'utf8').replaceAll('pi-tor-proxy', 'ghost-tool'));
+  });
+  assert.equal(stray.status, 1);
+  assert.match(stray.stderr, /llms\.txt: missing project pi-tor-proxy/);
 });
 
 test('the site validator refuses a title and description outside their length limits', () => {

@@ -526,5 +526,13 @@
         "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-semantic-edit-b9-boundary-changed.json"
       }
     ]
-  }
+  },
+  "benchmarkHistory": [
+    {
+      "date": "2026-09-20",
+      "overall": 97.8,
+      "safety": 98.9,
+      "served": 92.1
+    }
+  ]
 }

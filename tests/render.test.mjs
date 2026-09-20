@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyVisibility, renderDegradedNotice } from '../assets/js/render.js';
+import { applyVisibility, renderDegradedNotice, renderStructuredData } from '../assets/js/render.js';
 
 function withDocument(element, run) {
   const original = globalThis.document;
@@ -62,4 +62,34 @@ test('applyVisibility defaults to showing sections and follows the evidence bloc
     assert.equal(nodes.get('evidence').hidden, true);
     assert.equal(nodes.get('problems').hidden, false);
   });
+});
+
+test('renderStructuredData writes the JSON-LD through a text node', () => {
+  const structured = {
+    identity: { displayName: 'Tester', classTitle: 'Testing', tagline: 'A tagline.', links: {} },
+    projects: [{ name: 'tool', url: 'https://github.com/tester/tool', description: 'A tool.' }],
+    activity: { fetchedAt: '2026-09-20' },
+  };
+  const showcase = { problems: [{ name: 'tool' }] };
+  let written = null;
+  const script = {
+    replaceChildren(node) {
+      written = node.textContent;
+    },
+    set textContent(value) {
+      throw new TypeError(`TrustedScript required, got ${value}`);
+    },
+  };
+  const original = globalThis.document;
+  globalThis.document = {
+    getElementById: () => script,
+    createTextNode: (value) => ({ textContent: value }),
+  };
+  try {
+    renderStructuredData(structured, showcase);
+  } finally {
+    globalThis.document = original;
+  }
+  assert.match(written, /"@type":"ItemList"/);
+  assert.match(written, /"name":"tool"/);
 });

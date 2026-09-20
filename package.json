@@ -13,6 +13,7 @@
     "validate": "node scripts/validate-data.mjs && node scripts/validate-site.mjs",
     "check": "npm run validate && npm run coverage",
     "refresh": "node scripts/refresh-data.mjs",
+    "build:llms": "node scripts/build-llms.mjs",
     "links": "node scripts/check-links.mjs",
     "serve": "python3 -m http.server 8123"
   }

@@ -128,7 +128,7 @@ async function init() {
   renderProblemsHeading(showcase, projects);
   renderProblemIndex(showcase, projects);
   renderProblems(showcase, projects);
-  renderEvidence(showcase, projects, benchmark);
+  renderEvidence(showcase, projects, benchmark, data.benchmarkHistory);
   renderColophon(showcase);
   renderActivity(data);
   renderFooter(data);

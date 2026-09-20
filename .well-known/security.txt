@@ -1,0 +1,4 @@
+Contact: https://github.com/YuGiMob/yugimob.github.io/security/advisories/new
+Expires: 2027-12-31T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://yugimob.github.io/.well-known/security.txt

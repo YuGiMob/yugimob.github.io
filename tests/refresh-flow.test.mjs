@@ -1,0 +1,155 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const LOADER = join(ROOT, 'tests', 'fake-fetch.mjs');
+const FIXTURES = join(ROOT, 'tests', 'fixtures', 'refresh');
+const DATA_FILE = join('data', 'site-data.json');
+
+function withRepo(run) {
+  const dir = mkdtempSync(join(tmpdir(), 'yugimob-refresh-'));
+  try {
+    const copy = join(dir, 'repo');
+    cpSync(ROOT, copy, {
+      recursive: true,
+      filter: (source) => !['.git', '.omo'].includes(basename(source)),
+    });
+    return run(copy);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+function refresh(repo, env = {}) {
+  return spawnSync(process.execPath, ['--import', LOADER, join(repo, 'scripts', 'refresh-data.mjs')], {
+    cwd: repo,
+    encoding: 'utf8',
+    env: { ...process.env, YUGIMOB_FIXTURES: FIXTURES, ...env },
+  });
+}
+
+function readData(repo) {
+  return JSON.parse(readFileSync(join(repo, DATA_FILE), 'utf8'));
+}
+
+test('a fixture refresh writes every machine field and rebuilds the derived files', () => {
+  withRepo((repo) => {
+    const repos = JSON.parse(readFileSync(join(FIXTURES, 'repos.json'), 'utf8'));
+    const result = refresh(repo);
+    assert.equal(result.status, 0, result.stderr);
+
+    const data = readData(repo);
+    assert.equal(data.identity.links.github, 'https://github.com/YuGiMob');
+    assert.equal(data.stats.totalStars, repos.reduce((sum, entry) => sum + entry.stargazers_count, 0));
+    assert.equal(data.stats.forksReceived, repos.reduce((sum, entry) => sum + entry.forks_count, 0));
+    assert.equal(data.stats.publicRepos, 12);
+    assert.equal(data.stats.npmPackages, 5);
+    assert.equal(data.projects.find((project) => project.name === 'pi-hashline-edit-pro').stars, 101);
+    assert.equal(data.projects.find((project) => project.name === 'pi-hashline-edit-pro').npmWeeklyDownloads, 5123);
+    assert.equal(data.activity.window, '2026-09-18..20');
+    assert.equal(data.activity.pushes, 2);
+    assert.deepEqual(data.activity.highlights, [
+      'starred YuGiMob/pi-tor-proxy',
+      'published release v4.3.6 of YuGiMob/pi-hashline-edit-pro',
+      'closed issue #47 on YuGiMob/pi-hashline-edit-pro',
+    ]);
+
+    assert.equal(data.benchmark.contenderCount, 2);
+    assert.equal(data.benchmark.models, 1);
+    assert.equal(data.benchmark.scenarios, 1);
+    assert.equal(data.benchmark.totalRuns, 2);
+    assert.equal(data.benchmarkHistory.length, 2);
+    assert.deepEqual(data.benchmarkHistory.at(-1), { date: '2026-09-21', overall: 100, safety: null, served: null });
+
+    assert.match(readFileSync(join(repo, 'llms.txt'), 'utf8'), /Stars 101/);
+    const newest = data.history.at(-1).date;
+    assert.match(readFileSync(join(repo, 'sitemap.xml'), 'utf8'), new RegExp(`<lastmod>${newest}</lastmod>`));
+
+    const validated = spawnSync(process.execPath, [join(repo, 'scripts', 'validate-data.mjs')], { cwd: repo, encoding: 'utf8' });
+    assert.equal(validated.status, 0, validated.stderr);
+  });
+});
+
+test('a second fixture refresh writes nothing', () => {
+  withRepo((repo) => {
+    const first = refresh(repo);
+    assert.equal(first.status, 0, first.stderr);
+    const dataBefore = readFileSync(join(repo, DATA_FILE), 'utf8');
+    const llmsBefore = readFileSync(join(repo, 'llms.txt'), 'utf8');
+
+    const second = refresh(repo);
+    assert.equal(second.status, 0, second.stderr);
+    assert.match(second.stdout, /No data changes/);
+    assert.equal(readFileSync(join(repo, DATA_FILE), 'utf8'), dataBefore);
+    assert.equal(readFileSync(join(repo, 'llms.txt'), 'utf8'), llmsBefore);
+  });
+});
+
+test('a stale llms.txt is rebuilt even when the data is unchanged', () => {
+  withRepo((repo) => {
+    const first = refresh(repo);
+    assert.equal(first.status, 0, first.stderr);
+    writeFileSync(join(repo, 'llms.txt'), '# stale\n');
+    const second = refresh(repo);
+    assert.equal(second.status, 0, second.stderr);
+    assert.match(second.stdout, /llms\.txt: rewritten/);
+    assert.match(readFileSync(join(repo, 'llms.txt'), 'utf8'), /^# YuGiMob/);
+  });
+});
+
+test('a partial benchmark report keeps the existing block and still refreshes the rest', () => {
+  withRepo((repo) => {
+    const before = readData(repo);
+    const result = refresh(repo, { YUGIMOB_LLM_REPORT: 'llm-report-partial.json' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, /not a complete matrix/);
+
+    const data = readData(repo);
+    assert.deepEqual(data.benchmark, before.benchmark);
+    assert.deepEqual(data.benchmarkHistory, before.benchmarkHistory);
+    assert.equal(data.projects.find((project) => project.name === 'pi-hashline-edit-pro').stars, 101);
+  });
+});
+
+test('a corrupt data file is left byte-identical and the refresh exits', () => {
+  withRepo((repo) => {
+    const path = join(repo, DATA_FILE);
+    writeFileSync(path, '{ not json');
+    const result = refresh(repo);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /unusable/);
+    assert.equal(readFileSync(path, 'utf8'), '{ not json');
+  });
+});
+
+test('a missing data file fails instead of writing a skeleton', () => {
+  withRepo((repo) => {
+    const path = join(repo, DATA_FILE);
+    rmSync(path);
+    const result = refresh(repo);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /missing/);
+    assert.equal(existsSync(path), false);
+  });
+});
+
+test('the pre-write validator refuses a candidate the schema rejects', () => {
+  withRepo((repo) => {
+    const path = join(repo, DATA_FILE);
+    const data = JSON.parse(readFileSync(path, 'utf8'));
+    data.identity.extra = 'nope';
+    writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+
+    const result = refresh(repo);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /identity unexpected key extra/);
+    assert.match(result.stderr, /failed validate-data/);
+    assert.equal(readData(repo).identity.extra, 'nope');
+    assert.deepEqual(readdirSync(join(repo, 'data')).filter((file) => file.endsWith('.tmp')), []);
+  });
+});

@@ -4,7 +4,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEMO_IDS } from '../assets/js/demos.js';
 import { PLAYGROUND_ID } from '../assets/js/playground.js';
-import { BENCHMARK_FOCI, HISTORY_LIMIT, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS, isTimestamp } from './refresh-lib.mjs';
+import { BENCHMARK_FOCI, BENCHMARK_HISTORY_LIMIT, HISTORY_LIMIT, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS, benchmarkSnapshot, isTimestamp } from './refresh-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -237,6 +237,18 @@ function validateBenchmark(benchmark) {
   }
 }
 
+function validateBenchmarkHistory(benchmark, history) {
+  if (!Array.isArray(history) || history.length === 0) return;
+  const snapshot = benchmarkSnapshot(benchmark);
+  if (!snapshot) return;
+  const newest = history[history.length - 1];
+  if (!isPlainObject(newest)) return;
+  if (newest.date !== snapshot.date) fail(`benchmarkHistory newest entry is dated ${newest.date}, not the benchmark report date ${snapshot.date}`);
+  if (newest.overall !== snapshot.overall || newest.safety !== snapshot.safety || newest.served !== snapshot.served) {
+    fail('benchmarkHistory newest entry does not match the highlighted contender');
+  }
+}
+
 function validateShowcase(showcase, knownNames) {
   if (!isPlainObject(showcase)) return;
   run(() => {
@@ -284,6 +296,13 @@ if (isPlainObject(data)) {
       fail(`history has ${data.history.length} entries; the cap is ${HISTORY_LIMIT}`);
     }
   });
+  run(() => {
+    if (Array.isArray(data.benchmarkHistory)) checkSortedDates(data.benchmarkHistory, 'benchmarkHistory');
+    if (Array.isArray(data.benchmarkHistory) && data.benchmarkHistory.length > BENCHMARK_HISTORY_LIMIT) {
+      fail(`benchmarkHistory has ${data.benchmarkHistory.length} entries; the cap is ${BENCHMARK_HISTORY_LIMIT}`);
+    }
+  });
+  run(() => validateBenchmarkHistory(data.benchmark, data.benchmarkHistory));
 }
 
 if (errors.length > 0) {

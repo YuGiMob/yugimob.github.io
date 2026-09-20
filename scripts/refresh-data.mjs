@@ -2,9 +2,11 @@
 
 import { readFileSync, writeFileSync, renameSync, existsSync, unlinkSync, readdirSync, statSync } from 'node:fs';
 import {
+  BENCHMARK_HISTORY_LIMIT,
   BENCHMARK_REPORT_RAW,
   BENCHMARK_SCENARIO_RAW,
   benchmarkCoversFullMatrix,
+  benchmarkSnapshot,
   buildActivity,
   isTimestamp,
   parseScenarioFocus,
@@ -15,11 +17,14 @@ import {
 } from './refresh-lib.mjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import { writeLlmsFile } from './llms-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_FILE = join(ROOT, 'data', 'site-data.json');
 const TMP_FILE = `${DATA_FILE}.${process.pid}.tmp`;
 const SITEMAP_FILE = join(ROOT, 'sitemap.xml');
+const VALIDATOR_FILE = join(ROOT, 'scripts', 'validate-data.mjs');
 
 function safeUnlink(path) {
   try {
@@ -29,15 +34,17 @@ function safeUnlink(path) {
 
 function cleanupStaleTmpFiles() {
   const cutoff = Date.now() - 10 * 60 * 1000;
-  try {
-    for (const entry of readdirSync(join(ROOT, 'data'))) {
-      if (!entry.startsWith('site-data.json.') || !entry.endsWith('.tmp')) continue;
-      const path = join(ROOT, 'data', entry);
-      try {
-        if (statSync(path).mtimeMs < cutoff) safeUnlink(path);
-      } catch {}
-    }
-  } catch {}
+  for (const [directory, prefix] of [[join(ROOT, 'data'), 'site-data.json.'], [ROOT, 'llms.txt.']]) {
+    try {
+      for (const entry of readdirSync(directory)) {
+        if (!entry.startsWith(prefix) || !entry.endsWith('.tmp')) continue;
+        const path = join(directory, entry);
+        try {
+          if (statSync(path).mtimeMs < cutoff) safeUnlink(path);
+        } catch {}
+      }
+    } catch {}
+  }
 }
 
 function updateSitemapLastmod(date) {
@@ -349,6 +356,11 @@ if (!benchmarkReport || focusById.size === 0) {
     reportCount('benchmark.contenders', previous.contenders, benchmark.contenders);
     report('benchmark.costUsd', previous.costUsd, benchmark.costUsd);
     data.benchmark = benchmark;
+    const snapshot = benchmarkSnapshot(benchmark);
+    if (snapshot) {
+      data.benchmarkHistory = upsertHistory(Array.isArray(data.benchmarkHistory) ? data.benchmarkHistory : [], snapshot, BENCHMARK_HISTORY_LIMIT);
+      reportCount('benchmarkHistory', existing.benchmarkHistory, data.benchmarkHistory);
+    }
   }
 }
 if (Array.isArray(events)) {
@@ -377,6 +389,12 @@ const dataChanged = JSON.stringify(existing) !== JSON.stringify(data);
 if (dataChanged) {
   try {
     writeFileSync(TMP_FILE, `${JSON.stringify(data, null, 2)}\n`);
+    try {
+      execFileSync(process.execPath, [VALIDATOR_FILE, TMP_FILE], { stdio: 'pipe' });
+    } catch (validationError) {
+      if (validationError.stderr) console.error(String(validationError.stderr).trim());
+      throw new Error('the refreshed data failed validate-data; the existing file was left untouched');
+    }
     renameSync(TMP_FILE, DATA_FILE);
   } catch (err) {
     safeUnlink(TMP_FILE);
@@ -384,8 +402,9 @@ if (dataChanged) {
   }
   if (data.history.at(-1)?.date === today) updateSitemapLastmod(today);
 }
+if (writeLlmsFile(ROOT)) summary.push('llms.txt: rewritten');
 console.log('Refresh complete. Changes:');
 for (const line of summary) {
   console.log(`  ${line}`);
 }
-console.log(dataChanged ? `Data written to ${DATA_FILE}` : `No changes; ${DATA_FILE} left untouched`);
+console.log(dataChanged ? `Data written to ${DATA_FILE}` : `No data changes; ${DATA_FILE} left untouched`);

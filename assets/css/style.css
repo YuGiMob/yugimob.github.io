@@ -115,6 +115,23 @@ img {
   max-width: 100%;
 }
 
+.intro-headline,
+.section-title,
+.problem-title,
+.chart-title,
+.notfound-title {
+  text-wrap: balance;
+}
+
+.intro-paragraph,
+.section-lede,
+.problem-statement,
+.answer-text,
+.chart-method,
+.colophon-paragraph {
+  text-wrap: pretty;
+}
+
 a {
   color: var(--accent);
   text-decoration-thickness: 1px;
@@ -1630,6 +1647,38 @@ a:hover {
   font-size: 0.8rem;
 }
 
+.chart-data {
+  margin-top: 14px;
+  overflow-x: auto;
+  color: var(--ink-2);
+  font-size: 0.8rem;
+}
+
+.chart-data summary {
+  cursor: pointer;
+  color: var(--ink-3);
+}
+
+.chart-data table {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-data th,
+.chart-data td {
+  padding: 4px 10px 4px 0;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--rule);
+}
+
+.chart-data th {
+  color: var(--ink-3);
+  font-weight: 600;
+}
+
 .chart-method {
   margin-top: 12px;
   max-width: 78ch;
@@ -1666,6 +1715,23 @@ a:hover {
 
 .meter-served .meter-fill {
   background: var(--green);
+}
+
+.meter-whisker {
+  position: absolute;
+  top: 50%;
+  left: var(--low);
+  width: max(calc(var(--high) - var(--low)), 1px);
+  height: 1px;
+  background: var(--rule-strong);
+  border-left: 1px solid var(--rule-strong);
+  border-right: 1px solid var(--rule-strong);
+  opacity: 0;
+  transition: opacity 0.6s ease 0.4s;
+}
+
+.chart.is-live .meter-whisker {
+  opacity: 0.85;
 }
 
 .bench-rate {

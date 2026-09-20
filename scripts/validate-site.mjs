@@ -6,6 +6,19 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = process.argv[2] ? resolve(process.argv[2]) : join(dirname(fileURLToPath(import.meta.url)), '..');
 const errors = [];
+const TRUSTED_TYPES_SINKS = /innerHTML|outerHTML|insertAdjacentHTML|srcdoc|createContextualFragment|parseHTMLUnsafe|setHTMLUnsafe|parseFromString|document\.writ(?:e|eln)\(|\beval\(|new (?:Async)?(?:Generator)?Function\(|importScripts\(|execCommand\(\s*['"]insertHTML|set(?:Timeout|Interval)\(\s*['"`]|setAttribute\(\s*['"](?:on[a-z]+|srcdoc)['"]/;
+
+function scriptSink(source) {
+  const target = source.match(/(?:const|let|var)\s+(\w+)\s*=\s*document\.getElementById\(\s*['"]structured-data['"]\s*\)/);
+  if (target) {
+    const assignment = source.match(new RegExp(`\\b${target[1]}\\s*\\.\\s*(?:textContent|innerText|text)\\s*=`));
+    if (assignment) return assignment[0].replace(/\s*=\s*$/, '');
+  }
+  const named = source.match(/\bscript\w*\s*\.\s*(?:src|textContent|innerText|text)\s*=/i);
+  if (named) return named[0].replace(/\s*=\s*$/, '');
+  const created = source.match(/(?:\bcreateElement|\bel)\(\s*['"]script['"]\s*\)/);
+  return created ? created[0] : null;
+}
 
 function fail(message) {
   errors.push(message);
@@ -69,6 +82,7 @@ for (const [page, source] of html) {
   const policy = source.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/);
   if (!policy) fail(`${page}: missing the Content-Security-Policy meta tag`);
   else if (!policy[1].includes("default-src 'self'")) fail(`${page}: CSP does not default to 'self'`);
+  else if (!policy[1].includes("require-trusted-types-for 'script'")) fail(`${page}: CSP does not require Trusted Types for scripts`);
   if (!/<html[^>]*\slang="[^"]+"/.test(source)) fail(`${page}: <html> is missing a lang attribute`);
   for (const match of source.matchAll(/<img\b[^>]*>/g)) {
     if (!/\salt="[^"]*"/.test(match[0])) fail(`${page}: <img> is missing an alt attribute`);
@@ -98,6 +112,10 @@ for (const file of readdirSync(join(ROOT, 'assets', 'js'))) {
   const source = readText(`assets/js/${file}`);
   for (const match of source.matchAll(/(?:getElementById|setText|setHidden)\('([^']+)'/g)) referencedIds.add(match[1]);
   for (const match of source.matchAll(/querySelector\('#([^']+)'\)/g)) referencedIds.add(match[1]);
+  const sink = source.match(TRUSTED_TYPES_SINKS);
+  if (sink) fail(`assets/js/${file}: uses a DOM sink that Trusted Types forbids (${sink[0]})`);
+  const scriptSinkName = scriptSink(source);
+  if (scriptSinkName) fail(`assets/js/${file}: uses a DOM sink that Trusted Types forbids (${scriptSinkName})`);
 }
 for (const id of referencedIds) {
   if (!indexIds.has(id)) fail(`index.html: missing #${id} referenced by scripts`);
@@ -214,6 +232,12 @@ if (!lastmod) {
   const history = Array.isArray(siteData?.history) ? siteData.history : [];
   const newest = typeof history[history.length - 1]?.date === 'string' ? history[history.length - 1].date : null;
   if (newest && lastmod !== newest) fail(`sitemap.xml: lastmod ${lastmod} does not match the newest history date ${newest}`);
+}
+
+const llms = readText('llms.txt');
+if (!/^# \S/.test(llms)) fail('llms.txt: missing an H1 title');
+for (const project of siteData?.projects ?? []) {
+  if (!llms.includes(project.name)) fail(`llms.txt: missing project ${project.name}`);
 }
 
 if (errors.length > 0) {

@@ -16,17 +16,75 @@ function legendItem(className, text) {
   return item;
 }
 
-function meter(className, value) {
+function meter(className, value, range) {
   const track = el('span', `meter-track ${className}`);
   track.setAttribute('aria-hidden', 'true');
   const fill = el('span', 'meter-fill');
   fill.style.setProperty('--pct', `${value}%`);
   track.appendChild(fill);
+  if (range) {
+    const whisker = el('span', 'meter-whisker');
+    whisker.style.setProperty('--low', `${range.low}%`);
+    whisker.style.setProperty('--high', `${range.high}%`);
+    track.appendChild(whisker);
+  }
   return track;
 }
 
 export function sortedContenders(contenders) {
   return [...contenders].sort((a, b) => b.overall - a.overall || (b.safety ?? 0) - (a.safety ?? 0));
+}
+
+export function benchmarkTableRows(bench) {
+  return sortedContenders(bench.contenders).map((contender) => ({
+    tool: contender.label,
+    version: contender.version ?? '',
+    overall: `${contender.overall.toFixed(1)}%`,
+    safety: contender.safety == null ? '—' : `${contender.safety.toFixed(1)}%`,
+    served: contender.served == null ? '—' : `${contender.served.toFixed(1)}%`,
+    interval: `${contender.low.toFixed(1)}–${contender.high.toFixed(1)}`,
+    runs: formatNumber(contender.runs),
+    passed: formatNumber(contender.passed),
+    errors: formatNumber(contender.errors),
+  }));
+}
+
+function historyEntries(history) {
+  return (Array.isArray(history) ? history : [])
+    .filter((entry) => entry && typeof entry.date === 'string' && Number.isFinite(entry.totalStars) && Number.isFinite(entry.totalDownloads))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export function historyTableRows(history) {
+  return historyEntries(history).map((entry) => ({
+    date: entry.date,
+    stars: formatNumber(entry.totalStars),
+    downloads: formatNumber(entry.totalDownloads),
+  }));
+}
+
+function dataTable(summary, rows) {
+  if (rows.length === 0) return null;
+  const details = el('details', 'chart-data');
+  details.appendChild(el('summary', null, summary));
+  const table = el('table');
+  const head = el('thead');
+  const headRow = el('tr');
+  for (const column of Object.keys(rows[0])) {
+    const cell = el('th', null, column);
+    cell.setAttribute('scope', 'col');
+    headRow.appendChild(cell);
+  }
+  head.appendChild(headRow);
+  const body = el('tbody');
+  for (const row of rows) {
+    const tr = el('tr');
+    for (const value of Object.values(row)) tr.appendChild(el('td', null, value));
+    body.appendChild(tr);
+  }
+  append(table, head, body);
+  details.appendChild(table);
+  return details;
 }
 
 const OUTCOME_ORDER = ['applied', 'recovered', 'rejected', 'error', 'undo', 'noop'];
@@ -59,7 +117,7 @@ function contenderDetail(contender, bench) {
   return parts.join('; ');
 }
 
-export function benchmarkChart(bench) {
+export function benchmarkChart(bench, benchmarkHistory) {
   const cost = Number.isFinite(bench.costUsd) ? ` · $${bench.costUsd.toFixed(2)} in API cost` : '';
   const { root, body } = chartFrame(
     'Results',
@@ -83,7 +141,7 @@ export function benchmarkChart(bench) {
     const bars = el('span', 'bench-bars');
     append(
       bars,
-      meter('meter-overall', contender.overall),
+      meter('meter-overall', contender.overall, { low: contender.low, high: contender.high }),
       meter('meter-safety', contender.safety ?? 0),
       meter('meter-served', contender.served ?? 0),
       outcomeStrip(contender),
@@ -116,9 +174,15 @@ export function benchmarkChart(bench) {
     link(bench.reportUrl, 'run report'),
     ' · ',
     link(bench.tracesUrl, 'traces'),
+    ' · ',
+    link('data/site-data.json', 'raw data'),
     ` · generated ${String(bench.generatedAt).slice(0, 10)}`
   );
   append(body, list, legend, outcomeLegend, method, source);
+  const trend = benchmarkTrend(benchmarkHistory);
+  if (trend) body.appendChild(trend);
+  const table = dataTable('View the numbers as a table', benchmarkTableRows(bench));
+  if (table) body.appendChild(table);
   return createController(root, (runtime) => {
     runtime.after(() => root.classList.add('is-live'), 120);
   }, () => root.classList.remove('is-live'));
@@ -148,21 +212,45 @@ function sparkline(values, label) {
   return node;
 }
 
-function growthRow(label, values, delta) {
+function growthRow(label, values, delta, formatter = formatNumber) {
   const row = el('div', 'growth-row');
   row.appendChild(el('span', 'growth-label', label));
   row.appendChild(sparkline(values, label));
-  const value = el('span', 'growth-value', formatNumber(values[values.length - 1]));
+  const value = el('span', 'growth-value', formatter(values[values.length - 1]));
   const trend = delta > 0 ? ' is-up' : delta < 0 ? ' is-down' : '';
-  value.appendChild(el('span', `growth-delta${trend}`, `${delta > 0 ? '+' : ''}${formatNumber(delta)}`));
+  value.appendChild(el('span', `growth-delta${trend}`, `${delta > 0 ? '+' : ''}${formatter(delta)}`));
   row.appendChild(value);
   return row;
 }
 
-export function historyPanel(history) {
-  const entries = history
-    .filter((entry) => entry && typeof entry.date === 'string' && Number.isFinite(entry.totalStars) && Number.isFinite(entry.totalDownloads))
+export function benchmarkTrend(history) {
+  const entries = (Array.isArray(history) ? history : [])
+    .filter((entry) => entry && typeof entry.date === 'string' && Number.isFinite(entry.overall))
     .sort((a, b) => a.date.localeCompare(b.date));
+  if (entries.length < 2) return null;
+  const percent = (value) => `${value.toFixed(1)}%`;
+  const first = entries[0];
+  const last = entries[entries.length - 1];
+  const root = el('section', 'growth bench-trend');
+  root.appendChild(el('p', 'chart-kicker', 'Collected daily'));
+  root.appendChild(el('h3', 'chart-title', 'The project’s own pass rate'));
+  const rows = el('div', 'growth-rows');
+  rows.appendChild(growthRow('overall', entries.map((entry) => entry.overall), last.overall - first.overall, percent));
+  const safety = entries.filter((entry) => Number.isFinite(entry.safety));
+  if (safety.length >= 2) {
+    rows.appendChild(growthRow('staleness', safety.map((entry) => entry.safety), safety[safety.length - 1].safety - safety[0].safety, percent));
+  }
+  const served = entries.filter((entry) => Number.isFinite(entry.served));
+  if (served.length >= 2) {
+    rows.appendChild(growthRow('served state', served.map((entry) => entry.served), served[served.length - 1].served - served[0].served, percent));
+  }
+  root.appendChild(rows);
+  root.appendChild(el('p', 'chart-note', `${entries.length} benchmark reports since ${first.date}`));
+  return root;
+}
+
+export function historyPanel(history) {
+  const entries = historyEntries(history);
   if (entries.length === 0) return null;
   const root = el('section', 'growth');
   const first = entries[0];
@@ -175,5 +263,7 @@ export function historyPanel(history) {
   root.appendChild(rows);
   const count = entries.length === 1 ? '1 snapshot' : `${entries.length} snapshots`;
   root.appendChild(el('p', 'chart-note', `${count} since ${first.date}`));
+  const table = dataTable('View the snapshots as a table', historyTableRows(entries));
+  if (table) root.appendChild(table);
   return root;
 }

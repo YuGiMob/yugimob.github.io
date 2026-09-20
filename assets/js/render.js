@@ -191,7 +191,7 @@ export function renderProblems(showcase, projects) {
   }
 }
 
-export function renderEvidence(showcase, projects, benchmark) {
+export function renderEvidence(showcase, projects, benchmark, benchmarkHistory) {
   const section = document.getElementById('evidence');
   const body = document.getElementById('evidence-body');
   const evidence = showcase.evidence;
@@ -212,7 +212,7 @@ export function renderEvidence(showcase, projects, benchmark) {
   if (project) copy.appendChild(answerBlock(evidence, project));
   const demoBox = el('div', 'problem-demo');
   if (benchmark) {
-    lazyMount(demoBox, () => benchmarkChart(benchmark));
+    lazyMount(demoBox, () => benchmarkChart(benchmark, benchmarkHistory));
   } else {
     demoBox.appendChild(el('p', 'chart-note', 'The benchmark block is missing from the data, so the run rates cannot be shown.'));
   }
@@ -328,7 +328,7 @@ export function renderFooter(data) {
 export function renderStructuredData(data, showcase) {
   const target = document.getElementById('structured-data');
   if (!target) return;
-  target.textContent = JSON.stringify(structuredData(data, showcase));
+  target.replaceChildren(document.createTextNode(JSON.stringify(structuredData(data, showcase))));
 }
 
 export function applyVisibility(sections, showcase) {

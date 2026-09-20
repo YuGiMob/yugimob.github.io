@@ -39,13 +39,18 @@ flagship loses.
 ```
 index.html                      page shell, meta tags, JSON-LD
 404.html                        not-found page
+llms.txt                        generated site map for language models
 favicon.ico                     legacy favicon
 sitemap.xml                     single-URL sitemap, lastmod refreshed with the data
 robots.txt                      crawl policy and sitemap reference
 LICENSE                         MIT license for this repository
+SECURITY.md                     vulnerability reporting policy
+.well-known/security.txt        RFC 9116 contact
 assets/apple-touch-icon.png     iOS home-screen icon
 assets/avatar.png               self-hosted avatar, no third-party origin
 assets/og.jpg                   social preview image
+assets/favicon.svg              light favicon
+assets/favicon-dark.svg         dark favicon
 assets/css/style.css            the entire stylesheet, fonts and both color schemes
 assets/fonts/                   self-hosted Inter, Newsreader, IBM Plex Mono
 assets/js/main.js               boot, fetch, navigation, error state
@@ -57,14 +62,16 @@ assets/js/ui.js                 DOM, formatting, copy, runtime helpers
 assets/js/hashline.js           anchor allocation + edit session model
 assets/js/playground.js         the flagship interactive demo
 assets/js/demos.js              all five card demos
-assets/js/charts.js             benchmark and history charts
+assets/js/charts.js             benchmark, trend, and history charts
 assets/js/avatar.js             avatar srcset hydration
 data/site-data.json             machine-refreshed data
 data/site-data.schema.json      schema for the above
 data/showcase.json              curated narrative and demo wiring
 data/showcase.schema.json       schema for the above
 scripts/refresh-data.mjs        daily GitHub + npm refresh
-scripts/refresh-lib.mjs         pure activity and history helpers
+scripts/refresh-lib.mjs         pure activity, history, and benchmark helpers
+scripts/build-llms.mjs          regenerate llms.txt from the data files
+scripts/llms-lib.mjs            llms.txt content builder and atomic writer
 scripts/validate-data.mjs       offline validation for both data files
 scripts/validate-site.mjs       HTML, module, README, and CSS reference checks
 scripts/check-links.mjs         monthly external-link check
@@ -73,7 +80,11 @@ package.json                    scripts only, no runtime dependencies
 .github/workflows/refresh-data.yml  daily refresh and commit
 .github/workflows/validate.yml      validation on push and pull request
 .github/workflows/links.yml         monthly external-link check
+.github/workflows/codeql.yml        CodeQL analysis on push and pull request
+.github/workflows/scorecard.yml     weekly OpenSSF Scorecard
 .github/dependabot.yml              weekly action updates
+.github/CODEOWNERS                  review ownership
+.github/pull_request_template.md    the pull request checklist
 ```
 
 ## Demos
@@ -102,8 +113,9 @@ evidence, hero stats, and footer blocks.
    the manifest.
 3. If the entry names a demo, implement it in `assets/js/demos.js` and register
    it in `BUILDERS`; the `hashline` demo lives in `assets/js/playground.js`.
-4. Run `npm run check`. The validators reject unknown demo ids, names missing
-   from the manifest, duplicated projects, and unsorted history.
+4. Run `npm run build:llms` and `npm run check`. The validators reject unknown
+   demo ids, names missing from the manifest, duplicated projects, unsorted
+   history, and a `llms.txt` that no longer matches the data files.
 
 ## Data model
 
@@ -124,7 +136,9 @@ scenario focus that the benchmark's own scenario sources declare, and derives
 the pass rates, the staleness and served-state splits, the outcome counts, and
 a 95% Wilson interval per contender. Each contender keeps a link to a
 committed trace. Nothing in that block is typed by hand, so the chart cannot
-drift from the runs it claims to show.
+drift from the runs it claims to show. Each refresh also appends one
+`benchmarkHistory` snapshot for the highlighted project, so the evidence panel
+can show whether the tool is improving between reports.
 
 The About panel renders those snapshots as a stars and weekly-installs trend.
 
@@ -155,7 +169,10 @@ avatar, so replace that file by hand when the profile picture changes.
 
 What it preserves: curated prose, descriptions, identity, and the showcase
 file are never touched. Forks and the site repo are skipped. The file is
-written atomically (temp file then rename) with a change summary. If the
+written atomically (temp file then rename) with a change summary, and the
+candidate is revalidated before the rename, so a document the schema rejects
+can never reach `data/site-data.json`. A successful write also regenerates
+`llms.txt` from the two data files. If the
 existing file is present but unusable, the refresh exits with an error without
 writing, so a corrupt file cannot wipe curated content.
 If the file is missing entirely, the refresh exits with an error instead of
@@ -164,10 +181,11 @@ summary and leaves the file untouched. Repos listed in `UNLISTED_REPOS`
 (`pi-jina-webtools`, `pi-msg-queue`, `pi-tps-status`, `mypi`) are known public
 repos that are deliberately not curated, so they do not produce a warning.
 
-Each run also appends a `history` snapshot for the day (replacing an existing
-snapshot for the same date, capped at 120 entries) and rebuilds
-`activity.daily` from the most recent public events, paginating up to the
-GitHub API's 300-event maximum and capping the window at 120 days.
+Each run also appends a `history` snapshot and a `benchmarkHistory` snapshot
+for the report date (replacing an existing entry for the same date, each capped
+at 120 entries) and rebuilds `activity.daily` from the most recent public
+events, paginating up to the GitHub API's 300-event maximum and capping the
+window at 120 days.
 When a fetch reaches an API pagination cap, the run prints a warning so the
 truncated window is visible in the log.
 
@@ -195,11 +213,14 @@ against the schema files themselves, so a rule lives in one place, then
 cross-references showcase names with the manifest, verifies every `demo` id,
 and re-derives the benchmark arithmetic (contender counts, `models × scenarios`,
 outcome totals, and the interval around each pass rate), and refuses histories,
-daily activity, or highlight lists beyond the documented caps. It prints
+daily activity, benchmark history, or highlight lists beyond the documented
+caps. It prints
 `validate: ok` and lists every failure it finds in one run. The site validator
 checks internal links, element ids the scripts depend on, module preloads, the
 runtime data preloads, README file paths, local stylesheet references, the
-`Content-Security-Policy` on both pages, that the CSP hash still matches the
+`Content-Security-Policy` on both pages (including the Trusted Types directive
+and a scan for DOM sinks that would violate it), that the CSP hash still
+matches the
 inline JSON-LD block, that the avatar path exists and its origin is allowed,
 the sitemap `lastmod` against the newest history date, the nav order against
 the section order, title and description lengths, and a set of static
@@ -207,7 +228,9 @@ accessibility rules (`lang`, `img` alt text, `aria` references, `target=_blank`
 rel, heading order, a single `main`), then prints `validate:site: ok`. The
 schema files also
 drive editor validation through the `$schema` keys in both data files. The
-workflow runs both on every refresh and on push.
+workflow runs both on every refresh and on push. A separate test keeps
+`llms.txt` in step with the two data files, and `npm run build:llms` regenerates
+it by hand.
 
 ## Testing
 
@@ -221,7 +244,9 @@ helper, the retrying fetch, the data guards, the view-model derivations, the
 chart transforms, the visibility rules, and the refresh activity, history, and
 benchmark helpers, plus a parse check for every script
 and integration checks that the committed data and site structure pass their
-validators and that the validator refuses broken input.
+validators and that the validator refuses broken input. The refresh pipeline
+is also driven end to end against committed API fixtures, so the fetch, the
+benchmark gate, the atomic write, and the llms regeneration are all exercised.
 
 `npm run check` runs validation and the tests together. `npm run coverage`
 adds `--experimental-test-coverage` (Node 22.8 or newer) with thresholds on

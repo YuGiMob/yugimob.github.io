@@ -69,7 +69,7 @@ export function buildPlayground() {
   code.setAttribute('aria-multiselectable', 'true');
   code.setAttribute('aria-orientation', 'vertical');
   code.setAttribute('aria-describedby', 'pg-caption');
-  code.setAttribute('aria-label', 'File rows, each addressed by its own anchor. Select a row with Enter or a click; hold shift to extend the range.');
+  code.setAttribute('aria-label', 'File rows, each addressed by its own anchor. Select a row with Enter or a click; hold shift to extend the range; arrow keys move, Home and End jump.');
   const codePane = el('div', 'pg-code-pane');
   codePane.appendChild(code);
 
@@ -77,8 +77,10 @@ export function buildPlayground() {
   runButton.type = 'button';
   const resetButton = el('button', 'pg-action', 'start over');
   resetButton.type = 'button';
+  const linkButton = el('button', 'pg-action', 'copy link');
+  linkButton.type = 'button';
   const actions = el('div', 'pg-actions');
-  append(actions, runButton, resetButton);
+  append(actions, runButton, resetButton, linkButton);
 
   const feedbackMsg = el('p', 'pg-feedback-msg');
   const diff = el('ol', 'pg-diff');
@@ -416,9 +418,13 @@ export function buildPlayground() {
       else selectLine(index);
       return;
     }
-    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Home' && event.key !== 'End') return;
     event.preventDefault();
-    const next = event.key === 'ArrowDown' ? Math.min(session.lines.length - 1, index + 1) : Math.max(0, index - 1);
+    let next = index;
+    if (event.key === 'ArrowDown') next = Math.min(session.lines.length - 1, index + 1);
+    else if (event.key === 'ArrowUp') next = Math.max(0, index - 1);
+    else if (event.key === 'Home') next = 0;
+    else next = session.lines.length - 1;
     const node = code.querySelector(`[data-index="${next}"]`);
     if (!node) return;
     for (const option of code.querySelectorAll('.pg-line')) option.tabIndex = -1;
@@ -442,6 +448,20 @@ export function buildPlayground() {
 
   runButton.addEventListener('click', runStep);
   resetButton.addEventListener('click', reset);
+  linkButton.addEventListener('click', async () => {
+    updateUrl();
+    try {
+      await copyText(window.location.href);
+      linkButton.textContent = 'copied';
+      announce('copied the link to this step');
+    } catch {
+      linkButton.textContent = 'copy failed';
+      announce('copy failed for the link');
+    }
+    setTimeout(() => {
+      linkButton.textContent = 'copy link';
+    }, 1500);
+  });
 
   replayTo(Math.min(requestedStep(), steps.length));
   renderCode();
