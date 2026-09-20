@@ -185,7 +185,7 @@ export function buildIndexMd(siteData, showcase) {
       lines.push('');
       lines.push(...benchmarkTable(benchmark));
       lines.push('');
-      lines.push('Every rate is a pass rate over the shared model × scenario grid, the interval is a 95% Wilson interval, and the comparison column is the exact two-sided McNemar test against the highlighted tool with a Holm adjustment across rivals.');
+      lines.push('Every rate is a pass rate over the shared model × scenario grid, the interval is a 95% Wilson interval, and the comparison column pairs each rival with the highlighted tool: the exact two-sided McNemar test, Holm-adjusted across rivals, with an unadjusted 95% Newcombe score interval for the difference.');
       lines.push('');
       lines.push(dataLine('Run report', benchmark.reportUrl, 'the committed JSON every figure comes from'));
       lines.push(dataLine('Committed traces', benchmark.tracesUrl, 'one trace per scored run'));
@@ -264,6 +264,7 @@ export function buildJsonFeed(siteData) {
     home_page_url: `${SITE_URL}/`,
     feed_url: `${SITE_URL}/feed.json`,
     description: identity.tagline ?? '',
+    favicon: `${SITE_URL}/assets/favicon.svg`,
     language: 'en',
     authors: [{ name: identity.displayName ?? 'YuGiMob', url: identity.links?.github ?? SITE_REPOSITORY }],
     items: items.slice(0, FEED_ITEM_LIMIT),

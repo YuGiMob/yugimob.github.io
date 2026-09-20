@@ -4,7 +4,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEMO_IDS } from '../assets/js/demos.js';
 import { PLAYGROUND_ID } from '../assets/js/playground.js';
-import { BENCHMARK_FOCI, BENCHMARK_HISTORY_LIMIT, HISTORY_LIMIT, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS, benchmarkSnapshot, holmAdjust, isTimestamp, mcnemarExact, pairedDifferenceInterval, scenarioMatrixMatchesBenchmark, wilsonInterval } from './refresh-lib.mjs';
+import { BENCHMARK_FOCI, BENCHMARK_HISTORY_LIMIT, HISTORY_LIMIT, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS, benchmarkSnapshot, holmAdjust, isTimestamp, mcnemarExact, newcombePairedInterval, scenarioMatrixMatchesBenchmark, wilsonInterval } from './refresh-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -305,18 +305,28 @@ function validateContender(contender, labels, reference) {
   if (contender.vsHighlight != null) {
     if (contender.highlight === true) fail(`${name} is highlighted and cannot compare itself to the highlight`);
     const comparison = contender.vsHighlight;
-    if (!isPlainObject(comparison) || !Number.isInteger(comparison.b) || !Number.isInteger(comparison.c)) {
+    if (!isPlainObject(comparison) || !Number.isInteger(comparison.b) || !Number.isInteger(comparison.c) || !Number.isInteger(comparison.bothPassed) || !Number.isInteger(comparison.bothFailed)) {
       fail(`${name} vsHighlight invalid`);
     } else {
-      if (comparison.b < 0 || comparison.c < 0) fail(`${name} vsHighlight invalid`);
-      if (Number.isInteger(contender.runs) && comparison.b + comparison.c > contender.runs) fail(`${name} vsHighlight exceeds runs`);
+      if (comparison.b < 0 || comparison.c < 0 || comparison.bothPassed < 0 || comparison.bothFailed < 0) fail(`${name} vsHighlight invalid`);
+      const pairs = comparison.b + comparison.c + comparison.bothPassed + comparison.bothFailed;
+      if (Number.isInteger(contender.runs) && pairs > contender.runs) fail(`${name} vsHighlight exceeds runs`);
+      if (Number.isInteger(contender.passed) && comparison.bothPassed + comparison.c !== contender.passed) {
+        fail(`${name} vsHighlight does not reconstruct the contender pass count`);
+      }
+      if (reference && Number.isInteger(reference.runs)) {
+        if (pairs !== reference.runs) fail(`${name} vsHighlight does not cover the reference runs`);
+        if (Number.isInteger(reference.passed) && comparison.bothPassed + comparison.b !== reference.passed) {
+          fail(`${name} vsHighlight does not reconstruct the reference pass count`);
+        }
+      }
       if (Math.abs(comparison.p - mcnemarExact(comparison.b, comparison.c)) > 0.000001) {
         fail(`${name} vsHighlight p does not match the exact McNemar test`);
       }
       if (!Number.isFinite(comparison.low) || !Number.isFinite(comparison.high) || comparison.low > comparison.high) {
         fail(`${name} vsHighlight interval invalid`);
       } else if (reference && Number.isInteger(reference.runs)) {
-        const expected = pairedDifferenceInterval(comparison.b, comparison.c, reference.runs);
+        const expected = newcombePairedInterval(comparison.bothPassed, comparison.bothFailed, comparison.b, comparison.c, reference.runs);
         if (!expected || Math.abs(comparison.low - expected.low) > 0.05 || Math.abs(comparison.high - expected.high) > 0.05) {
           fail(`${name} vsHighlight interval does not match the paired-difference interval`);
         }
@@ -394,6 +404,9 @@ function validateBenchmarkHistory(benchmark, history) {
   if (newest.date !== snapshot.date) fail(`benchmarkHistory newest entry is dated ${newest.date}, not the benchmark report date ${snapshot.date}`);
   if (newest.overall !== snapshot.overall || newest.safety !== snapshot.safety || newest.served !== snapshot.served) {
     fail('benchmarkHistory newest entry does not match the highlighted contender');
+  }
+  if (newest.models !== snapshot.models || newest.scenarios !== snapshot.scenarios || newest.runsPerContender !== snapshot.runsPerContender) {
+    fail('benchmarkHistory newest entry does not match the benchmark grid');
   }
 }
 

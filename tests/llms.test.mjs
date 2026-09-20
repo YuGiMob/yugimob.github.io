@@ -86,6 +86,14 @@ test('index.md opens with the title and covers every showcased tool', () => {
   assert.match(COMMITTED_INDEX, /## Data/);
 });
 
+test('llms.txt follows the v2 section and link shape', () => {
+  const lines = COMMITTED.split('\n');
+  assert.ok(lines.some((line) => line.startsWith('## ')));
+  for (const line of lines) {
+    if (line.startsWith('- [')) assert.match(line, /^- \[[^\]]+\]\(https:\/\/\S+\)(?:[:\s].*)?$/);
+  }
+});
+
 test('the committed agent-readability.json matches the generator output', () => {
   assert.equal(buildAgentReadability(DATA), COMMITTED_READABILITY);
   const manifest = JSON.parse(COMMITTED_READABILITY);
@@ -98,6 +106,7 @@ test('the committed feed.json matches the generator output', () => {
   assert.equal(buildJsonFeed(DATA), COMMITTED_FEED);
   const feed = JSON.parse(COMMITTED_FEED);
   assert.equal(feed.version, 'https://jsonfeed.org/version/1.1');
+  assert.equal(feed.favicon, 'https://yugimob.github.io/assets/favicon.svg');
   assert.equal(feed.feed_url, 'https://yugimob.github.io/feed.json');
   assert.equal(feed.items.length, DATA.history.length + DATA.benchmarkHistory.length);
   assert.match(feed.items[0].content_text, /hashline-edit-pro/);

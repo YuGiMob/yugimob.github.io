@@ -822,6 +822,16 @@ a:hover {
   border-color: var(--red);
 }
 
+.install-command {
+  padding: 6px 11px;
+  border: 1.5px dashed var(--rule);
+  background: var(--card);
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  box-shadow: 2px 2px 0 var(--shadow);
+}
+
 .problem-demo {
   min-width: 0;
 }

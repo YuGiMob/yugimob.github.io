@@ -140,14 +140,22 @@ export function wilsonInterval(passed, total, z = 1.96) {
   return { low: roundPercent(bounds.low), high: roundPercent(bounds.high) };
 }
 
-export function pairedDifferenceInterval(referenceOnly, contenderOnly, total, z = 1.96) {
-  if (!Number.isInteger(referenceOnly) || !Number.isInteger(contenderOnly) || !Number.isInteger(total)) return null;
-  if (referenceOnly < 0 || contenderOnly < 0 || total <= 0 || referenceOnly + contenderOnly > total) return null;
-  const discordant = referenceOnly + contenderOnly;
-  if (discordant === 0) return { low: 0, high: 0 };
-  const bounds = wilsonBounds(contenderOnly, discordant, z);
-  const scale = discordant / total;
-  return { low: roundPercent(scale * (2 * bounds.low - 1)), high: roundPercent(scale * (2 * bounds.high - 1)) };
+export function newcombePairedInterval(bothPassed, bothFailed, referenceOnly, contenderOnly, pairs, z = 1.96) {
+  if (!Number.isInteger(bothPassed) || !Number.isInteger(bothFailed) || !Number.isInteger(referenceOnly) || !Number.isInteger(contenderOnly) || !Number.isInteger(pairs)) return null;
+  if (bothPassed < 0 || bothFailed < 0 || referenceOnly < 0 || contenderOnly < 0 || pairs <= 0) return null;
+  if (bothPassed + bothFailed + referenceOnly + contenderOnly !== pairs) return null;
+  const contenderPassed = bothPassed + contenderOnly;
+  const referencePassed = bothPassed + referenceOnly;
+  const contenderRate = contenderPassed / pairs;
+  const referenceRate = referencePassed / pairs;
+  const contenderBounds = wilsonBounds(contenderPassed, pairs, z);
+  const referenceBounds = wilsonBounds(referencePassed, pairs, z);
+  const denominator = Math.sqrt((bothPassed + referenceOnly) * (contenderOnly + bothFailed) * (bothPassed + contenderOnly) * (referenceOnly + bothFailed));
+  const phi = denominator === 0 ? 0 : (bothPassed * bothFailed - referenceOnly * contenderOnly) / denominator;
+  const difference = contenderRate - referenceRate;
+  const lowTerm = Math.max(0, (contenderRate - contenderBounds.low) ** 2 + (referenceBounds.high - referenceRate) ** 2 - 2 * phi * (contenderRate - contenderBounds.low) * (referenceBounds.high - referenceRate));
+  const highTerm = Math.max(0, (contenderBounds.high - contenderRate) ** 2 + (referenceRate - referenceBounds.low) ** 2 - 2 * phi * (contenderBounds.high - contenderRate) * (referenceRate - referenceBounds.low));
+  return { low: roundPercent(difference - Math.sqrt(lowTerm)), high: roundPercent(difference + Math.sqrt(highTerm)) };
 }
 
 const LOG_GAMMA_COEFFICIENTS = [
@@ -308,14 +316,18 @@ export function summarizeBenchmark(report, focusById = new Map(), highlighted = 
       const entry = contenders.get(row.id);
       let b = 0;
       let c = 0;
+      let bothPassed = 0;
+      let bothFailed = 0;
       for (const [key, pass] of entry.items) {
         if (!reference.items.has(key)) continue;
         const referencePass = reference.items.get(key);
-        if (referencePass && !pass) b += 1;
-        else if (!referencePass && pass) c += 1;
+        if (referencePass && pass) bothPassed += 1;
+        else if (!referencePass && !pass) bothFailed += 1;
+        else if (referencePass && !pass) b += 1;
+        else c += 1;
       }
-      const difference = pairedDifferenceInterval(b, c, reference.overall.runs);
-      row.vsHighlight = row === highlightedRow || !difference ? null : { b, c, p: mcnemarExact(b, c), low: difference.low, high: difference.high };
+      const difference = newcombePairedInterval(bothPassed, bothFailed, b, c, reference.overall.runs);
+      row.vsHighlight = row === highlightedRow || !difference ? null : { b, c, bothPassed, bothFailed, p: mcnemarExact(b, c), low: difference.low, high: difference.high };
     }
     const rivals = rows.filter((row) => row.vsHighlight != null);
     const adjusted = holmAdjust(rivals.map((row) => row.vsHighlight.p));
@@ -348,6 +360,9 @@ export function benchmarkSnapshot(benchmark) {
   if (!highlighted) return null;
   return {
     date: String(benchmark.generatedAt).slice(0, 10),
+    models: benchmark.models,
+    scenarios: benchmark.scenarios,
+    runsPerContender: benchmark.runsPerContender,
     overall: highlighted.overall,
     safety: highlighted.safety ?? null,
     served: highlighted.served ?? null,
@@ -477,22 +492,26 @@ export function scenarioMatrixMatchesBenchmark(matrix, benchmark) {
     }
     let b = 0;
     let c = 0;
+    let bothPassed = 0;
+    let bothFailed = 0;
     for (let rowIndex = 0; rowIndex < passSets[column].length; rowIndex += 1) {
       const rival = passSets[column][rowIndex];
       const reference = passSets[referenceColumn][rowIndex];
-      for (const index of reference) {
-        if (!rival.has(index)) b += 1;
-      }
-      for (const index of rival) {
-        if (!reference.has(index)) c += 1;
-      }
+      const referenceRuns = matrix.cells[rowIndex]?.[referenceColumn]?.[1];
+      if (!Number.isInteger(referenceRuns) || referenceRuns < 0) return false;
+      const shared = [...reference].filter((index) => rival.has(index)).length;
+      bothPassed += shared;
+      bothFailed += referenceRuns - reference.size - rival.size + shared;
+      b += reference.size - shared;
+      c += rival.size - shared;
     }
     const comparison = contender.vsHighlight;
     if (!comparison) return false;
     if (comparison.b !== b || comparison.c !== c) return false;
+    if (comparison.bothPassed !== bothPassed || comparison.bothFailed !== bothFailed) return false;
     if (typeof comparison.p !== 'number' || comparison.p !== mcnemarExact(b, c)) return false;
     const referenceEntry = byId.get(matrix.contenders[referenceColumn]);
-    const difference = pairedDifferenceInterval(b, c, referenceEntry.runs);
+    const difference = newcombePairedInterval(bothPassed, bothFailed, b, c, referenceEntry.runs);
     if (!difference) return false;
     if (!Number.isFinite(comparison.low) || !Number.isFinite(comparison.high)) return false;
     if (Math.abs(comparison.low - difference.low) > 0.05 || Math.abs(comparison.high - difference.high) > 0.05) return false;

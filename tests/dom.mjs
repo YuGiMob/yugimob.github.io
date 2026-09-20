@@ -216,6 +216,15 @@ class FakeElement extends FakeNode {
       this.parentNode = null;
     }
   }
+
+  replaceWith(node) {
+    if (!this.parentNode) return;
+    const index = this.parentNode.childNodes.indexOf(this);
+    if (index < 0) return;
+    this.parentNode.childNodes[index] = node;
+    node.parentNode = this.parentNode;
+    this.parentNode = null;
+  }
 }
 
 for (const name of REFLECTED) {

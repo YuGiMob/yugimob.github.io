@@ -48,11 +48,11 @@ test('a fixture refresh writes every machine field and rebuilds the derived file
     assert.equal(data.benchmark.scenarios, 1);
     assert.equal(data.benchmark.totalRuns, 2);
     assert.equal(data.benchmarkHistory.length, 2);
-    assert.deepEqual(data.benchmarkHistory.at(-1), { date: '2026-09-21', overall: 100, safety: null, served: null });
+    assert.deepEqual(data.benchmarkHistory.at(-1), { date: '2026-09-21', models: 1, scenarios: 1, runsPerContender: 1, overall: 100, safety: null, served: null });
     const highlighted = data.benchmark.contenders.find((entry) => entry.highlight);
     const rival = data.benchmark.contenders.find((entry) => !entry.highlight);
     assert.equal(highlighted.vsHighlight, null);
-    assert.deepEqual(rival.vsHighlight, { b: 0, c: 0, p: 1, low: 0, high: 0, pAdjusted: 1 });
+    assert.deepEqual(rival.vsHighlight, { b: 0, c: 0, bothPassed: 1, bothFailed: 0, p: 1, low: -79.3, high: 79.3, pAdjusted: 1 });
 
     const matrix = JSON.parse(readFileSync(join(repo, 'data', 'benchmark-matrix.json'), 'utf8'));
     assert.equal(matrix.generatedAt, data.benchmark.generatedAt);

@@ -4,6 +4,7 @@
   "home_page_url": "https://yugimob.github.io/",
   "feed_url": "https://yugimob.github.io/feed.json",
   "description": "Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, guarded commits, and a benchmark that publishes the traces.",
+  "favicon": "https://yugimob.github.io/assets/favicon.svg",
   "language": "en",
   "authors": [
     {

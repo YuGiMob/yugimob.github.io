@@ -234,6 +234,20 @@ test('benchmarkTrend returns null without two usable reports', () => {
   assert.equal(benchmarkTrend([{ date: '2026-09-19' }, { date: '2026-09-20', overall: 90 }]), null);
 });
 
+test('benchmarkTrend skips reports measured on a different grid', () => {
+  withDom(() => {
+    const history = [
+      { date: '2026-09-18', overall: 80, safety: 70, served: 60, models: 1, scenarios: 1, runsPerContender: 1 },
+      { date: '2026-09-19', overall: 85, safety: 75, served: 65, models: 9, scenarios: 35, runsPerContender: 315 },
+      { date: '2026-09-20', overall: 90, safety: 88, served: 92, models: 9, scenarios: 35, runsPerContender: 315 },
+    ];
+    const trend = benchmarkTrend(history);
+    assert.match(trend.textContent, /2 benchmark reports since 2026-09-19/);
+    assert.match(trend.textContent, /1 earlier report is not on this model × scenario grid/);
+    assert.equal(benchmarkTrend(history.slice(0, 2)), null);
+  });
+});
+
 test('benchmarkChart marks the paired comparison against the highlighted tool', () => {
   const bench = {
     ...BENCHMARK,

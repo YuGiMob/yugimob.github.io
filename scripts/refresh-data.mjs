@@ -233,7 +233,13 @@ async function request(url, headers, warnPrefix, read, cache = null) {
         await sleep(300);
         continue;
       }
-      console.warn(`${warnPrefix}: ${response.status}${response.status === 404 ? ' (not found)' : ''}`);
+      const header = (name) => (response.headers && typeof response.headers.get === 'function' ? response.headers.get(name) : null);
+      const remaining = header('x-ratelimit-remaining');
+      const resetSeconds = Number(header('x-ratelimit-reset'));
+      const rateLimit = remaining === '0' && Number.isFinite(resetSeconds) && resetSeconds > 0
+        ? ` (rate limit exhausted; resets at ${new Date(resetSeconds * 1000).toISOString()})`
+        : '';
+      console.warn(`${warnPrefix}: ${response.status}${response.status === 404 ? ' (not found)' : ''}${rateLimit}`);
       return null;
     }
     try {

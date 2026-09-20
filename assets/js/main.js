@@ -4,14 +4,12 @@ import { isValidSiteData, isValidBenchmark, isValidShowcase, fallbackShowcase } 
 import {
   applyVisibility,
   renderActivity,
-  renderColophon,
   renderDegradedNotice,
   renderEvidence,
   renderFooter,
   renderHeroStats,
   renderIdentity,
   renderIntro,
-  renderProblemIndex,
   renderProblems,
   renderProblemsHeading,
   renderStructuredData,
@@ -134,10 +132,8 @@ async function init() {
   renderIntro(showcase);
   renderHeroStats(data);
   renderProblemsHeading(showcase, projects);
-  renderProblemIndex(showcase, projects);
-  renderProblems(showcase, projects);
-  renderEvidence(showcase, projects, benchmark, data.benchmarkHistory);
-  renderColophon(showcase);
+  renderProblems();
+  renderEvidence(showcase, benchmark, data.benchmarkHistory);
   await renderActivity(data);
   renderFooter(data);
   renderStructuredData(data, showcase);

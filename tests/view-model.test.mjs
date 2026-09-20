@@ -8,6 +8,7 @@ import {
   problemsHeading,
   projectChipRows,
   repositoryFacts,
+  sectionVisibility,
   staleDays,
   stalenessNotice,
   structuredData,
@@ -151,4 +152,12 @@ test('stalenessNotice blames a stale benchmark report on the report, not the ref
   assert.equal(stalenessNotice(oldReport, '2026-09-20'), 'The newest benchmark report is 111 days old.');
   const both = { activity: { fetchedAt: '2026-09-01' }, benchmark: { generatedAt: '2026-09-10T12:00:00Z' } };
   assert.equal(stalenessNotice(both, '2026-09-20'), 'The daily refresh last updated this page 19 days ago; the newest benchmark report is 10 days old.');
+});
+
+test('sectionVisibility mirrors the data toggles and the evidence block', () => {
+  assert.deepEqual(sectionVisibility({}, null), { problems: true, evidence: true, colophon: true, campfire: true, 'hero-stats': true });
+  assert.deepEqual(sectionVisibility({ showProblems: false }, { evidence: { name: 'tool' } }), { problems: false, evidence: false, colophon: true, campfire: true, 'hero-stats': true });
+  assert.equal(sectionVisibility({ showEvidence: false }, { evidence: { name: 'tool' } }).evidence, false);
+  assert.equal(sectionVisibility({}, {}).evidence, false);
+  assert.deepEqual(sectionVisibility({ showAbout: false, showCampfire: false, showHeroStats: false }, { evidence: { name: 'tool' } }), { problems: true, evidence: true, colophon: false, campfire: false, 'hero-stats': false });
 });

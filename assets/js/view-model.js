@@ -80,6 +80,18 @@ export function repositoryFacts(stats) {
   };
 }
 
+export function sectionVisibility(sections = {}, showcase = null) {
+  const showProblems = sections.showProblems ?? true;
+  const showEvidence = sections.showEvidence ?? true;
+  return {
+    problems: showProblems,
+    evidence: showProblems && showEvidence && (showcase ? Boolean(showcase.evidence) : true),
+    colophon: sections.showAbout ?? true,
+    campfire: sections.showCampfire ?? true,
+    'hero-stats': sections.showHeroStats ?? true,
+  };
+}
+
 const DAY_MS = 86400000;
 export const STALE_AFTER_DAYS = 2;
 

@@ -8,7 +8,7 @@ import {
   holmAdjust,
   isTimestamp,
   mcnemarExact,
-  pairedDifferenceInterval,
+  newcombePairedInterval,
   npmPointUrl,
   parseScenarioFocus,
   retryDelayMs,
@@ -93,17 +93,17 @@ test('wilsonInterval brackets the observed share and stays inside the range', ()
   assert.deepEqual(wilsonInterval(10, 10), { low: 72.2, high: 100 });
 });
 
-test('pairedDifferenceInterval brackets the paired difference and refuses bad input', () => {
-  assert.deepEqual(pairedDifferenceInterval(0, 0, 315), { low: 0, high: 0 });
-  assert.deepEqual(pairedDifferenceInterval(3, 3, 315), { low: -1.2, high: 1.2 });
-  assert.deepEqual(pairedDifferenceInterval(18, 7, 315), { low: -5.7, high: -0.4 });
-  assert.deepEqual(pairedDifferenceInterval(7, 18, 315), { low: 0.4, high: 5.7 });
-  assert.deepEqual(pairedDifferenceInterval(2, 1, 4), { low: -65.8, high: 43.9 });
-  assert.deepEqual(pairedDifferenceInterval(4, 4, 10), { low: -45.6, high: 45.6 });
-  assert.equal(pairedDifferenceInterval(5, 1, 4), null);
-  assert.equal(pairedDifferenceInterval(1, 1, 0), null);
-  assert.equal(pairedDifferenceInterval(Number.NaN, 1, 4), null);
-  assert.equal(pairedDifferenceInterval(1.5, 1, 4), null);
+test('newcombePairedInterval brackets the paired difference and refuses bad input', () => {
+  assert.deepEqual(newcombePairedInterval(0, 315, 0, 0, 315), { low: -1.2, high: 1.2 });
+  assert.deepEqual(newcombePairedInterval(305, 4, 3, 3, 315), { low: -1.9, high: 1.9 });
+  assert.deepEqual(newcombePairedInterval(290, 0, 18, 7, 315), { low: -6.9, high: -0.3 });
+  assert.deepEqual(newcombePairedInterval(7, 18, 0, 0, 25), { low: -5.9, high: 5.9 });
+  assert.deepEqual(newcombePairedInterval(1, 0, 2, 1, 4), { low: -74.7, high: 46.1 });
+  assert.equal(newcombePairedInterval(5, 0, 1, 0, 4), null);
+  assert.equal(newcombePairedInterval(0, 0, 1, 1, 0), null);
+  assert.equal(newcombePairedInterval(Number.NaN, 1, 1, 1, 4), null);
+  assert.equal(newcombePairedInterval(1.5, 0, 1, 1, 4), null);
+  assert.equal(newcombePairedInterval(-1, 0, 1, 1, 4), null);
 });
 
 test('npmPointUrl batches plain packages and refuses scoped ones', () => {
@@ -270,7 +270,7 @@ test('summarizeBenchmark pairs every contender against the highlighted one', () 
   const alpha = summary.contenders.find((entry) => entry.id === 'alpha');
   const beta = summary.contenders.find((entry) => entry.id === 'beta');
   assert.equal(alpha.vsHighlight, null);
-  assert.deepEqual(beta.vsHighlight, { b: 1, c: 0, p: 1, low: -50, high: 29.3, pAdjusted: 1 });
+  assert.deepEqual(beta.vsHighlight, { b: 1, c: 0, bothPassed: 1, bothFailed: 0, p: 1, low: -90.5, high: 27.3, pAdjusted: 1 });
 });
 
 test('buildScenarioMatrix counts passes per scenario and contender in focus order', () => {
@@ -348,7 +348,7 @@ test('scenarioMatrixMatchesBenchmark accepts a consistent matrix and rejects dri
     contenderCount: 2,
     contenders: [
       { id: 'alpha', runs: 4, passed: 3, highlight: true, vsHighlight: null },
-      { id: 'beta', runs: 4, passed: 2, highlight: false, vsHighlight: { b: 2, c: 1, p: 1, low: -65.8, high: 43.9, pAdjusted: 1 } },
+      { id: 'beta', runs: 4, passed: 2, highlight: false, vsHighlight: { b: 2, c: 1, bothPassed: 1, bothFailed: 0, p: 1, low: -74.7, high: 46.1, pAdjusted: 1 } },
     ],
   };
   const matrix = {
@@ -404,6 +404,12 @@ test('scenarioMatrixMatchesBenchmark accepts a consistent matrix and rejects dri
   const adjustedDrift = structuredClone(benchmark);
   adjustedDrift.contenders[1].vsHighlight.pAdjusted = 0.5;
   assert.equal(scenarioMatrixMatchesBenchmark(matrix, adjustedDrift), false);
+  const concordanceDrift = structuredClone(benchmark);
+  concordanceDrift.contenders[1].vsHighlight.bothPassed = 0;
+  assert.equal(scenarioMatrixMatchesBenchmark(matrix, concordanceDrift), false);
+  const concordanceMissing = structuredClone(benchmark);
+  delete concordanceMissing.contenders[1].vsHighlight.bothFailed;
+  assert.equal(scenarioMatrixMatchesBenchmark(matrix, concordanceMissing), false);
   const intervalDrift = structuredClone(benchmark);
   intervalDrift.contenders[1].vsHighlight.low = -50;
   assert.equal(scenarioMatrixMatchesBenchmark(matrix, intervalDrift), false);

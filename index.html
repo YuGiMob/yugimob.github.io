@@ -129,15 +129,292 @@
         <h2 class="section-title" id="problems-heading">Six things that kept going wrong</h2>
         <p class="section-lede">Each of these is a failure I hit while using coding agents on real repositories. The tool under it is the fix I shipped, and every card runs a demo of the interaction it changes.</p>
       </div>
-      <ol class="problem-index" id="problem-index"></ol>
-      <div class="problem-list" id="problem-list"></div>
+      <ol class="problem-index" id="problem-index">
+        <li class="index-row">
+          <a class="index-link" href="#problem-pi-hashline-edit-pro">
+            <span class="index-number">01</span>
+            <span class="index-headline">The edit lands on the wrong line</span>
+            <span class="index-tool">pi-hashline-edit-pro</span>
+            <span class="index-arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+        <li class="index-row">
+          <a class="index-link" href="#problem-pi-unsloth-webtools">
+            <span class="index-number">02</span>
+            <span class="index-headline">Web access costs a key and returns soup</span>
+            <span class="index-tool">pi-unsloth-webtools</span>
+            <span class="index-arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+        <li class="index-row">
+          <a class="index-link" href="#problem-pi-tor-proxy">
+            <span class="index-number">03</span>
+            <span class="index-headline">Agent traffic leaks where it comes from</span>
+            <span class="index-tool">pi-tor-proxy</span>
+            <span class="index-arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+        <li class="index-row">
+          <a class="index-link" href="#problem-pi-msg-workflow">
+            <span class="index-number">04</span>
+            <span class="index-headline">Long runs forget the plan</span>
+            <span class="index-tool">pi-msg-workflow</span>
+            <span class="index-arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+        <li class="index-row">
+          <a class="index-link" href="#problem-pi-git-commit">
+            <span class="index-number">05</span>
+            <span class="index-headline">The agent commits like it owns the repo</span>
+            <span class="index-tool">pi-git-commit</span>
+            <span class="index-arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+        <li class="index-row">
+          <a class="index-link" href="#evidence">
+            <span class="index-number">06</span>
+            <span class="index-headline">Everyone claims their tool is better</span>
+            <span class="index-tool">pi-edit-benchmark</span>
+            <span class="index-arrow" aria-hidden="true">→</span>
+          </a>
+        </li>
+      </ol>
+      <div class="problem-list" id="problem-list">
+        <article class="problem is-hero" id="problem-pi-hashline-edit-pro">
+          <header class="problem-head">
+            <span class="problem-number">01</span>
+            <div>
+              <p class="problem-kicker">Anchored edits</p>
+              <h3 class="problem-title">The edit lands on the wrong line</h3>
+            </div>
+          </header>
+          <p class="problem-statement">Line numbers shift the moment anything above them changes, and fuzzy matching will happily edit a similar block somewhere else. The agent reports success, the diff looks plausible, and the mistake surfaces three edits later.</p>
+          <div class="problem-grid">
+            <div class="problem-copy">
+              <div class="answer">
+                <p class="answer-label">What I built</p>
+                <h4 class="answer-name"><a href="https://github.com/YuGiMob/pi-hashline-edit-pro" target="_blank" rel="noopener noreferrer">pi-hashline-edit-pro</a></h4>
+                <p class="answer-text">Every served line gets its own four-letter anchor. An edit may only name anchors, so inserting or deleting lines never renumbers what you did not touch. If the file changed underneath, the tool refuses with [E_RANGE_STALE] instead of guessing, and the last edit can be undone byte-for-byte, line endings included.</p>
+                <ul class="answer-points">
+                  <li class="answer-point">Anchors survive inserts, deletes, and re-reads</li>
+                  <li class="answer-point">Stale edits are refused, not guessed</li>
+                  <li class="answer-point">Undo restores the exact bytes</li>
+                  <li class="answer-point">Edits to one file land as a single atomic batch</li>
+                </ul>
+                <div class="chips">
+                  <span class="chip"><span class="chip-label">stars</span><span class="chip-value">88</span></span>
+                  <span class="chip"><span class="chip-label">forks</span><span class="chip-value">29</span></span>
+                  <span class="chip"><span class="chip-label">installs/wk</span><span class="chip-value">4,285</span></span>
+                  <span class="chip"><span class="chip-label">language</span><span class="chip-value">TypeScript</span></span>
+                  <span class="chip"><span class="chip-label">license</span><span class="chip-value">MIT</span></span>
+                  <span class="chip"><span class="chip-label">updated</span><span class="chip-value">2026-09-17</span></span>
+                </div>
+                <div class="actions">
+                  <a class="action-link" href="https://www.npmjs.com/package/pi-hashline-edit-pro" target="_blank" rel="noopener noreferrer">npm ↗</a>
+                  <code class="install-command">npm i pi-hashline-edit-pro</code>
+                  <a class="action-link" href="https://github.com/YuGiMob/pi-hashline-edit-pro" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+                </div>
+              </div>
+            </div>
+            <div class="problem-demo" data-demo="hashline"></div>
+          </div>
+        </article>
+        <article class="problem" id="problem-pi-unsloth-webtools">
+          <header class="problem-head">
+            <span class="problem-number">02</span>
+            <div>
+              <p class="problem-kicker">Web tools</p>
+              <h3 class="problem-title">Web access costs a key and returns soup</h3>
+            </div>
+          </header>
+          <p class="problem-statement">Almost every way to give an agent the web wants an API key, a paid tier, or a browser farm. When it finally fetches something, it hands the model a wall of navigation, cookie banners, and tracking scripts, and calls that reading.</p>
+          <div class="problem-grid">
+            <div class="problem-copy">
+              <div class="answer">
+                <p class="answer-label">What I built</p>
+                <h4 class="answer-name"><a href="https://github.com/YuGiMob/pi-unsloth-webtools" target="_blank" rel="noopener noreferrer">pi-unsloth-webtools</a></h4>
+                <p class="answer-text">One tool for search, one for fetch, one for pages that need JavaScript. Search fans out across seven engines and dedupes and ranks what comes back, with no key. Fetch normalizes the URL, blocks private addresses, and turns HTML or PDF text into Markdown. Render falls back to Jina Reader when the page only exists after JavaScript runs.</p>
+                <ul class="answer-points">
+                  <li class="answer-point">Seven search engines behind one tool</li>
+                  <li class="answer-point">HTML-to-Markdown and PDF extraction</li>
+                  <li class="answer-point">SSRF guard and a 512 KiB cap</li>
+                  <li class="answer-point">Jina Reader fallback for JavaScript pages</li>
+                </ul>
+                <div class="chips">
+                  <span class="chip"><span class="chip-label">stars</span><span class="chip-value">2</span></span>
+                  <span class="chip"><span class="chip-label">forks</span><span class="chip-value">0</span></span>
+                  <span class="chip"><span class="chip-label">installs/wk</span><span class="chip-value">801</span></span>
+                  <span class="chip"><span class="chip-label">language</span><span class="chip-value">TypeScript</span></span>
+                  <span class="chip"><span class="chip-label">license</span><span class="chip-value">AGPL-3.0</span></span>
+                  <span class="chip"><span class="chip-label">updated</span><span class="chip-value">2026-09-18</span></span>
+                </div>
+                <div class="actions">
+                  <a class="action-link" href="https://www.npmjs.com/package/pi-unsloth-webtools" target="_blank" rel="noopener noreferrer">npm ↗</a>
+                  <code class="install-command">npm i pi-unsloth-webtools</code>
+                  <a class="action-link" href="https://github.com/YuGiMob/pi-unsloth-webtools" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+                </div>
+              </div>
+            </div>
+            <div class="problem-demo" data-demo="webtools"></div>
+          </div>
+        </article>
+        <article class="problem" id="problem-pi-tor-proxy">
+          <header class="problem-head">
+            <span class="problem-number">03</span>
+            <div>
+              <p class="problem-kicker">Network privacy</p>
+              <h3 class="problem-title">Agent traffic leaks where it comes from</h3>
+            </div>
+          </header>
+          <p class="problem-statement">The moment an agent fetches a URL, your IP and your resolver are part of the request. Setting one proxy variable is not a privacy story, and a shared circuit links every request back to the same exit, which is its own kind of fingerprint.</p>
+          <div class="problem-grid">
+            <div class="problem-copy">
+              <div class="answer">
+                <p class="answer-label">What I built</p>
+                <h4 class="answer-name"><a href="https://github.com/YuGiMob/pi-tor-proxy" target="_blank" rel="noopener noreferrer">pi-tor-proxy</a></h4>
+                <p class="answer-text">The extension downloads its own Tor binary, verifies it against a SHA-256 hash, and routes every request through it. Each pi instance gets its own circuit via IsolateSOCKSAuth, and the exit IP is checked against check.torproject.org so you can see that the route is actually Tor.</p>
+                <ul class="answer-points">
+                  <li class="answer-point">Self-managed, hash-verified Tor binary</li>
+                  <li class="answer-point">Per-instance circuit via IsolateSOCKSAuth</li>
+                  <li class="answer-point">Exit IP checked against check.torproject.org</li>
+                  <li class="answer-point">Nothing to configure in your other tools</li>
+                </ul>
+                <div class="chips">
+                  <span class="chip"><span class="chip-label">stars</span><span class="chip-value">3</span></span>
+                  <span class="chip"><span class="chip-label">forks</span><span class="chip-value">0</span></span>
+                  <span class="chip"><span class="chip-label">installs/wk</span><span class="chip-value">39</span></span>
+                  <span class="chip"><span class="chip-label">language</span><span class="chip-value">TypeScript</span></span>
+                  <span class="chip"><span class="chip-label">license</span><span class="chip-value">MIT</span></span>
+                  <span class="chip"><span class="chip-label">updated</span><span class="chip-value">2026-08-28</span></span>
+                </div>
+                <div class="actions">
+                  <a class="action-link" href="https://www.npmjs.com/package/pi-tor-proxy" target="_blank" rel="noopener noreferrer">npm ↗</a>
+                  <code class="install-command">npm i pi-tor-proxy</code>
+                  <a class="action-link" href="https://github.com/YuGiMob/pi-tor-proxy" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+                </div>
+              </div>
+            </div>
+            <div class="problem-demo" data-demo="tor"></div>
+          </div>
+        </article>
+        <article class="problem" id="problem-pi-msg-workflow">
+          <header class="problem-head">
+            <span class="problem-number">04</span>
+            <div>
+              <p class="problem-kicker">Agent workflow</p>
+              <h3 class="problem-title">Long runs forget the plan</h3>
+            </div>
+          </header>
+          <p class="problem-statement">Ask an agent to review a change in three passes and the original plan, the corrections, and the review comments all dissolve into one context window. By the last round it is negotiating with a summary of a summary, and the thing you asked for first is somewhere in the middle.</p>
+          <div class="problem-grid">
+            <div class="problem-copy">
+              <div class="answer">
+                <p class="answer-label">What I built</p>
+                <h4 class="answer-name"><a href="https://github.com/YuGiMob/pi-msg-workflow" target="_blank" rel="noopener noreferrer">pi-msg-workflow</a></h4>
+                <p class="answer-text">Numbered message and command stores keep the plan outside the conversation, where you can edit it. A workflow is a start phase, one or more rounds that reset the context between passes, and a final commit or summary. Each round sees the messages it needs, not the entire history.</p>
+                <ul class="answer-points">
+                  <li class="answer-point">/msg, /cmd, and /workflow</li>
+                  <li class="answer-point">Numbered, editable message stores</li>
+                  <li class="answer-point">Rounds reset the context between passes</li>
+                  <li class="answer-point">Start, loop, and finish as configuration</li>
+                </ul>
+                <div class="chips">
+                  <span class="chip"><span class="chip-label">stars</span><span class="chip-value">1</span></span>
+                  <span class="chip"><span class="chip-label">forks</span><span class="chip-value">0</span></span>
+                  <span class="chip"><span class="chip-label">installs/wk</span><span class="chip-value">110</span></span>
+                  <span class="chip"><span class="chip-label">language</span><span class="chip-value">TypeScript</span></span>
+                  <span class="chip"><span class="chip-label">license</span><span class="chip-value">MIT</span></span>
+                  <span class="chip"><span class="chip-label">updated</span><span class="chip-value">2026-09-17</span></span>
+                </div>
+                <div class="actions">
+                  <a class="action-link" href="https://www.npmjs.com/package/pi-msg-workflow" target="_blank" rel="noopener noreferrer">npm ↗</a>
+                  <code class="install-command">npm i pi-msg-workflow</code>
+                  <a class="action-link" href="https://github.com/YuGiMob/pi-msg-workflow" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+                </div>
+              </div>
+            </div>
+            <div class="problem-demo" data-demo="workflow"></div>
+          </div>
+        </article>
+        <article class="problem" id="problem-pi-git-commit">
+          <header class="problem-head">
+            <span class="problem-number">05</span>
+            <div>
+              <p class="problem-kicker">Guardrails</p>
+              <h3 class="problem-title">The agent commits like it owns the repo</h3>
+            </div>
+          </header>
+          <p class="problem-statement">An agent with shell access will eventually run git commit -am "fix", or stage a file you never looked at. A rule in a prompt is not a guardrail; it is a wish with good manners.</p>
+          <div class="problem-grid">
+            <div class="problem-copy">
+              <div class="answer">
+                <p class="answer-label">What I built</p>
+                <h4 class="answer-name"><a href="https://github.com/YuGiMob/pi-git-commit" target="_blank" rel="noopener noreferrer">pi-git-commit</a></h4>
+                <p class="answer-text">The bash guard blocks mutative git commands before they run. Commits go through a structured git_commit tool with a type (FIX, IMPROVE, NEW) and a message, and the flow only opens after a human runs /commit. The agent can prepare the commit; it cannot decide to make it.</p>
+                <ul class="answer-points">
+                  <li class="answer-point">Mutative git commands in bash are blocked</li>
+                  <li class="answer-point">FIX, IMPROVE, and NEW typed commits</li>
+                  <li class="answer-point">The flow opens only after /commit</li>
+                  <li class="answer-point">One guard instead of prompt heroics</li>
+                </ul>
+                <div class="chips">
+                  <span class="chip"><span class="chip-label">stars</span><span class="chip-value">1</span></span>
+                  <span class="chip"><span class="chip-label">forks</span><span class="chip-value">1</span></span>
+                  <span class="chip"><span class="chip-label">installs/wk</span><span class="chip-value">168</span></span>
+                  <span class="chip"><span class="chip-label">language</span><span class="chip-value">TypeScript</span></span>
+                  <span class="chip"><span class="chip-label">license</span><span class="chip-value">MIT</span></span>
+                  <span class="chip"><span class="chip-label">updated</span><span class="chip-value">2026-09-20</span></span>
+                </div>
+                <div class="actions">
+                  <a class="action-link" href="https://www.npmjs.com/package/pi-git-commit" target="_blank" rel="noopener noreferrer">npm ↗</a>
+                  <code class="install-command">npm i pi-git-commit</code>
+                  <a class="action-link" href="https://github.com/YuGiMob/pi-git-commit" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+                </div>
+              </div>
+            </div>
+            <div class="problem-demo" data-demo="git"></div>
+          </div>
+        </article>
+      </div>
     </section>
     <section id="evidence" class="section" aria-labelledby="evidence-heading">
       <div class="section-head">
-        <p class="section-kicker" id="evidence-kicker"></p>
-        <h2 class="section-title" id="evidence-heading"></h2>
+        <p class="section-kicker" id="evidence-kicker">Evidence</p>
+        <h2 class="section-title" id="evidence-heading">Everyone claims their tool is better</h2>
       </div>
-      <div id="evidence-body"></div>
+      <div id="evidence-body">
+        <p class="section-lede">The figures come from committed run reports in pi-edit-benchmark. The trace beside the chart shows one run being scored, including the refusal that became the point.</p>
+        <div class="evidence" id="problem-pi-edit-benchmark">
+          <p class="problem-statement">Editing-tool READMEs ship with a demo GIF and a claim, and almost none of them publish the runs where they lose. If the only evidence is a highlight reel, it is not evidence; it is marketing with extra steps.</p>
+          <div class="problem-grid">
+            <div class="problem-copy">
+              <div class="answer">
+                <p class="answer-label">What I built</p>
+                <h3 class="answer-name"><a href="https://github.com/YuGiMob/pi-edit-benchmark" target="_blank" rel="noopener noreferrer">pi-edit-benchmark</a></h3>
+                <p class="answer-text">pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness. The headline number is a pass rate; the next two split out staleness and served state, where a silent mis-edit is worse than a refusal. Every contender links to a committed trace, including the runs my own tool fails.</p>
+                <ul class="answer-points">
+                  <li class="answer-point">Stale and served-state scenarios are scored separately</li>
+                  <li class="answer-point">Every contender links to a committed trace</li>
+                  <li class="answer-point">Confidence intervals on every pass rate</li>
+                  <li class="answer-point">The losses are published too</li>
+                </ul>
+                <div class="chips">
+                  <span class="chip"><span class="chip-label">stars</span><span class="chip-value">0</span></span>
+                  <span class="chip"><span class="chip-label">forks</span><span class="chip-value">0</span></span>
+                  <span class="chip"><span class="chip-label">language</span><span class="chip-value">TypeScript</span></span>
+                  <span class="chip"><span class="chip-label">updated</span><span class="chip-value">2026-09-20</span></span>
+                </div>
+                <div class="actions">
+                  <a class="action-link" href="https://github.com/YuGiMob/pi-edit-benchmark" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+                </div>
+              </div>
+            </div>
+            <div class="problem-demo"></div>
+          </div>
+          <div class="evidence-matrix"></div>
+          <div class="evidence-trace" data-demo="trace"></div>
+        </div>
+      </div>
     </section>
     <section id="colophon" class="section" aria-labelledby="colophon-heading">
       <div class="section-head">
@@ -145,9 +422,20 @@
         <h2 class="section-title" id="colophon-heading">Why this exists</h2>
       </div>
       <div class="colophon-grid">
-        <div class="colophon-prose" id="colophon-prose"></div>
+        <div class="colophon-prose" id="colophon-prose">
+          <p class="colophon-paragraph">I started building these because I kept watching agents do plausible-looking damage. Not crashes; worse. A rename that missed one call site, a commit nobody reviewed, a fetch that sent my address to a stranger. Each extension closes one of those holes in a way a prompt cannot.</p>
+          <p class="colophon-paragraph">The tools are hand-written TypeScript, published on npm under MIT (the web tools are AGPL). The numbers on this page are pulled from the GitHub and npm APIs every day by a scheduled workflow, so the stars and downloads are measured, not maintained.</p>
+          <p class="colophon-paragraph">No framework, no build step, no runtime dependencies. Plain HTML, CSS, and JavaScript, served straight from GitHub Pages.</p>
+        </div>
         <div class="colophon-side">
-          <ul class="principles" id="principles"></ul>
+          <ul class="principles" id="principles">
+            <li class="principle">Make the wrong operation impossible, not merely discouraged.</li>
+            <li class="principle">Fail loudly; never guess.</li>
+            <li class="principle">Show the model exactly what it sees.</li>
+            <li class="principle">Put a human gate in front of anything destructive.</li>
+            <li class="principle">Measure before claiming, and publish the traces.</li>
+            <li class="principle">Keep the site static; let a scheduled job refresh the numbers.</li>
+          </ul>
           <div class="activity" id="activity-panel"></div>
         </div>
       </div>
@@ -157,6 +445,7 @@
     <div class="footer-inner">
       <p class="footer-line">Hand-written HTML, CSS, and JavaScript, served straight from GitHub Pages. The numbers on this page refresh daily from the GitHub and npm APIs.</p>
       <a id="github-link" class="footer-link" href="https://github.com/YuGiMob" target="_blank" rel="me noopener noreferrer">YuGiMob on GitHub</a>
+      <p class="footer-note">Machine-readable: <a href="llms.txt">llms.txt</a> · <a href="index.md">index.md</a> · <a href="feed.json">feed.json</a></p>
       <p class="footer-note" id="campfire-year"></p>
       <p class="footer-note" id="data-age" hidden></p>
     </div>

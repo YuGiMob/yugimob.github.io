@@ -104,12 +104,15 @@ test('buildHighlights reports releases and merged pull requests', () => {
 test('benchmarkSnapshot reads the highlighted contender on the report date', () => {
   const benchmark = {
     generatedAt: '2026-09-20T12:03:04.357Z',
+    models: 3,
+    scenarios: 4,
+    runsPerContender: 12,
     contenders: [
       { highlight: false, overall: 10 },
       { highlight: true, overall: 97.8, safety: 98.9, served: 92.1 },
     ],
   };
-  assert.deepEqual(benchmarkSnapshot(benchmark), { date: '2026-09-20', overall: 97.8, safety: 98.9, served: 92.1 });
+  assert.deepEqual(benchmarkSnapshot(benchmark), { date: '2026-09-20', models: 3, scenarios: 4, runsPerContender: 12, overall: 97.8, safety: 98.9, served: 92.1 });
 });
 
 test('benchmarkSnapshot refuses a report without a highlighted contender or a date', () => {

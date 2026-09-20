@@ -42,6 +42,13 @@ function prepare(dom) {
   for (const id of IDS) register(dom.document, id);
   registerQuery(dom.document, '.intro-actions', element());
   registerQuery(dom.document, '.nav-links', element());
+  const article = element('article');
+  article.id = 'problem-tool-a';
+  const box = element('div');
+  box.className = 'problem-demo';
+  box.setAttribute('data-demo', 'trace');
+  article.appendChild(box);
+  dom.document.getElementById('problem-list').appendChild(article);
 }
 
 function flush(rounds = 5) {
@@ -61,6 +68,7 @@ test('the boot path renders identity, stats, problems, and structured data', asy
     assert.equal(dom.document.getElementById('display-name').textContent, 'Tester');
     assert.equal(dom.document.getElementById('hero-stats').children.length, 3);
     assert.equal(dom.document.getElementById('problem-list').children.length, 1);
+    assert.equal(dom.document.getElementById('problem-list').querySelector('.problem-demo').classList.contains('is-loading'), true);
     assert.equal(dom.document.getElementById('main-content').getAttribute('aria-busy'), null);
     assert.match(dom.document.getElementById('structured-data').textContent, /ItemList/);
     assert.equal(dom.document.getElementById('intro-headline').textContent, 'A headline.');

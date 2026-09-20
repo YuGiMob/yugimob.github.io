@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
-import { applyGeneratedBlocks, buildHeroStatsBlock, buildIntroParagraphs, readHeroStatsBlock, readIntroParagraphs, updateIndexFile } from '../scripts/site-html-lib.mjs';
+import { applyGeneratedBlocks, buildColophonProseBlock, buildEvidenceBlock, buildHeroStatsBlock, buildIntroParagraphs, buildPrinciplesBlock, buildProblemIndexBlock, buildProblemListBlock, readBlock, readHeroStatsBlock, readIntroParagraphs, updateIndexFile } from '../scripts/site-html-lib.mjs';
 import { ROOT, withRepoCopy } from './helpers.mjs';
 
 const DATA = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.json'), 'utf8'));
@@ -26,6 +26,66 @@ test('buildIntroParagraphs escapes markup and tolerates a missing intro', () => 
   assert.match(escaped, /a &lt; b &amp; c &gt; d/);
 });
 
+test('the committed pre-rendered blocks already match the data files', () => {
+  const source = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  const projects = new Map(DATA.projects.map((project) => [project.name, project]));
+  assert.equal(readBlock(source, 'ol', 'problem-index'), buildProblemIndexBlock(SHOWCASE, projects));
+  assert.equal(readBlock(source, 'div', 'problem-list'), buildProblemListBlock(SHOWCASE, projects));
+  assert.equal(readBlock(source, 'div', 'evidence-body'), buildEvidenceBlock(SHOWCASE, projects));
+  assert.equal(readBlock(source, 'div', 'colophon-prose'), buildColophonProseBlock(SHOWCASE));
+  assert.equal(readBlock(source, 'ul', 'principles'), buildPrinciplesBlock(SHOWCASE));
+});
+
+test('the pre-rendered problem blocks carry every entry and escape markup', () => {
+  const projects = new Map(DATA.projects.map((project) => [project.name, project]));
+  const index = buildProblemIndexBlock(SHOWCASE, projects);
+  assert.equal((index.match(/class="index-row"/g) ?? []).length, SHOWCASE.problems.length + 1);
+  const list = buildProblemListBlock(SHOWCASE, projects);
+  for (const problem of SHOWCASE.problems) {
+    assert.ok(list.includes(`id="problem-${problem.name}"`));
+    assert.ok(list.includes(problem.headline));
+  }
+  assert.ok(list.includes('class="install-command"'));
+  assert.ok(list.includes('class="problem is-hero"'));
+  assert.ok(list.includes('data-demo="hashline"'));
+  const escaped = buildProblemListBlock({ problems: [{ name: 'x', kicker: 'k', headline: '<b>h</b>', problem: 'p & q', answer: 'a', highlights: ['h'] }] }, new Map([['x', { name: 'x', url: 'https://example.com', npm: null, stars: 1, forks: 0 }]]));
+  assert.ok(escaped.includes('&lt;b&gt;h&lt;/b&gt;'));
+  assert.ok(escaped.includes('p &amp; q'));
+  assert.ok(!escaped.includes('install-command'));
+  assert.ok(!escaped.includes('is-hero'));
+});
+
+test('buildEvidenceBlock handles a missing evidence block and a missing project', () => {
+  const projects = new Map(DATA.projects.map((project) => [project.name, project]));
+  assert.equal(buildEvidenceBlock({}, projects), '      <div id="evidence-body"></div>');
+  const withoutProject = buildEvidenceBlock({ evidence: { name: 'ghost', problem: 'p', answer: 'a', highlights: ['h'] } }, new Map());
+  assert.ok(withoutProject.includes('problem-ghost'));
+  assert.ok(!withoutProject.includes('answer-name'));
+  assert.ok(buildEvidenceBlock(SHOWCASE, projects).includes('section-lede'));
+  assert.ok(buildEvidenceBlock(SHOWCASE, projects).includes('data-demo="trace"'));
+  const withoutIntro = buildEvidenceBlock({ ...SHOWCASE, evidence: { ...SHOWCASE.evidence, intro: undefined } }, projects);
+  assert.ok(!withoutIntro.includes('section-lede'));
+});
+
+test('buildColophonProseBlock and buildPrinciplesBlock tolerate missing prose', () => {
+  assert.match(buildColophonProseBlock({}), /id="colophon-prose">\n\s*<\/div>/);
+  assert.match(buildPrinciplesBlock({}), /id="principles">\n\s*<\/ul>/);
+});
+
+test('readBlock refuses an unclosed block and a missing id', () => {
+  assert.equal(readBlock('<div id="x"><div></div>', 'div', 'x'), null);
+  assert.equal(readBlock('<div id="x"></div>', 'div', 'y'), null);
+  assert.equal(readBlock('<div id="x"><div><span></span></div></div>', 'div', 'x'), '<div id="x"><div><span></span></div></div>');
+});
+
+test('applyGeneratedBlocks rewrites every pre-rendered block', () => {
+  const source = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  const drifted = source.replace('The edit lands on the wrong line', 'A stale headline');
+  const next = applyGeneratedBlocks(drifted, DATA, SHOWCASE);
+  assert.ok(!next.includes('A stale headline'));
+  assert.equal(readBlock(next, 'div', 'problem-list'), readBlock(source, 'div', 'problem-list'));
+});
+
 test('applyGeneratedBlocks rewrites both blocks and leaves unknown markup alone', () => {
   const source = readFileSync(join(ROOT, 'index.html'), 'utf8');
   const next = applyGeneratedBlocks(source, { ...DATA, stats: { ...DATA.stats, totalStars: 1 } }, SHOWCASE);
@@ -43,6 +103,21 @@ test('applyGeneratedBlocks writes dollar signs in the intro prose verbatim', () 
   assert.ok(built.includes('$3 a month'));
   assert.ok(next.includes(built));
   assert.equal(readIntroParagraphs(next), built);
+});
+
+test('buildHeroStatsBlock carries the hero stat toggle and still reads back', () => {
+  const block = buildHeroStatsBlock({ ...DATA, sections: { ...DATA.sections, showHeroStats: false } });
+  assert.match(block, /<dl class="intro-stats" id="hero-stats" hidden>/);
+  assert.equal(readHeroStatsBlock(block), block);
+});
+
+test('applyGeneratedBlocks mirrors the section toggles into hidden attributes', () => {
+  const source = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  const off = applyGeneratedBlocks(source, { ...DATA, sections: { ...DATA.sections, showAbout: false, showCampfire: false } }, SHOWCASE);
+  assert.match(off, /<section id="colophon"[^>]*\shidden>/);
+  assert.match(off, /<footer id="campfire"[^>]*\shidden>/);
+  assert.ok(!/<section id="problems"[^>]*\shidden>/.test(off));
+  assert.equal(applyGeneratedBlocks(off, DATA, SHOWCASE), source);
 });
 
 test('updateIndexFile rewrites a drifted block and leaves a matching one alone', () => {

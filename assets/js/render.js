@@ -1,17 +1,15 @@
 import { hydrateAvatar } from './avatar.js';
-import { el, append, link, copyButton, formatNumber, extent, animateValue, svg, setText, setMeta, observeVisibility, timeNode } from './ui.js';
+import { el, append, copyButton, formatNumber, extent, animateValue, svg, setText, setMeta, observeVisibility, timeNode } from './ui.js';
 import { lazyMount } from './lazy.js';
 import { loadDemo } from './demo-registry.js';
 import { fetchJson } from './fetch-json.js';
 import {
   activityLine,
   heroStatRows,
-  problemEntries,
-  problemIndexRows,
   problemId,
   problemsHeading,
-  projectChipRows,
   repositoryFacts,
+  sectionVisibility,
   stalenessNotice,
   structuredData,
 } from './view-model.js';
@@ -63,104 +61,28 @@ export function renderHeroStats(data) {
   }
 }
 
-function metricChip(label, value) {
-  const chip = el('span', 'chip');
-  append(chip, el('span', 'chip-label', label), el('span', 'chip-value', value));
-  return chip;
-}
-
-function installActions(project) {
-  const actions = el('div', 'actions');
-  if (project.npm) {
-    actions.appendChild(link(`https://www.npmjs.com/package/${project.npm}`, 'npm ↗', 'action-link'));
-    actions.appendChild(copyButton(`npm i ${project.npm}`, `npm i ${project.npm}`, `copy install command for ${project.npm}`));
-  }
-  actions.appendChild(link(project.url, 'GitHub ↗', 'action-link'));
-  return actions;
-}
-
-function projectChips(project) {
-  const chips = el('div', 'chips');
-  for (const chip of projectChipRows(project)) chips.appendChild(metricChip(chip.label, chip.value));
-  return chips;
-}
-
-function answerBlock(entry, project) {
-  const answer = el('div', 'answer');
-  answer.appendChild(el('p', 'answer-label', 'What I built'));
-  const name = el('h4', 'answer-name');
-  name.appendChild(link(project.url, project.name));
-  answer.appendChild(name);
-  answer.appendChild(el('p', 'answer-text', entry.answer));
-  const points = el('ul', 'answer-points');
-  for (const highlight of entry.highlights) points.appendChild(el('li', 'answer-point', highlight));
-  answer.appendChild(points);
-  answer.appendChild(projectChips(project));
-  answer.appendChild(installActions(project));
-  return answer;
-}
-
-function problemHead(number, entry) {
-  const head = el('header', 'problem-head');
-  const heading = el('div');
-  append(heading, el('p', 'problem-kicker', entry.kicker), el('h3', 'problem-title', entry.headline));
-  append(head, el('span', 'problem-number', number), heading);
-  return head;
-}
-
-function mountDemo(entry) {
-  const box = el('div', 'problem-demo');
-  if (entry.demo) {
-    lazyMount(box, () => loadDemo(entry.demo));
-  }
-  return box;
-}
-
-export function renderProblemIndex(showcase, projects) {
-  const list = document.getElementById('problem-index');
-  if (!list) return;
-  for (const row of problemIndexRows(showcase, projects)) {
-    const anchor = el('a', 'index-link');
-    anchor.href = row.href;
-    const arrow = el('span', 'index-arrow', '→');
-    arrow.setAttribute('aria-hidden', 'true');
-    append(
-      anchor,
-      el('span', 'index-number', row.number),
-      el('span', 'index-headline', row.headline),
-      el('span', 'index-tool', row.tool),
-      arrow,
-    );
-    const item = el('li', 'index-row');
-    item.appendChild(anchor);
-    list.appendChild(item);
-  }
-}
-
 export function renderProblemsHeading(showcase, projects) {
   const heading = document.getElementById('problems-heading');
   if (!heading) return;
   heading.textContent = problemsHeading(showcase, projects);
 }
 
-export function renderProblems(showcase, projects) {
+function hydrateInstallCommand(article) {
+  const command = article.querySelector('.install-command');
+  if (command) command.replaceWith(copyButton(command.textContent, command.textContent, `copy ${command.textContent}`));
+}
+
+export function renderProblems() {
   const container = document.getElementById('problem-list');
   if (!container) return;
-  for (const { entry, project, number } of problemEntries(showcase, projects)) {
-    const article = el('article', `problem${entry.size === 'hero' ? ' is-hero' : ''}`);
-    article.id = problemId(entry.name);
-    article.appendChild(problemHead(number, entry));
-    article.appendChild(el('p', 'problem-statement', entry.problem));
-    const grid = el('div', 'problem-grid');
-    const copy = el('div', 'problem-copy');
-    copy.appendChild(answerBlock(entry, project));
-    append(grid, copy, mountDemo(entry));
-    article.appendChild(grid);
-    container.appendChild(article);
+  for (const article of container.children) {
+    hydrateInstallCommand(article);
+    const box = article.querySelector('.problem-demo[data-demo]');
+    if (box) lazyMount(box, () => loadDemo(box.getAttribute('data-demo')));
   }
 }
 
-export function renderEvidence(showcase, projects, benchmark, benchmarkHistory) {
+export function renderEvidence(showcase, benchmark, benchmarkHistory) {
   const section = document.getElementById('evidence');
   const body = document.getElementById('evidence-body');
   const evidence = showcase.evidence;
@@ -169,46 +91,22 @@ export function renderEvidence(showcase, projects, benchmark, benchmarkHistory) 
     section.hidden = true;
     return;
   }
-  const project = projects.get(evidence.name);
   setText('evidence-kicker', evidence.kicker);
   setText('evidence-heading', evidence.headline);
-  if (evidence.intro) body.appendChild(el('p', 'section-lede', evidence.intro));
-  const article = el('div', 'evidence');
-  article.id = problemId(evidence.name);
-  article.appendChild(el('p', 'problem-statement', evidence.problem));
-  const grid = el('div', 'problem-grid');
-  const copy = el('div', 'problem-copy');
-  if (project) copy.appendChild(answerBlock(evidence, project));
-  const demoBox = el('div', 'problem-demo');
-  if (benchmark) {
-    lazyMount(demoBox, () => import('./charts.js').then((module) => module.benchmarkChart(benchmark, benchmarkHistory)));
-  } else {
-    demoBox.appendChild(el('p', 'chart-note', 'The benchmark block is missing from the data, so the run rates cannot be shown.'));
+  const article = document.getElementById(problemId(evidence.name));
+  if (!article) return;
+  hydrateInstallCommand(article);
+  const demoBox = article.querySelector('.problem-demo');
+  if (demoBox) {
+    if (benchmark) lazyMount(demoBox, () => import('./charts.js').then((module) => module.benchmarkChart(benchmark, benchmarkHistory)));
+    else demoBox.appendChild(el('p', 'chart-note', 'The benchmark block is missing from the data, so the run rates cannot be shown.'));
   }
-  append(grid, copy, demoBox);
-  article.appendChild(grid);
-  if (benchmark) {
-    const matrixBox = el('div', 'evidence-matrix');
+  const matrixBox = article.querySelector('.evidence-matrix');
+  if (matrixBox && benchmark) {
     lazyMount(matrixBox, () => fetchJson('data/benchmark-matrix.json', 1).then((data) => import('./charts.js').then((module) => module.benchmarkMatrix(benchmark, data))));
-    article.appendChild(matrixBox);
   }
-  if (evidence.demo) {
-    const box = el('div', 'evidence-trace');
-    lazyMount(box, () => loadDemo(evidence.demo));
-    article.appendChild(box);
-  }
-  body.appendChild(article);
-}
-
-export function renderColophon(showcase) {
-  const prose = document.getElementById('colophon-prose');
-  if (prose) {
-    for (const paragraph of showcase.colophon ?? []) prose.appendChild(el('p', 'colophon-paragraph', paragraph));
-  }
-  const principles = document.getElementById('principles');
-  if (principles) {
-    for (const principle of showcase.principles ?? []) principles.appendChild(el('li', 'principle', principle));
-  }
+  const traceBox = article.querySelector('.evidence-trace[data-demo]');
+  if (traceBox) lazyMount(traceBox, () => loadDemo(traceBox.getAttribute('data-demo')));
 }
 
 export function renderDegradedNotice(message) {
@@ -316,15 +214,9 @@ export function renderStructuredData(data, showcase) {
 }
 
 export function applyVisibility(sections, showcase) {
-  const setHidden = (id, hidden) => {
+  const visible = sectionVisibility(sections, showcase);
+  for (const [id, shown] of Object.entries(visible)) {
     const node = document.getElementById(id);
-    if (node) node.hidden = hidden;
-  };
-  const showProblems = sections.showProblems ?? true;
-  setHidden('problems', !showProblems);
-  setHidden('evidence', !(showProblems && (sections.showEvidence ?? true) && Boolean(showcase.evidence)));
-  setHidden('colophon', !(sections.showAbout ?? true));
-  setHidden('campfire', !(sections.showCampfire ?? true));
-  const stats = document.getElementById('hero-stats');
-  if (stats) stats.hidden = !(sections.showHeroStats ?? true);
+    if (node) node.hidden = !shown;
+  }
 }

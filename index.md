@@ -93,18 +93,18 @@ Editing-tool READMEs ship with a demo GIF and a claim, and almost none of them p
 | tool | version | overall | staleness | served state | 95% interval | vs the highlighted tool | runs | passed | API cost |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | **hashline-edit-pro** | v4.3.5 | 97.8% | 98.9% | 92.1% | 95.5–98.9 | — | 315 | 308 | $0.33 |
-| hashline-edit-pro-diff0 | v4.3.5 | 97.8% | 98.9% | 93.7% | 95.5–98.9 | -1.2 to +1.2 points, Holm-adjusted p=1.000 | 315 | 308 | $0.35 |
-| doompi-edit | v0.0.1-alpha.49 | 94.3% | 95.6% | 98.4% | 91.1–96.4 | -5.7 to -0.4 points, Holm-adjusted p=0.087 | 315 | 297 | $0.35 |
-| hashline-readmap | v0.14.0 | 93.0% | 94.4% | 90.5% | 89.7–95.3 | -6.3 to -1.9 points, Holm-adjusted p=0.008 | 315 | 293 | $0.39 |
-| hashline-context-edit | v0.11.0 | 90.2% | 96.7% | 100.0% | 86.4–93.0 | -9.8 to -4.0 points, Holm-adjusted p=< 0.001 | 315 | 284 | $0.33 |
-| hashline-edit | v0.8.3 | 89.8% | 96.7% | 100.0% | 86.0–92.7 | -10.2 to -4.3 points, Holm-adjusted p=< 0.001 | 315 | 283 | $0.36 |
-| aft-pi | v0.56.2 | 88.3% | 84.4% | 98.4% | 84.2–91.4 | -11.8 to -5.8 points, Holm-adjusted p=< 0.001 | 315 | 278 | $0.39 |
-| pix-edit | v0.2.5 | 88.3% | 84.4% | 95.2% | 84.2–91.4 | -11.5 to -5.9 points, Holm-adjusted p=< 0.001 | 315 | 278 | $0.34 |
-| agent-ide | v0.6.2 | 83.5% | 85.6% | 98.4% | 79.0–87.2 | -16.1 to -10.6 points, Holm-adjusted p=< 0.001 | 315 | 263 | $0.70 |
-| built-in edit | v0.85.1 | 79.4% | 73.3% | 95.2% | 74.6–83.5 | -20.4 to -14.5 points, Holm-adjusted p=< 0.001 | 315 | 250 | $0.35 |
-| semantic-edit | v0.4.0 | 77.1% | 65.6% | 93.7% | 72.2–81.4 | -22.7 to -16.6 points, Holm-adjusted p=< 0.001 | 315 | 243 | $0.66 |
+| hashline-edit-pro-diff0 | v4.3.5 | 97.8% | 98.9% | 93.7% | 95.5–98.9 | -1.9 to +1.9 points, Holm-adjusted p=1.000 | 315 | 308 | $0.35 |
+| doompi-edit | v0.0.1-alpha.49 | 94.3% | 95.6% | 98.4% | 91.1–96.4 | -6.9 to -0.3 points, Holm-adjusted p=0.087 | 315 | 297 | $0.35 |
+| hashline-readmap | v0.14.0 | 93.0% | 94.4% | 90.5% | 89.7–95.3 | -8.1 to -1.9 points, Holm-adjusted p=0.008 | 315 | 293 | $0.39 |
+| hashline-context-edit | v0.11.0 | 90.2% | 96.7% | 100.0% | 86.4–93.0 | -11.6 to -3.9 points, Holm-adjusted p=< 0.001 | 315 | 284 | $0.33 |
+| hashline-edit | v0.8.3 | 89.8% | 96.7% | 100.0% | 86.0–92.7 | -12.0 to -4.2 points, Holm-adjusted p=< 0.001 | 315 | 283 | $0.36 |
+| aft-pi | v0.56.2 | 88.3% | 84.4% | 98.4% | 84.2–91.4 | -13.8 to -5.6 points, Holm-adjusted p=< 0.001 | 315 | 278 | $0.39 |
+| pix-edit | v0.2.5 | 88.3% | 84.4% | 95.2% | 84.2–91.4 | -13.7 to -5.7 points, Holm-adjusted p=< 0.001 | 315 | 278 | $0.34 |
+| agent-ide | v0.6.2 | 83.5% | 85.6% | 98.4% | 79.0–87.2 | -18.9 to -10.0 points, Holm-adjusted p=< 0.001 | 315 | 263 | $0.70 |
+| built-in edit | v0.85.1 | 79.4% | 73.3% | 95.2% | 74.6–83.5 | -23.4 to -13.7 points, Holm-adjusted p=< 0.001 | 315 | 250 | $0.35 |
+| semantic-edit | v0.4.0 | 77.1% | 65.6% | 93.7% | 72.2–81.4 | -25.7 to -15.7 points, Holm-adjusted p=< 0.001 | 315 | 243 | $0.66 |
 
-Every rate is a pass rate over the shared model × scenario grid, the interval is a 95% Wilson interval, and the comparison column is the exact two-sided McNemar test against the highlighted tool with a Holm adjustment across rivals.
+Every rate is a pass rate over the shared model × scenario grid, the interval is a 95% Wilson interval, and the comparison column pairs each rival with the highlighted tool: the exact two-sided McNemar test, Holm-adjusted across rivals, with an unadjusted 95% Newcombe score interval for the difference.
 
 - [Run report](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/llm-report.json): the committed JSON every figure comes from
 - [Committed traces](https://github.com/YuGiMob/pi-edit-benchmark/tree/main/results/traces): one trace per scored run

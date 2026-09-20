@@ -3,14 +3,12 @@ import assert from 'node:assert/strict';
 import {
   applyVisibility,
   renderActivity,
-  renderColophon,
   renderDegradedNotice,
   renderEvidence,
   renderFooter,
   renderHeroStats,
   renderIdentity,
   renderIntro,
-  renderProblemIndex,
   renderProblems,
   renderProblemsHeading,
   renderStructuredData,
@@ -102,8 +100,49 @@ const BENCHMARK = {
 
 const projectMap = () => new Map(DATA.projects.map((project) => [project.name, project]));
 
+function seedProblemCards(dom) {
+  const list = register(dom.document, 'problem-list');
+  for (const entry of SHOWCASE.problems) {
+    const article = element('article');
+    article.id = `problem-${entry.name}`;
+    const box = element('div');
+    box.className = 'problem-demo';
+    if (entry.demo) box.setAttribute('data-demo', entry.demo);
+    article.appendChild(box);
+    const command = element('code');
+    command.className = 'install-command';
+    command.textContent = `npm i ${entry.name}`;
+    article.appendChild(command);
+    list.appendChild(article);
+  }
+  return list;
+}
+
+function seedEvidence(dom) {
+  register(dom.document, 'evidence');
+  const body = register(dom.document, 'evidence-body');
+  const article = element('div');
+  article.className = 'evidence';
+  article.id = `problem-${SHOWCASE.evidence.name}`;
+  const chart = element('div');
+  chart.className = 'problem-demo';
+  const matrix = element('div');
+  matrix.className = 'evidence-matrix';
+  const trace = element('div');
+  trace.className = 'evidence-trace';
+  if (SHOWCASE.evidence.demo) trace.setAttribute('data-demo', SHOWCASE.evidence.demo);
+  const command = element('code');
+  command.className = 'install-command';
+  command.textContent = `npm i ${SHOWCASE.evidence.name}`;
+  article.append(chart, matrix, trace, command);
+  body.appendChild(article);
+  register(dom.document, `problem-${SHOWCASE.evidence.name}`, article);
+  register(dom.document, 'evidence-kicker');
+  register(dom.document, 'evidence-heading');
+  return body;
+}
+
 const classes = (node, name) => findAll(node, (entry) => entry.classList?.contains(name) === true);
-const tags = (node, tagName) => findAll(node, (entry) => entry.tagName === tagName);
 
 function runFrames(dom, limit = 40) {
   let count = 0;
@@ -195,51 +234,30 @@ test('renderHeroStats renders three stats and animates them on first view', () =
   withDom(() => renderHeroStats(DATA));
 });
 
-test('renderProblemsHeading and renderProblemIndex stay in step with the rendered problems', () => {
+test('renderProblemsHeading counts the rendered problems and the evidence entry', () => {
   withDom((dom) => {
     const heading = register(dom.document, 'problems-heading');
-    const index = register(dom.document, 'problem-index');
     renderProblemsHeading(SHOWCASE, projectMap());
-    renderProblemIndex(SHOWCASE, projectMap());
     assert.equal(heading.textContent, 'Five things that kept going wrong');
-    assert.equal(classes(index, 'index-row').length, 5);
-    assert.deepEqual(
-      tags(index, 'A').map((node) => node.getAttribute('href')),
-      ['#problem-tool-a', '#problem-tool-b', '#problem-tool-c', '#problem-tool-d', '#evidence'],
-    );
-    assert.deepEqual(classes(index, 'index-number').map((node) => node.textContent), ['01', '02', '03', '04', '05']);
-    assert.equal(classes(index, 'index-tool')[0].textContent, 'tool-a');
   });
   withDom(() => {
     renderProblemsHeading(SHOWCASE, new Map());
-    renderProblemIndex(SHOWCASE, new Map());
   });
 });
 
-test('renderProblems builds one article per showcased project with chips, actions, and demos', async () => {
+test('renderProblems mounts a demo into every pre-rendered card that names one', async () => {
   await withDom(async (dom) => {
-    const container = register(dom.document, 'problem-list');
-    renderProblems(SHOWCASE, projectMap());
-    const articles = classes(container, 'problem');
-    assert.deepEqual(articles.map((article) => article.id), ['problem-tool-a', 'problem-tool-b', 'problem-tool-c', 'problem-tool-d']);
-    assert.equal(articles[0].classList.contains('is-hero'), true);
-    assert.equal(articles[1].classList.contains('is-hero'), false);
-    assert.equal(classes(articles[0], 'problem-title')[0].textContent, 'The first failure');
-    assert.equal(classes(articles[0], 'answer-name')[0].textContent, 'tool-a');
-    assert.equal(tags(classes(articles[0], 'answer-name')[0], 'A')[0].getAttribute('href'), 'https://github.com/tester/tool-a');
-    assert.equal(classes(articles[0], 'answer-point').length, 2);
-    assert.deepEqual(classes(articles[0], 'chip-label').map((node) => node.textContent), ['stars', 'forks', 'installs/wk', 'language', 'license', 'updated']);
-    assert.equal(classes(articles[0], 'copy-btn').length, 1);
-    assert.equal(classes(articles[1], 'copy-btn').length, 0);
-    assert.equal(classes(articles[1], 'chip').length, 2);
-
+    const container = seedProblemCards(dom);
+    renderProblems();
     const boxes = classes(container, 'problem-demo');
     assert.equal(boxes.length, 4);
     assert.equal(boxes.filter((box) => box.classList.contains('is-loading')).length, 3);
+    assert.equal(classes(container, 'install-command').length, 0);
+    assert.deepEqual(classes(container, 'copy-btn').map((node) => node.textContent), ['npm i tool-a', 'npm i tool-b', 'npm i tool-c', 'npm i tool-d']);
 
     dom.window.dispatch('beforeprint');
     await flush();
-    assert.equal(classes(container, 'problem-demo').filter((box) => box.classList.contains('is-loading')).length, 0);
+    assert.equal(boxes.filter((box) => box.classList.contains('is-loading')).length, 0);
     assert.equal(classes(container, 'pg').length, 1);
     assert.equal(classes(container, 'demo').length, 1);
     assert.match(container.textContent, /This panel could not be loaded from the data\./);
@@ -249,8 +267,8 @@ test('renderProblems builds one article per showcased project with chips, action
 
 test('lazyMount waits for an intersecting entry before mounting', async () => {
   await withDom(async (dom) => {
-    const container = register(dom.document, 'problem-list');
-    renderProblems(SHOWCASE, projectMap());
+    const container = seedProblemCards(dom);
+    renderProblems();
     const observer = dom.observers[0];
     observer.trigger([{ isIntersecting: false }]);
     assert.equal(classes(container, 'pg').length, 0);
@@ -265,8 +283,8 @@ test('lazyMount waits for an intersecting entry before mounting', async () => {
 
 test('renderProblems mounts its demos immediately without an IntersectionObserver', async () => {
   await withDom(async (dom) => {
-    const container = register(dom.document, 'problem-list');
-    renderProblems(SHOWCASE, projectMap());
+    const container = seedProblemCards(dom);
+    renderProblems();
     await flush();
     assert.equal(classes(container, 'pg').length, 1);
     assert.equal(classes(container, 'problem-demo').filter((box) => box.classList.contains('is-loading')).length, 0);
@@ -277,25 +295,20 @@ test('renderEvidence hides the section when the showcase has no evidence', () =>
   withDom((dom) => {
     const section = register(dom.document, 'evidence');
     register(dom.document, 'evidence-body');
-    renderEvidence({ ...SHOWCASE, evidence: null }, projectMap(), null, []);
+    renderEvidence({ ...SHOWCASE, evidence: null }, null, []);
     assert.equal(section.hidden, true);
   });
-  withDom(() => renderEvidence(SHOWCASE, projectMap(), null, []));
+  withDom(() => renderEvidence(SHOWCASE, null, []));
 });
 
-test('renderEvidence renders the chart and the trace, mounting them before printing', async () => {
+test('renderEvidence mounts the chart, the matrix, and the trace into the pre-rendered panel', async () => {
   await withDom(async (dom) => {
-    register(dom.document, 'evidence');
-    const body = register(dom.document, 'evidence-body');
-    const kicker = register(dom.document, 'evidence-kicker');
-    const heading = register(dom.document, 'evidence-heading');
-    renderEvidence(SHOWCASE, projectMap(), BENCHMARK, [{ date: '2026-09-20', overall: 100, safety: null, served: null }]);
-    assert.equal(kicker.textContent, 'Evidence');
-    assert.equal(heading.textContent, 'The evidence');
-    assert.match(body.textContent, /The figures come from committed reports\./);
-    assert.match(body.textContent, /Proof\?/);
-    assert.equal(classes(body, 'evidence').length, 1);
-    assert.equal(classes(body, 'evidence-trace').length, 1);
+    const body = seedEvidence(dom);
+    renderEvidence(SHOWCASE, BENCHMARK, [{ date: '2026-09-20', overall: 100, safety: null, served: null }]);
+    assert.equal(dom.document.getElementById('evidence-kicker').textContent, 'Evidence');
+    assert.equal(classes(body, 'install-command').length, 0);
+    assert.deepEqual(classes(body, 'copy-btn').map((node) => node.textContent), ['npm i tool-b']);
+    assert.equal(dom.document.getElementById('evidence-heading').textContent, 'The evidence');
     assert.equal(classes(body, 'chart').length, 0);
 
     dom.window.dispatch('beforeprint');
@@ -312,9 +325,8 @@ test('renderEvidence notes a scenario matrix that cannot be fetched', async () =
   console.warn = () => {};
   try {
     await withDom(async (dom) => {
-      register(dom.document, 'evidence');
-      const body = register(dom.document, 'evidence-body');
-      renderEvidence(SHOWCASE, projectMap(), BENCHMARK, []);
+      const body = seedEvidence(dom);
+      renderEvidence(SHOWCASE, BENCHMARK, []);
       dom.window.dispatch('beforeprint');
       await flush();
       assert.equal(classes(body, 'matrix-table').length, 0);
@@ -325,13 +337,11 @@ test('renderEvidence notes a scenario matrix that cannot be fetched', async () =
   }
 });
 
-test('renderEvidence explains a missing benchmark and tolerates a missing project', () => {
+test('renderEvidence explains a missing benchmark', () => {
   withDom((dom) => {
-    register(dom.document, 'evidence');
-    const body = register(dom.document, 'evidence-body');
-    renderEvidence(SHOWCASE, new Map(), null, []);
+    const body = seedEvidence(dom);
+    renderEvidence(SHOWCASE, null, []);
     assert.match(body.textContent, /benchmark block is missing/);
-    assert.equal(classes(body, 'answer').length, 0);
     assert.equal(classes(body, 'evidence-trace').length, 1);
   });
 });
@@ -341,9 +351,8 @@ test('renderEvidence reports a chart that cannot be built', async () => {
   console.warn = () => {};
   try {
     await withDom(async (dom) => {
-      register(dom.document, 'evidence');
-      const body = register(dom.document, 'evidence-body');
-      renderEvidence(SHOWCASE, projectMap(), { ...BENCHMARK, contenders: undefined }, []);
+      const body = seedEvidence(dom);
+      renderEvidence(SHOWCASE, { ...BENCHMARK, contenders: undefined }, []);
       dom.window.dispatch('beforeprint');
       await flush();
       assert.match(body.textContent, /This panel could not be loaded from the data\./);
@@ -351,17 +360,6 @@ test('renderEvidence reports a chart that cannot be built', async () => {
   } finally {
     console.warn = original;
   }
-});
-
-test('renderColophon writes the prose and the principles', () => {
-  withDom((dom) => {
-    const prose = register(dom.document, 'colophon-prose');
-    const principles = register(dom.document, 'principles');
-    renderColophon(SHOWCASE);
-    assert.equal(prose.textContent, 'Paragraph one.');
-    assert.equal(classes(principles, 'principle').length, 1);
-  });
-  withDom(() => renderColophon({}));
 });
 
 test('renderActivity draws the chart, facts, highlights, and history panel', async () => {

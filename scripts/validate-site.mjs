@@ -3,9 +3,9 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { problemsHeading } from '../assets/js/view-model.js';
+import { problemsHeading, sectionVisibility } from '../assets/js/view-model.js';
 import { colorDistance, contrastRatio, paletteFrom, rootPaletteSource, simulateDichromacy } from './contrast-lib.mjs';
-import { buildHeroStatsBlock, buildIntroParagraphs, readHeroStatsBlock, readIntroParagraphs } from './site-html-lib.mjs';
+import { buildColophonProseBlock, buildEvidenceBlock, buildHeroStatsBlock, buildIntroParagraphs, buildPrinciplesBlock, buildProblemIndexBlock, buildProblemListBlock, readBlock, readHeroStatsBlock, readIntroParagraphs } from './site-html-lib.mjs';
 import { scriptSrcHash } from './csp-lib.mjs';
 import { SITE_REPOSITORY, SITE_URL } from './llms-lib.mjs';
 
@@ -253,6 +253,8 @@ for (const match of stylesheet.matchAll(/url\('([^']+)'\)/g)) {
   const target = localTarget(match[1]);
   if (target && !existsSync(join(ROOT, 'assets', 'css', target))) fail(`assets/css/style.css: missing file ${match[1]}`);
 }
+const baseHtmlRule = [...stylesheet.matchAll(/([^{}]+)\{([^}]*)\}/g)].find((match) => match[1].split(',').some((selector) => /^html\b/.test(selector.trim())));
+if (!/scroll-padding-top:\s*\d+px/.test(baseHtmlRule?.[2] ?? '')) fail('assets/css/style.css: the html rule has no scroll-padding-top, so a focused anchor can be obscured by the sticky topbar');
 
 const darkStart = stylesheet.indexOf('@media (prefers-color-scheme: dark)');
 const reducedStart = stylesheet.indexOf('@media (prefers-reduced-motion', darkStart);
@@ -347,6 +349,13 @@ if (!lastmod) {
 
 const llms = readText('llms.txt');
 if (!/^# \S/.test(llms)) fail('llms.txt: missing an H1 title');
+if (!/^> \S/m.test(llms)) fail('llms.txt: missing the summary blockquote');
+if (!/^## \S/m.test(llms)) fail('llms.txt: missing an H2 file list');
+for (const line of llms.split('\n')) {
+  if (line.startsWith('- [') && !/^- \[[^\]]+\]\(https:\/\/\S+\)(?:[:\s].*)?$/.test(line)) {
+    fail(`llms.txt: the link line is not in the spec form: ${line.slice(0, 60)}`);
+  }
+}
 for (const project of siteData?.projects ?? []) {
   if (!llms.includes(project.name)) fail(`llms.txt: missing project ${project.name}`);
 }
@@ -441,6 +450,38 @@ if (showcase) {
 
 function elementText(source, id) {
   return source.match(new RegExp(`id="${id}"[^>]*>([^<]*)<`))?.[1] ?? null;
+}
+
+function hasHiddenAttribute(source, id) {
+  const tag = source.match(new RegExp(`<[a-z0-9]+\\b[^>]*\\sid="${id}"[^>]*>`))?.[0] ?? '';
+  return /\shidden(?=[\s>])/.test(tag);
+}
+
+if (siteData && showcase) {
+  const projects = new Map(siteData.projects.map((project) => [project.name, project]));
+  const blocks = [
+    ['problem-index', 'ol', buildProblemIndexBlock(showcase, projects)],
+    ['problem-list', 'div', buildProblemListBlock(showcase, projects)],
+    ['evidence-body', 'div', buildEvidenceBlock(showcase, projects)],
+    ['colophon-prose', 'div', buildColophonProseBlock(showcase)],
+    ['principles', 'ul', buildPrinciplesBlock(showcase)],
+  ];
+  for (const [id, tag, expected] of blocks) {
+    const actual = readBlock(indexSource, tag, id);
+    if (actual !== expected) fail(`index.html: the #${id} block does not match the data files`);
+  }
+  if (elementText(indexSource, 'evidence-kicker') !== (showcase.evidence?.kicker ?? '')) {
+    fail('index.html: #evidence-kicker does not match the showcase');
+  }
+  if (elementText(indexSource, 'evidence-heading') !== (showcase.evidence?.headline ?? '')) {
+    fail('index.html: #evidence-heading does not match the showcase');
+  }
+  const visibility = sectionVisibility(siteData.sections, showcase);
+  for (const [id, shown] of Object.entries(visibility)) {
+    if (hasHiddenAttribute(indexSource, id) !== !shown) {
+      fail(`index.html: the #${id} hidden state does not match the data sections`);
+    }
+  }
 }
 
 if (siteData) {

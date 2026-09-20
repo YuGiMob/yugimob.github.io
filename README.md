@@ -9,8 +9,11 @@ from this repository. The site code is MIT (see `LICENSE`).
 
 The page opens with an introduction, then presents one problem per tool and
 the extension that answers it, each with a live demo of the interaction it
-changes. The benchmark at the end shows the runs, including the ones the
-flagship loses.
+changes. The problem cards, the evidence prose, and the colophon are pre-rendered
+into the HTML, so a fetch-only reader gets the full page before JavaScript runs;
+the browser hydrates that markup instead of rebuilding it, mounting demos and
+charts into the pre-rendered panels.
+The benchmark at the end shows the runs, including the ones the flagship loses.
 
 ## Page sections
 
@@ -58,11 +61,12 @@ data/site-data.json      machine numbers          data/showcase.json  curated pr
              demos.js · playground.js · charts.js (dynamic imports)
 ```
 
-The same refresh rewrites the generated blocks in `index.html` (the hero stat
-block and the intro paragraphs) and regenerates `llms.txt`, `index.md`,
-`agent-readability.json`, and `feed.json`, so the page, the machine files, and the
-agent index cannot drift apart. Validators re-derive every
-rule they can, and the test suite runs them against a temporary copy of the tree.
+The same refresh rewrites the pre-rendered blocks in `index.html` (hero stats,
+intro, problem cards, evidence, and colophon) and regenerates `llms.txt`,
+`index.md`, `agent-readability.json`, and `feed.json`, so the
+page, the machine files, and the agent index cannot drift apart. Validators
+re-derive every rule they can, and the test suite runs them against a temporary
+copy of the tree.
 
 ## Files
 
@@ -120,7 +124,7 @@ scripts/build-csp.mjs           refresh the inline JSON-LD CSP hash
 scripts/csp-lib.mjs             script-src directive and hash helpers
 scripts/sitemap-lib.mjs         sitemap lastmod reader and atomic writer
 scripts/contrast-lib.mjs        WCAG contrast and dichromacy helpers
-scripts/site-html-lib.mjs        hero stat block and intro builder with an atomic writer
+scripts/site-html-lib.mjs        pre-rendered page builders with an atomic writer
 scripts/build-static.mjs        regenerate the generated blocks in index.html
 scripts/serve.mjs               dependency-free static file server for local work
 scripts/check-freshness.mjs     fail when the history or benchmark snapshot is too old
@@ -198,13 +202,16 @@ scenario focus that the benchmark's own scenario sources declare, and derives
 the pass rates, the staleness and served-state splits, the outcome counts, and
 a 95% Wilson interval per contender. Because every contender runs the same model
 × scenario grid, each one is also paired against the highlighted project with
-an exact two-sided McNemar test, a conditional score interval for the paired
-difference, and p-values Holm-adjusted across the comparisons, so the chart can
-say whether a lead is real or inside noise. Each contender keeps a link to a
-committed trace. Nothing in that block is typed by hand, so the chart cannot
-drift from the runs it claims to show. Each refresh also appends one
-`benchmarkHistory` snapshot for the highlighted project, so the evidence panel
-can show whether the tool is improving between reports.
+an exact two-sided McNemar test, a Newcombe score interval built from every cell
+of the paired table for the difference, and p-values Holm-adjusted across the
+comparisons, so the chart can say whether a lead is real or inside noise. Each
+contender keeps a link to a committed trace. Nothing in that block is typed by
+hand, so the chart cannot drift from the runs it claims to show. Each refresh
+also appends one `benchmarkHistory` snapshot for the highlighted project,
+carrying the model × scenario grid it was measured on, so the evidence panel can
+show whether the tool is improving between reports without comparing two
+different grids. An entry written before the grid fields existed stays valid but
+is left out of the trend, and the newest entry must match the current grid.
 
 A second machine file, `data/benchmark-matrix.json`, records which models passed
 each scenario × contender cell. The refresh derives it from the same report and
@@ -252,8 +259,9 @@ file are never touched. Forks and the site repo are skipped. The file is
 written atomically (temp file then rename) with a change summary, and the
 candidate is revalidated before the rename, so a document the schema rejects
 can never reach `data/site-data.json`. A successful write also regenerates
-`llms.txt`, `index.md`, `agent-readability.json`, and `feed.json` from the two data
-files, rewrites the generated blocks in `index.html`, and writes the benchmark matrix.
+`llms.txt`, `index.md`, `agent-readability.json`, and
+`feed.json` from the two data files, rewrites the pre-rendered blocks in
+`index.html`, and writes the benchmark matrix.
 If the existing file is present but unusable,
 the refresh exits with an error without
 writing, so a corrupt file cannot wipe curated content.
@@ -284,10 +292,11 @@ The site refreshes itself daily through
 `.github/workflows/refresh-data.yml` (06:00 UTC), which runs the script,
 validates the data files, and commits `data/site-data.json`,
 `data/benchmark-matrix.json`, `sitemap.xml`, `index.html`, `llms.txt`, `index.md`,
-`agent-readability.json`, and `feed.json` only when at least one of them changed,
-and fails when the newest history snapshot is more than two days old or the
-benchmark report is more than fourteen days old, so an outage cannot pass
-silently. It can also be triggered manually from the Actions tab.
+`agent-readability.json`, and `feed.json` only when at least
+one of them changed, and fails when the newest history snapshot is more than
+two days old or the benchmark report is more than fourteen days old, so an
+outage cannot pass silently. It can also be triggered manually from the Actions
+tab.
 
 ## Validating
 
@@ -340,8 +349,9 @@ implement, so a rule can never be silently unenforced. The schema files also
 drive editor validation through the `$schema` keys in the data files. The
 workflow runs all three on every refresh and on push. `npm run csp` rewrites the
 CSP hash in place after the inline JSON-LD changes. Separate tests keep
-`llms.txt`, `index.md`, `agent-readability.json`, and `feed.json` in step with
-the two data files, and `npm run build:llms` regenerates them by hand. The
+`llms.txt`, `index.md`, `agent-readability.json`, and
+`feed.json` in step with the two data files, and `npm run build:llms`
+regenerates them by hand. The
 generated blocks in `index.html` come from `npm run build:static`. The data
 validator re-derives every McNemar comparison and its Holm adjustment from the
 matrix,
@@ -363,9 +373,9 @@ refresh activity, history, and benchmark helpers, plus a parse check for every
 script and integration checks that the committed data and site structure pass
 their validators and that each validator refuses broken input, including
 comments, CRLF, a comment inside a template expression or a stylesheet, a
-a drifted hero stat block or intro paragraph, a noscript list missing a project,
-and static copy that
-drifted from the data.
+drifted hero stat block, intro paragraph, problem card, evidence block, or
+colophon, a noscript list missing a project, and static copy that drifted from
+the data.
 The refresh pipeline is also driven end to end against committed API fixtures,
 with and without the GitHub API and in dry-run mode, so the fetch, the benchmark
 gate, the atomic write, the sitemap update, and the llms regeneration are all

@@ -139,10 +139,12 @@
               "vsHighlight": {
                 "type": ["object", "null"],
                 "additionalProperties": false,
-                "required": ["b", "c", "p", "pAdjusted", "low", "high"],
+                "required": ["b", "c", "bothPassed", "bothFailed", "p", "pAdjusted", "low", "high"],
                 "properties": {
                   "b": { "type": "integer", "minimum": 0 },
                   "c": { "type": "integer", "minimum": 0 },
+                  "bothPassed": { "type": "integer", "minimum": 0 },
+                  "bothFailed": { "type": "integer", "minimum": 0 },
                   "p": { "type": "number", "minimum": 0, "maximum": 1 },
                   "pAdjusted": { "type": "number", "minimum": 0, "maximum": 1 },
                   "low": { "type": "number", "minimum": -100, "maximum": 100 },
@@ -162,6 +164,9 @@
         "additionalProperties": false,
         "properties": {
           "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+          "models": { "type": "integer", "minimum": 1 },
+          "scenarios": { "type": "integer", "minimum": 1 },
+          "runsPerContender": { "type": "integer", "minimum": 1 },
           "overall": { "type": "number", "minimum": 0, "maximum": 100 },
           "safety": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
           "served": { "type": ["number", "null"], "minimum": 0, "maximum": 100 }

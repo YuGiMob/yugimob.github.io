@@ -36,7 +36,7 @@ assets/js/
   ui.js             generic DOM, formatting, copy, timers, controllers
   site-data.js      shape guards and fallbacks for the fetched documents
   view-model.js     pure derivations: rows, headings, notices, JSON-LD
-  render.js         DOM construction only, no data math
+  render.js         hydration and DOM construction, no data math
   lazy.js           lazy mounting behind IntersectionObserver
   charts.js         benchmark, matrix, trend, and history panels
   demo-registry.js  demo id to a dynamic module loader
@@ -77,7 +77,7 @@ These are derived. Edit the inputs, then regenerate:
 | file | regenerate with |
 | --- | --- |
 | `llms.txt`, `index.md`, `agent-readability.json`, `feed.json` | `npm run build:llms` |
-| the hero stat block and the intro paragraphs in `index.html` | `npm run build:static` |
+| the pre-rendered page content in `index.html` (hero stats, intro, problem cards, evidence, colophon) | `npm run build:static` |
 | the CSP hash in `index.html` | `npm run csp` |
 | `sitemap.xml` lastmod | `npm run refresh` |
 

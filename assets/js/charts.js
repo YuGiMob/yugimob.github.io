@@ -205,7 +205,7 @@ export function benchmarkChart(bench, benchmarkHistory) {
     if (contender.errors > 0) label.appendChild(el('span', 'bench-errors', `${contender.errors} ${contender.errors === 1 ? 'error' : 'errors'}`));
     if (contender.vsHighlight != null) {
       const badge = el('span', 'bench-significance', `p=${pLabel(adjustedP(contender.vsHighlight))}`);
-      badge.title = `Holm-adjusted exact McNemar test against ${highlightOf(bench)?.label ?? 'the highlighted tool'}: ${formatNumber(contender.vsHighlight.b)} pairs it passed and this tool did not, ${formatNumber(contender.vsHighlight.c)} the other way (95% interval for the difference ${pairedInterval(contender.vsHighlight)}; raw p ${pLabel(contender.vsHighlight.p)})`;
+      badge.title = `Holm-adjusted exact McNemar test against ${highlightOf(bench)?.label ?? 'the highlighted tool'}: ${formatNumber(contender.vsHighlight.b)} pairs it passed and this tool did not, ${formatNumber(contender.vsHighlight.c)} the other way, ${formatNumber(contender.vsHighlight.bothPassed)} pairs both passed, and ${formatNumber(contender.vsHighlight.bothFailed)} pairs both failed (95% Newcombe interval for the difference ${pairedInterval(contender.vsHighlight)}; raw p ${pLabel(contender.vsHighlight.p)})`;
       label.appendChild(badge);
     }
     label.appendChild(el('span', 'sr-only', contenderDetail(contender, bench)));
@@ -235,7 +235,7 @@ export function benchmarkChart(bench, benchmarkHistory) {
   );
   const outcomeLegend = el('p', 'chart-legend');
   for (const kind of present) outcomeLegend.appendChild(legendItem(`outcome-segment is-${kind}`, kind));
-  const method = el('p', 'chart-method', 'Real models drive each contender’s own tools through a tool-calling loop, and every row links to a committed trace. Staleness and served-state scenarios are scored separately, so refusing a stale edit is not counted against the tool. Each rival is paired with the highlighted project on the shared model × scenario grid, and the exact two-sided McNemar p-values are Holm-adjusted across the comparisons; the interval beside each comparison is unadjusted.');
+  const method = el('p', 'chart-method', 'Real models drive each contender’s own tools through a tool-calling loop, and every row links to a committed trace. Staleness and served-state scenarios are scored separately, so refusing a stale edit is not counted against the tool. Each rival is paired with the highlighted project on the shared model × scenario grid, and the exact two-sided McNemar p-values are Holm-adjusted across the comparisons; the interval beside each comparison is an unadjusted Newcombe score interval built from every cell of the paired table, with each run treated as one independent model × scenario trial. Because the interval is not Holm-adjusted, it can exclude zero even when the adjusted p-value does not.');
   const source = el('p', 'chart-source');
   append(
     source,
@@ -407,10 +407,14 @@ function growthRow(label, values, delta, formatter = formatNumber) {
 }
 
 export function benchmarkTrend(history) {
-  const entries = (Array.isArray(history) ? history : [])
+  const all = (Array.isArray(history) ? history : [])
     .filter((entry) => entry && typeof entry.date === 'string' && Number.isFinite(entry.overall))
     .sort((a, b) => a.date.localeCompare(b.date));
+  if (all.length < 2) return null;
+  const newest = all[all.length - 1];
+  const entries = all.filter((entry) => entry.models === newest.models && entry.scenarios === newest.scenarios && entry.runsPerContender === newest.runsPerContender);
   if (entries.length < 2) return null;
+  const dropped = all.length - entries.length;
   const percent = (value) => `${value.toFixed(1)}%`;
   const first = entries[0];
   const last = entries[entries.length - 1];
@@ -428,7 +432,10 @@ export function benchmarkTrend(history) {
     rows.appendChild(growthRow('served state', served.map((entry) => entry.served), served[served.length - 1].served - served[0].served, percent));
   }
   root.appendChild(rows);
-  root.appendChild(el('p', 'chart-note', `${entries.length} benchmark reports since ${first.date}`));
+  const reportNote = dropped === 0
+    ? `${entries.length} benchmark reports since ${first.date}`
+    : `${entries.length} benchmark reports since ${first.date}; ${dropped} earlier report${dropped === 1 ? '' : 's'} ${dropped === 1 ? 'is' : 'are'} not on this model × scenario grid and ${dropped === 1 ? 'is' : 'are'} not compared.`;
+  root.appendChild(el('p', 'chart-note', reportNote));
   return root;
 }
 
