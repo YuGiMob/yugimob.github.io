@@ -78,7 +78,8 @@ function refuse(session, code, message, rows) {
 
 export function replace(session, request) {
   const removeFrom = String(request.remove_from ?? '');
-  const removeTo = String(request.remove_to ?? removeFrom);
+  const rawRemoveTo = request.remove_to;
+  const removeTo = rawRemoveTo == null || String(rawRemoveTo) === '' ? removeFrom : String(rawRemoveTo);
   let fromIndex = session.lines.findIndex((line) => line.anchor === removeFrom);
   let toIndex = session.lines.findIndex((line) => line.anchor === removeTo);
   if (fromIndex < 0 || toIndex < 0) {

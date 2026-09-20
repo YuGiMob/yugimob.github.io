@@ -32,6 +32,31 @@ export function link(href, text, className) {
   return anchor;
 }
 
+export function setText(id, value) {
+  const node = document.getElementById(id);
+  if (node && value) node.textContent = value;
+}
+
+export function setMeta(selector, value) {
+  const node = document.querySelector(selector);
+  if (node && value) node.setAttribute('content', value);
+}
+
+export function observeVisibility(element, onShow, onHide) {
+  if (typeof IntersectionObserver !== 'function') {
+    onShow();
+    return null;
+  }
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) onShow();
+      else onHide();
+    }
+  }, { rootMargin: '120px 0px', threshold: 0.12 });
+  observer.observe(element);
+  return observer;
+}
+
 export function announce(message) {
   const region = document.getElementById('live-region');
   if (!region) return;
@@ -47,9 +72,12 @@ export function reducedMotion() {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+let numberFormatter = null;
+
 export function formatNumber(value) {
   if (!Number.isFinite(value)) return '0';
-  return new Intl.NumberFormat('en-US').format(value);
+  if (!numberFormatter) numberFormatter = new Intl.NumberFormat('en-US');
+  return numberFormatter.format(value);
 }
 
 export function createRuntime() {
@@ -90,11 +118,12 @@ export function createRuntime() {
   };
 }
 
-export function createController(node, setup, teardown) {
+export function createController(node, setup, teardown, caption) {
   let runtime = null;
   let active = false;
   return {
     node,
+    caption,
     start() {
       if (active) return;
       active = true;

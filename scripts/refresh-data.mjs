@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { readFileSync, writeFileSync, renameSync, existsSync, unlinkSync, readdirSync, statSync } from 'node:fs';
+import { buildActivity, upsertHistory } from './refresh-lib.mjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -35,11 +36,10 @@ const GITHUB_HEADERS = {
 };
 if (process.env.GITHUB_TOKEN) GITHUB_HEADERS.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
 
-const HISTORY_LIMIT = 120;
-const MAX_ACTIVITY_DAYS = 120;
 const EVENT_PAGES = 3;
 const REPO_PAGES = 5;
-const MAX_HIGHLIGHTS = 5;
+const STARRED_PAGES = 50;
+const PAGE_SIZE = 100;
 const FETCH_TIMEOUT_MS = 15000;
 const UNLISTED_REPOS = new Set(['pi-jina-webtools', 'pi-msg-queue', 'pi-tps-status', 'mypi']);
 let data = null;
@@ -69,7 +69,6 @@ if (
   fileUnusable = fileUnusable || fileExists;
   data = {
     identity: { links: {} },
-    about: { paragraphs: [] },
     projects: [],
     stats: {},
     activity: {},
@@ -77,8 +76,8 @@ if (
   };
 }
 if (fileUnusable) {
-  console.warn('data/site-data.json is unusable; write skipped to preserve the existing file');
-  process.exit(0);
+  console.error('data/site-data.json is unusable; writing nothing to preserve the existing file');
+  process.exit(1);
 }
 
 if (!fileExists) {
@@ -174,7 +173,7 @@ async function fetchPages(baseUrl, maxPages, warnPrefix) {
 }
 
 async function fetchStarredCount() {
-  const items = await fetchPages('https://api.github.com/users/YuGiMob/starred', 50, 'GitHub API error for /starred');
+  const items = await fetchPages('https://api.github.com/users/YuGiMob/starred', STARRED_PAGES, 'GitHub API error for /starred');
   return Array.isArray(items) ? items.length : null;
 }
 const [user, reposRaw, events, starsGiven] = await Promise.all([
@@ -184,6 +183,16 @@ const [user, reposRaw, events, starsGiven] = await Promise.all([
   fetchStarredCount(),
 ]);
 const repos = Array.isArray(reposRaw) ? reposRaw : [];
+
+if (Array.isArray(events) && events.length >= EVENT_PAGES * PAGE_SIZE) {
+  console.warn(`GitHub events: reached the ${EVENT_PAGES * PAGE_SIZE}-event window; older activity is not included`);
+}
+if (Array.isArray(reposRaw) && reposRaw.length >= REPO_PAGES * PAGE_SIZE) {
+  console.warn(`GitHub repos: reached the ${REPO_PAGES * PAGE_SIZE}-repo window; totals may be incomplete`);
+}
+if (typeof starsGiven === 'number' && starsGiven >= STARRED_PAGES * PAGE_SIZE) {
+  console.warn(`GitHub stars given: reached the ${STARRED_PAGES * PAGE_SIZE}-star window; the count may be incomplete`);
+}
 
 if (Array.isArray(reposRaw)) {
   const repoNames = new Set(repos.map((r) => r.name));
@@ -244,51 +253,14 @@ for (const project of data.projects) {
 }
 const today = new Date().toISOString().slice(0, 10);
 if (Array.isArray(events)) {
-  const pushes = events.filter((e) => e.type === 'PushEvent').length;
-  data.activity.pushes = pushes;
-  report('activity.pushes', existing.activity.pushes, pushes);
-
-  const highlights = [];
-  for (const e of events) {
-    if (highlights.length >= MAX_HIGHLIGHTS) break;
-    const repoName = e.repo && e.repo.name ? e.repo.name : null;
-    if (e.type === 'WatchEvent' && e.payload && e.payload.action === 'started' && repoName) {
-      highlights.push(`starred ${repoName}`);
-    } else if (e.type === 'IssuesEvent' && e.payload && e.payload.action && e.payload.issue && repoName) {
-      highlights.push(`${e.payload.action} issue #${e.payload.issue.number} on ${repoName}`);
-    }
-  }
-  data.activity.highlights = highlights;
-  report('activity.highlights', existing.activity.highlights, highlights);
-
-  const dates = events
-    .map((e) => (e.created_at ? String(e.created_at).slice(0, 10) : null))
-    .filter(Boolean)
-    .sort();
-  if (dates.length > 0) {
-    const min = dates[0];
-    const max = dates[dates.length - 1];
-    data.activity.window =
-      min.slice(0, 7) === max.slice(0, 7) ? `${min}..${max.slice(8)}` : `${min}..${max}`;
-  } else {
-    data.activity.window = today;
-  }
-  report('activity.window', existing.activity.window, data.activity.window);
-
-  const byDay = new Map();
-  for (const event of events) {
-    if (!event.created_at) continue;
-    const date = String(event.created_at).slice(0, 10);
-    const entry = byDay.get(date) ?? { date, events: 0, pushes: 0 };
-    entry.events += 1;
-    if (event.type === 'PushEvent') entry.pushes += 1;
-    byDay.set(date, entry);
-  }
-  if (byDay.size > 0) {
-    data.activity.daily = [...byDay.values()]
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(-MAX_ACTIVITY_DAYS);
-  }
+  const activity = buildActivity(events, today);
+  data.activity.pushes = activity.pushes;
+  report('activity.pushes', existing.activity.pushes, activity.pushes);
+  data.activity.highlights = activity.highlights;
+  report('activity.highlights', existing.activity.highlights, activity.highlights);
+  data.activity.window = activity.window;
+  report('activity.window', existing.activity.window, activity.window);
+  if (activity.daily.length > 0) data.activity.daily = activity.daily;
   reportCount('activity.daily', existing.activity.daily, data.activity.daily);
 }
 let anyNpmSuccess = false;
@@ -312,6 +284,10 @@ for (const pkg of npmPackages) {
   await sleep(50);
 }
 
+if (Array.isArray(events)) {
+  data.activity.fetchedAt = today;
+  report('activity.fetchedAt', existing.activity.fetchedAt, data.activity.fetchedAt);
+}
 if (
   user !== null ||
   Array.isArray(reposRaw) ||
@@ -319,8 +295,6 @@ if (
   anyNpmSuccess ||
   typeof starsGiven === 'number'
 ) {
-  data.activity.fetchedAt = today;
-  report('activity.fetchedAt', existing.activity.fetchedAt, data.activity.fetchedAt);
   const totalDownloads = data.projects.reduce(
     (sum, project) => sum + (Number.isFinite(project.npmWeeklyDownloads) ? project.npmWeeklyDownloads : 0),
     0,
@@ -329,14 +303,8 @@ if (
     date: today,
     totalStars: Number.isFinite(data.stats.totalStars) ? data.stats.totalStars : 0,
     totalDownloads,
-    pushes: Number.isFinite(data.activity.pushes) ? data.activity.pushes : 0,
   };
-  const history = data.history.filter((entry) => entry && typeof entry.date === 'string');
-  const snapshotIndex = history.findIndex((entry) => entry.date === snapshot.date);
-  if (snapshotIndex >= 0) history[snapshotIndex] = snapshot;
-  else history.push(snapshot);
-  history.sort((a, b) => a.date.localeCompare(b.date));
-  data.history = history.slice(-HISTORY_LIMIT);
+  data.history = upsertHistory(data.history, snapshot);
   reportCount('history', existing.history, data.history);
 }
 try {

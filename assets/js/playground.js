@@ -1,4 +1,4 @@
-import { el, append, announce } from './ui.js';
+import { el, append, announce, createController } from './ui.js';
 import { createSession, replace, undo, externalEdit, isStale } from './hashline.js';
 
 const SOURCE = [
@@ -20,7 +20,8 @@ const SOURCE = [
 
 export const PLAYGROUND_ID = 'hashline';
 
-const TARGET = 5;
+const TARGET_LINE = '  if (from < 0 || to < 0) return stale(lines)';
+const TARGET = SOURCE.indexOf(TARGET_LINE);
 const REPLACEMENT = "  if (from < 0 || to < 0) return stale(lines, 'range')";
 const DRIFT = '  if (from < 0 || to < 0) return staleRange(lines)';
 
@@ -265,13 +266,5 @@ export function buildPlayground() {
   renderStep();
   setResult('info', 'A guided run through one edit. Press the button to start.', []);
 
-  return {
-    node: root,
-    caption,
-    start() {},
-    stop() {},
-    destroy() {
-      this.stop();
-    },
-  };
+  return createController(root, () => {}, null, caption);
 }

@@ -14,7 +14,7 @@ flagship loses.
 
 - **Intro** (`#intro`): who I am, what the page is, and why the failure modes
   matter. Live counters for stars, packages, and weekly installs.
-- **The problems** (`#problems`): an index of six failures, then one entry per
+- **The problems** (`#problems`): an index of the failures, then one entry per
   tool. Each entry leads with the problem, then the answer: the project,
   install command, source link, and a working demo.
   - pi-hashline-edit-pro gets the flagship treatment with an interactive
@@ -35,10 +35,16 @@ flagship loses.
 ```
 index.html                      page shell, meta tags, JSON-LD
 404.html                        not-found page
+favicon.ico                     legacy favicon
 sitemap.xml                     single-URL sitemap
 robots.txt                      crawl policy and sitemap reference
-assets/css/style.css            the entire stylesheet
-assets/js/main.js               fetch, render, wire everything
+assets/apple-touch-icon.png     iOS home-screen icon
+assets/og.jpg                   social preview image
+assets/css/style.css            the entire stylesheet, fonts included
+assets/fonts/                   self-hosted Inter, Newsreader, IBM Plex Mono
+assets/js/main.js               boot, fetch, navigation, error state
+assets/js/render.js             all DOM rendering
+assets/js/site-data.js          data guards, fallback model, formatting
 assets/js/ui.js                 DOM, formatting, copy, runtime helpers
 assets/js/hashline.js           anchor allocation + edit session model
 assets/js/playground.js         the flagship interactive demo
@@ -50,11 +56,16 @@ data/site-data.schema.json      schema for the above
 data/showcase.json              curated narrative and demo wiring
 data/showcase.schema.json       schema for the above
 scripts/refresh-data.mjs        daily GitHub + npm refresh
+scripts/refresh-lib.mjs         pure activity and history helpers
 scripts/validate-data.mjs       offline validation for both data files
+scripts/validate-site.mjs       HTML, module, README, and CSS reference checks
+scripts/check-links.mjs         monthly external-link check
 tests/                          node:test unit and integration tests
 package.json                    scripts only, no runtime dependencies
 .github/workflows/refresh-data.yml  daily refresh and commit
 .github/workflows/validate.yml      validation on push and pull request
+.github/workflows/links.yml         monthly external-link check
+.github/dependabot.yml              weekly action updates
 ```
 
 ## Demos
@@ -74,6 +85,18 @@ A showcase entry names a `demo`, and that name must exist in the registry:
 `sections` block in `data/site-data.json` toggles the About, problems,
 evidence, hero stats, and footer blocks.
 
+## Adding a tool
+
+1. Add or update the project in `data/site-data.json` (name, URL, npm package,
+   license, description). The refresh keeps the machine fields current.
+2. Add one entry to `problems` in `data/showcase.json`: kicker, headline,
+   problem, answer, highlights, optional `demo`, and `size`. The name must match
+   the manifest.
+3. If the entry names a demo, implement it in `assets/js/demos.js` and register
+   it in `BUILDERS`; the `hashline` demo lives in `assets/js/playground.js`.
+4. Run `npm run check`. The validators reject unknown demo ids, names missing
+   from the manifest, duplicated projects, and unsorted history.
+
 ## Data model
 
 Two files, with a clean split:
@@ -82,8 +105,8 @@ Two files, with a clean split:
 identity block, the curated project manifest (name, URL, npm package, curated
 description), and machine numbers: stars, forks, languages, last push,
 weekly npm downloads, stats, activity (window, pushes, highlights, per-day
-events), and `history`: one snapshot per day with total stars, total weekly
-downloads, and pushes.
+events), and `history`: one snapshot per day with total stars and total weekly
+downloads.
 
 The About panel renders those snapshots as a stars and weekly-installs trend.
 
@@ -110,7 +133,7 @@ runs do not fight over a shared rate limit.
 What it preserves: curated prose, descriptions, identity, and the showcase
 file are never touched. Forks and the site repo are skipped. The file is
 written atomically (temp file then rename) with a change summary. If the
-existing file is present but unusable, the refresh warns and exits without
+existing file is present but unusable, the refresh exits with an error without
 writing, so a corrupt file cannot wipe curated content.
 If the file is missing entirely, the refresh exits with an error instead of
 writing an empty skeleton.
@@ -119,6 +142,8 @@ Each run also appends a `history` snapshot for the day (replacing an existing
 snapshot for the same date, capped at 120 entries) and rebuilds
 `activity.daily` from the most recent public events, paginating up to the
 GitHub API's 300-event maximum and capping the window at 120 days.
+When a fetch reaches an API pagination cap, the run prints a warning so the
+truncated window is visible in the log.
 
 The site refreshes itself daily through
 `.github/workflows/refresh-data.yml` (06:00 UTC), which runs the script,
@@ -128,14 +153,17 @@ changed. It can also be triggered manually from the Actions tab.
 ## Validating
 
 ```
-node scripts/validate-data.mjs
+npm run validate
 ```
 
-Checks both JSON files against the structural rules, cross-references showcase
-names with the manifest, verifies every `demo` id exists, and prints
-`validate: ok`. The schema files drive editor validation through the `$schema`
-keys in both data files. The workflow runs the validator on every refresh and
-on push.
+`npm run validate` runs both checkers. The data validator checks both JSON files
+against the structural rules, cross-references showcase names with the manifest,
+verifies every `demo` id and benchmark total, and prints `validate: ok`, listing
+every failure it finds in one run. The site validator checks internal links,
+element ids the scripts depend on, module preloads, README file paths, and local
+stylesheet references, then prints `validate:site: ok`. The schema files drive
+editor validation through the `$schema` keys in both data files. The workflow
+runs both on every refresh and on push.
 
 ## Testing
 
@@ -144,8 +172,11 @@ npm test
 ```
 
 The suite runs on `node --test` with no dependencies: unit tests for the
-anchored-edit session model and the avatar srcset helper, plus an integration
-check that the committed data passes the validator.
+anchored-edit session model, the avatar srcset helper, the data guards and
+formatting, the chart transforms, and the refresh activity and history
+helpers, plus a parse check for every script and integration checks that the
+committed data and site structure pass their validators and that the validator
+refuses broken input. `npm run check` runs validation and the tests together.
 
 ## Serving locally
 

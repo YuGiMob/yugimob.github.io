@@ -10,11 +10,6 @@
       "email": null
     }
   },
-  "about": {
-    "paragraphs": [
-      "I build extensions for pi, the terminal coding agent, and publish them on npm: anchored edits, keyless web tools, Tor routing, guarded commits, and a benchmark that publishes the traces."
-    ]
-  },
   "projects": [
     {
       "name": "pi-hashline-edit-pro",
@@ -185,7 +180,7 @@
     ]
   },
   "sections": {
-    "showBackground": true,
+    "showAbout": true,
     "showArtifacts": true,
     "showAbilityScores": true,
     "showCampfire": true
@@ -194,14 +189,12 @@
     {
       "date": "2026-09-17",
       "totalStars": 94,
-      "totalDownloads": 5296,
-      "pushes": 63
+      "totalDownloads": 5296
     },
     {
       "date": "2026-09-18",
       "totalStars": 94,
-      "totalDownloads": 7131,
-      "pushes": 63
+      "totalDownloads": 7131
     }
   ]
 }

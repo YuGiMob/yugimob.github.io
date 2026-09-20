@@ -3,7 +3,7 @@ import { el, append, createController, typeText, reducedMotion, svg, announce } 
 function frame(title, badge) {
   const root = el('div', 'demo');
   const bar = el('div', 'demo-bar');
-  append(bar, el('span', 'demo-title', title));
+  append(bar, el('span', null, title));
   if (badge) bar.appendChild(el('span', 'demo-badge', badge));
   const stage = el('div', 'demo-stage');
   append(root, bar, stage);
@@ -11,7 +11,7 @@ function frame(title, badge) {
 }
 
 function press(label, className) {
-  const button = el('button', `demo-button ${className || ''}`, label);
+  const button = el('button', className ? `demo-button ${className}` : 'demo-button', label);
   button.type = 'button';
   return button;
 }
@@ -26,7 +26,7 @@ function typeLines(container, lines, runtime, onDone) {
     const spec = lines[index];
     index += 1;
     const row = el('div', `term-line ${spec.cls || ''}`);
-    const text = el('span', 'term-text');
+    const text = el('span');
     row.appendChild(text);
     container.appendChild(row);
     container.scrollTop = container.scrollHeight;
@@ -123,7 +123,7 @@ function webToolsDemo() {
 
 function torView(config) {
   const svgRoot = svg('svg', { viewBox: config.viewBox, class: `tor-svg ${config.className}`, role: 'img', 'aria-label': 'A request travelling through three Tor relays' });
-  const directPath = svg('path', { d: config.direct, class: 'tor-line tor-direct' });
+  const directPath = svg('path', { d: config.direct, class: 'tor-line' });
   const circuitPath = svg('path', { d: config.circuit, class: 'tor-line tor-circuit' });
   append(svgRoot, directPath, circuitPath);
   for (const node of config.nodes) {
@@ -138,7 +138,7 @@ function torView(config) {
     }
   }
   const packet = svg('g', { class: 'tor-packet' });
-  const ringOuter = svg('circle', { r: 14, class: 'tor-ring ring-outer' });
+  const ringOuter = svg('circle', { r: 14, class: 'tor-ring' });
   const ringMid = svg('circle', { r: 10, class: 'tor-ring ring-mid' });
   const ringInner = svg('circle', { r: 6, class: 'tor-ring ring-inner' });
   const core = svg('circle', { r: 4, class: 'tor-core' });
@@ -182,14 +182,20 @@ function torDemo() {
   const readout = el('div', 'tor-readout');
   readout.setAttribute('aria-live', 'polite');
   const toggle = el('div', 'tor-toggle');
-  const directButton = press('direct', 'tor-mode is-current');
-  const torButton = press('tor', 'tor-mode');
-  append(toggle, directButton, torButton);
+  const directButton = press('direct', 'is-current');
+  const torButton = press('tor');
+  const motionButton = press('pause');
+  append(toggle, directButton, torButton, motionButton);
+  motionButton.hidden = reducedMotion();
   append(stage, wide.svgRoot, tall.svgRoot, readout, toggle);
 
   let mode = 'tor';
   const hopTimes = [0, 720, 1440, 2160, 2880];
   const directTime = 1400;
+  let elapsedOffset = 0;
+  let startedAt = 0;
+  let running = false;
+  let runtimeRef = null;
 
   function setMode(next) {
     mode = next;
@@ -208,6 +214,7 @@ function torDemo() {
       ? 'direct · exit IP 203.0.113.42 (you) · 38 ms · DNS and sockets exposed'
       : 'tor · exit IP 185.220.101.7 · 812 ms · circuit fresh';
     readout.classList.toggle('is-warn', next === 'direct');
+    if (!running) renderTorFrame(elapsedOffset);
   }
 
   function renderTorFrame(elapsed) {
@@ -238,19 +245,45 @@ function torDemo() {
     }
   }
 
+  function startMotion() {
+    if (!runtimeRef || running) return;
+    running = true;
+    startedAt = performance.now();
+    runtimeRef.reset();
+    runtimeRef.frame((now) => renderTorFrame(elapsedOffset + now - startedAt));
+    motionButton.textContent = 'pause';
+  }
+
+  function stopMotion() {
+    if (!running) return;
+    running = false;
+    elapsedOffset += performance.now() - startedAt;
+    if (runtimeRef) runtimeRef.clear();
+    motionButton.textContent = 'resume';
+  }
+
   directButton.addEventListener('click', () => setMode('direct'));
   torButton.addEventListener('click', () => setMode('tor'));
+  motionButton.addEventListener('click', () => { if (running) stopMotion(); else startMotion(); });
   setMode('tor');
   renderTorFrame(0);
 
   return createController(root, (runtime) => {
+    runtimeRef = runtime;
+    motionButton.hidden = reducedMotion();
     if (reducedMotion()) {
       setMode(mode);
       renderTorFrame(hopTimes[2]);
       return;
     }
-    const start = performance.now();
-    runtime.frame((now) => renderTorFrame(now - start));
+    startMotion();
+  }, () => {
+    if (running) {
+      elapsedOffset += performance.now() - startedAt;
+      running = false;
+    }
+    runtimeRef = null;
+    motionButton.textContent = 'pause';
   });
 }
 
@@ -258,20 +291,41 @@ function workflowDemo() {
   const { root, stage } = frame('/workflow 1', 'config');
   const lanes = el('div', 'wf-lanes');
   const laneData = [
-    { title: '/msg', items: ['1 · read the codebase', '2 · list improvements', '4 · implement', '5 · validate the diff'] },
-    { title: '/cmd', items: ['1 · git add .', '2 · npm test'] },
-    { title: '/workflow 1', items: ['start · msgs 1 to 5', 'loop · tree 1 resets context', 'finally · msg 17 then commit'] },
+    {
+      title: '/msg',
+      items: [
+        { id: 'msg1', text: '1 · read the codebase' },
+        { id: 'msg2', text: '2 · list improvements' },
+        { id: 'msg4', text: '4 · implement' },
+        { id: 'msg5', text: '5 · validate the diff' },
+      ],
+    },
+    {
+      title: '/cmd',
+      items: [
+        { id: 'cmd1', text: '1 · git add .' },
+        { id: 'cmd2', text: '2 · npm test' },
+      ],
+    },
+    {
+      title: '/workflow 1',
+      items: [
+        { id: 'start', text: 'start · msgs 1 to 5' },
+        { id: 'loop', text: 'loop · tree 1 resets context' },
+        { id: 'finally', text: 'finally · msg 17 then commit' },
+      ],
+    },
   ];
-  const itemNodes = [];
+  const itemNodes = new Map();
   for (const lane of laneData) {
     const column = el('div', 'wf-lane');
     column.appendChild(el('p', 'wf-lane-title', lane.title));
     const list = el('ul', 'wf-items');
-    for (const text of lane.items) {
-      const item = el('li', 'wf-item');
-      append(item, el('span', 'wf-dot'), el('span', 'wf-text', text));
-      list.appendChild(item);
-      itemNodes.push(item);
+    for (const item of lane.items) {
+      const node = el('li', 'wf-item');
+      append(node, el('span', 'wf-dot'), el('span', null, item.text));
+      list.appendChild(node);
+      itemNodes.set(item.id, node);
     }
     column.appendChild(list);
     lanes.appendChild(column);
@@ -279,15 +333,15 @@ function workflowDemo() {
   const output = el('pre', 'wf-output');
   const status = el('p', 'wf-status', 'workflow 1 · 2 rounds · 6 workflows configured');
   const actions = el('div', 'wf-actions');
-  const runButton = press('run workflow', 'wf-run');
-  const resetButton = press('reset', 'wf-reset');
+  const runButton = press('run workflow');
+  const resetButton = press('reset');
   append(actions, runButton, resetButton);
   append(stage, lanes, output, status, actions);
 
   let runtimeRef = null;
 
   function clear() {
-    for (const item of itemNodes) item.classList.remove('is-active', 'is-done');
+    for (const item of itemNodes.values()) item.classList.remove('is-active', 'is-done');
     output.classList.remove('is-visible');
     output.textContent = '';
     status.textContent = 'workflow 1 · 2 rounds · 6 workflows configured';
@@ -305,18 +359,18 @@ function workflowDemo() {
     runtimeRef.reset();
     clear();
     const sequence = [
-      { index: 0, status: 'start · msg 1 · read the codebase' },
-      { index: 1, status: 'start · msg 2 · list improvements' },
-      { index: 2, status: 'start · msg 4 · implement' },
-      { index: 3, status: 'start · msg 5 · validate the diff' },
-      { index: 6, status: 'loop 1/2 · tree 1 resets the context' },
-      { index: 4, status: 'loop 1/2 · cmd 1 · git add .' },
-      { index: 7, status: 'loop 1/2 · msg 6 then msg 7 · review the changes' },
-      { index: 5, status: 'loop 1/2 · cmd 2 · npm test' },
-      { index: 8, status: 'finally · msg 17 then commit' },
+      { id: 'msg1', status: 'start · msg 1 · read the codebase' },
+      { id: 'msg2', status: 'start · msg 2 · list improvements' },
+      { id: 'msg4', status: 'start · msg 4 · implement' },
+      { id: 'msg5', status: 'start · msg 5 · validate the diff' },
+      { id: 'start', status: 'loop 1/2 · tree 1 resets the context' },
+      { id: 'cmd1', status: 'loop 1/2 · cmd 1 · git add .' },
+      { id: 'loop', status: 'loop 1/2 · msg 6 then msg 7 · review the changes' },
+      { id: 'cmd2', status: 'loop 1/2 · cmd 2 · npm test' },
+      { id: 'finally', status: 'finally · msg 17 then commit' },
     ];
     if (reducedMotion()) {
-      for (const item of itemNodes) item.classList.add('is-done');
+      for (const item of itemNodes.values()) item.classList.add('is-done');
       output.textContent = plan;
       output.classList.add('is-visible');
       status.textContent = 'done · 2 rounds · committed from msg 17';
@@ -326,14 +380,14 @@ function workflowDemo() {
     announce('workflow started · 2 rounds');
     sequence.forEach((step, index) => {
       runtimeRef.after(() => {
-        if (index > 0) itemNodes[sequence[index - 1].index].classList.replace('is-active', 'is-done');
-        itemNodes[step.index].classList.add('is-active');
+        if (index > 0) itemNodes.get(sequence[index - 1].id).classList.replace('is-active', 'is-done');
+        itemNodes.get(step.id).classList.add('is-active');
         status.textContent = step.status;
-        if (step.index === 6) announce('loop 1 of 2 · context reset');
+        if (step.id === 'start') announce('loop 1 of 2 · context reset');
       }, 240 + index * 780);
     });
     runtimeRef.after(() => {
-      itemNodes[sequence[sequence.length - 1].index].classList.replace('is-active', 'is-done');
+      itemNodes.get(sequence[sequence.length - 1].id).classList.replace('is-active', 'is-done');
       output.textContent = plan;
       output.classList.add('is-visible');
       status.textContent = 'done · 2 rounds · committed from msg 17';
@@ -360,7 +414,7 @@ function gitDemo() {
   const body = el('pre', 'term-body');
   append(term, bar, body);
   const actions = el('div', 'term-actions');
-  const replay = press('replay', 'term-replay');
+  const replay = press('replay');
   actions.appendChild(replay);
   append(stage, term, actions);
 
@@ -378,7 +432,7 @@ function gitDemo() {
     body.replaceChildren();
     for (const line of lines) {
       const row = el('div', `term-line ${line.cls}`);
-      row.appendChild(el('span', 'term-text', line.text));
+      row.appendChild(el('span', null, line.text));
       body.appendChild(row);
     }
     body.scrollTop = body.scrollHeight;
@@ -421,7 +475,7 @@ function traceDemo() {
   }
   const foot = el('p', 'tr-foot', 'pi-edit-benchmark scores the refusal itself, not only the final diff.');
   const actions = el('div', 'tr-actions');
-  const replay = press('replay', 'tr-replay');
+  const replay = press('replay');
   actions.appendChild(replay);
   append(stage, list, foot, actions);
 

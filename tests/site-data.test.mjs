@@ -1,0 +1,64 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { isValidSiteData, fallbackShowcase, countWord, formatWindow } from '../assets/js/site-data.js';
+
+const VALID = {
+  identity: {
+    displayName: 'Tester',
+    classTitle: 'Testing things',
+    tagline: 'A tagline.',
+    avatarUrl: 'https://example.com/a.png',
+    links: { github: 'https://github.com/tester', email: null },
+  },
+  projects: [{ name: 'tool', url: 'https://github.com/tester/tool', description: 'A tool.' }],
+  stats: { totalStars: 1 },
+  activity: { pushes: 0 },
+  sections: { showAbout: true },
+};
+
+test('isValidSiteData accepts a complete document', () => {
+  assert.equal(isValidSiteData(VALID), true);
+});
+
+test('isValidSiteData rejects missing top-level keys', () => {
+  assert.equal(isValidSiteData({ ...VALID, sections: undefined }), false);
+});
+
+test('isValidSiteData rejects identity without its display fields', () => {
+  assert.equal(isValidSiteData({ ...VALID, identity: { ...VALID.identity, tagline: undefined } }), false);
+  assert.equal(isValidSiteData({ ...VALID, identity: [] }), false);
+});
+
+test('isValidSiteData rejects empty or malformed projects', () => {
+  assert.equal(isValidSiteData({ ...VALID, projects: [] }), false);
+  assert.equal(isValidSiteData({ ...VALID, projects: [{ name: 'tool' }] }), false);
+});
+
+test('isValidSiteData rejects non-object stats, activity, and sections', () => {
+  assert.equal(isValidSiteData({ ...VALID, stats: [] }), false);
+  assert.equal(isValidSiteData({ ...VALID, activity: 'none' }), false);
+  assert.equal(isValidSiteData({ ...VALID, sections: null }), false);
+});
+
+test('fallbackShowcase builds a usable narrative from identity and projects', () => {
+  const showcase = fallbackShowcase(VALID);
+  assert.equal(showcase.intro.headline, 'Testing things');
+  assert.deepEqual(showcase.intro.paragraphs, ['A tagline.']);
+  assert.equal(showcase.problems.length, 1);
+  assert.equal(showcase.problems[0].name, 'tool');
+  assert.equal(showcase.evidence, null);
+  assert.deepEqual(showcase.principles, []);
+  assert.deepEqual(showcase.colophon, ['A tagline.']);
+});
+
+test('countWord spells small numbers and falls back to digits', () => {
+  assert.equal(countWord(0), 'zero');
+  assert.equal(countWord(6), 'six');
+  assert.equal(countWord(11), '11');
+});
+
+test('formatWindow expands a same-month range', () => {
+  assert.equal(formatWindow('2026-09-03..17'), '2026-09-03 to 2026-09-17');
+  assert.equal(formatWindow('2026-08-01..2026-09-17'), '2026-08-01 to 2026-09-17');
+  assert.equal(formatWindow('2026-09-17'), '2026-09-17');
+});

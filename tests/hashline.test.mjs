@@ -138,3 +138,10 @@ test('a refused edit leaves the undo record from the last replace intact', () =>
   assert.equal(restored.ok, true);
   assert.deepEqual(current.lines.map((line) => line.text), SOURCE);
 });
+
+test('an empty remove_to falls back to remove_from', () => {
+  const current = session();
+  const result = replace(current, { remove_from: current.lines[1].anchor, remove_to: '', replacement_lines: ['beta!'] });
+  assert.equal(result.ok, true);
+  assert.deepEqual(current.lines.map((line) => line.text), ['alpha', 'beta!', 'gamma', 'delta']);
+});

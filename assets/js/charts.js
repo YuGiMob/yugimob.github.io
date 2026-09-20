@@ -2,7 +2,7 @@ import { el, append, link, svg, formatNumber, createController } from './ui.js';
 
 function chartFrame(kicker, title, note) {
   const root = el('article', 'chart');
-  const head = el('div', 'chart-head');
+  const head = el('div');
   append(head, el('p', 'chart-kicker', kicker), el('h3', 'chart-title', title));
   if (note) head.appendChild(el('p', 'chart-note', note));
   const body = el('div', 'chart-body');
@@ -12,7 +12,7 @@ function chartFrame(kicker, title, note) {
 
 function legendItem(className, text) {
   const item = el('span', 'legend-item');
-  append(item, el('span', `legend-swatch ${className}`), el('span', 'legend-text', text));
+  append(item, el('span', `legend-swatch ${className}`), el('span', null, text));
   return item;
 }
 
@@ -25,6 +25,10 @@ function meter(className, value) {
   return track;
 }
 
+export function sortedContenders(contenders) {
+  return [...contenders].sort((a, b) => b.overall - a.overall || b.safety - a.safety);
+}
+
 export function benchmarkChart(bench) {
   const { root, body } = chartFrame(
     'Results',
@@ -32,11 +36,10 @@ export function benchmarkChart(bench) {
     `${bench.models} models × ${bench.scenarios} scenarios × ${bench.contenderCount} contenders · ${bench.runsPerContender} runs each`,
   );
   const list = el('ul', 'bench-rows');
-  const sorted = [...bench.contenders].sort((a, b) => b.overall - a.overall || b.safety - a.safety);
-  for (const contender of sorted) {
+  for (const contender of sortedContenders(bench.contenders)) {
     const item = el('li', `bench-row${contender.highlight ? ' is-highlight' : ''}`);
     const label = el('span', 'bench-label');
-    label.appendChild(el('span', 'bench-name', contender.label));
+    label.appendChild(el('span', null, contender.label));
     if (contender.highlight) label.appendChild(el('span', 'bench-flag', 'this project'));
     label.appendChild(el('span', 'sr-only', ` ${contender.safety}% on stale and drift scenarios`));
     if (contender.errors > 0) label.appendChild(el('span', 'bench-errors', `${contender.errors} ${contender.errors === 1 ? 'error' : 'errors'}`));
@@ -56,17 +59,21 @@ export function benchmarkChart(bench) {
   }, () => root.classList.remove('is-live'));
 }
 
-function sparkline(values, label) {
-  const width = 120;
-  const height = 28;
+export function sparklinePoints(values, width = 120, height = 28) {
   const series = values.length > 1 ? values : [values[0], values[0]];
   const min = Math.min(...series);
   const max = Math.max(...series);
   const span = max - min || 1;
   const step = width / (series.length - 1);
-  const points = series
+  return series
     .map((value, index) => `${(index * step).toFixed(1)} ${(height - 2 - ((value - min) / span) * (height - 4)).toFixed(1)}`)
     .join(' ');
+}
+
+function sparkline(values, label) {
+  const width = 120;
+  const height = 28;
+  const points = sparklinePoints(values, width, height);
   const node = svg('svg', {
     class: 'growth-spark',
     viewBox: `0 0 ${width} ${height}`,
