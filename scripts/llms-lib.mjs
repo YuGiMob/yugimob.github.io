@@ -7,21 +7,51 @@ export const SITE_REPOSITORY = 'https://github.com/YuGiMob/yugimob.github.io';
 
 function firstSentence(text) {
   const sentence = String(text ?? '').trim();
-  const end = sentence.indexOf('. ');
-  return end === -1 ? sentence : sentence.slice(0, end + 1);
+  const end = sentence.match(/^[\s\S]*?[.!?](?=\s+[A-Z]|\s*$)/);
+  return end ? end[0].trim() : sentence;
 }
 
 function dataLine(label, url, detail) {
   return `- [${label}](${url}): ${detail}`;
 }
 
-function highlightSummary(benchmark) {
-  const contender = (benchmark?.contenders ?? []).find((entry) => entry?.highlight === true);
-  if (!contender) return null;
-  const splits = [`${contender.overall.toFixed(1)}% overall`];
-  if (Number.isFinite(contender.safety)) splits.push(`${contender.safety.toFixed(1)}% staleness`);
-  if (Number.isFinite(contender.served)) splits.push(`${contender.served.toFixed(1)}% served state`);
-  return `${contender.label}: ${splits.join(', ')} across ${formatNumber(contender.runs)} runs`;
+function signedPoints(value) {
+  return `${value > 0 ? '+' : ''}${value.toFixed(1)}`;
+}
+
+function rateCell(value) {
+  return Number.isFinite(value) ? `${value.toFixed(1)}%` : '—';
+}
+
+function comparisonCell(contender) {
+  const comparison = contender.vsHighlight;
+  if (!comparison) return '—';
+  const p = Number.isFinite(comparison.pAdjusted) ? comparison.pAdjusted : comparison.p;
+  return `${signedPoints(comparison.low)} to ${signedPoints(comparison.high)} points, Holm-adjusted p=${p < 0.001 ? '< 0.001' : p.toFixed(3)}`;
+}
+
+function benchmarkTable(benchmark) {
+  const contenders = Array.isArray(benchmark?.contenders) ? benchmark.contenders : [];
+  if (contenders.length === 0) return [];
+  const lines = [
+    '| tool | version | overall | staleness | served state | 95% interval | vs the highlighted tool | runs | passed | API cost |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+  ];
+  for (const contender of contenders) {
+    lines.push(`| ${[
+      contender.highlight ? `**${contender.label}**` : contender.label,
+      contender.version ? `v${contender.version}` : '—',
+      rateCell(contender.overall),
+      rateCell(contender.safety),
+      rateCell(contender.served),
+      `${contender.low.toFixed(1)}–${contender.high.toFixed(1)}`,
+      comparisonCell(contender),
+      formatNumber(contender.runs),
+      formatNumber(contender.passed),
+      Number.isFinite(contender.costUsd) ? `$${contender.costUsd.toFixed(2)}` : '—',
+    ].join(' | ')} |`);
+  }
+  return lines;
 }
 
 function numbered(index) {
@@ -66,8 +96,15 @@ export function buildLlmsTxt(siteData, showcase) {
     lines.push('## Evidence');
     lines.push('');
     lines.push(dataLine(evidence.name, benchmark.source, `${firstSentence(evidence.answer)} ${runs}`));
-    const highlight = highlightSummary(benchmark);
-    if (highlight) lines.push(`- ${highlight}`);
+    for (const contender of benchmark.contenders ?? []) {
+      const splits = [`${contender.overall.toFixed(1)}% overall`];
+      if (Number.isFinite(contender.safety)) splits.push(`${contender.safety.toFixed(1)}% staleness`);
+      if (Number.isFinite(contender.served)) splits.push(`${contender.served.toFixed(1)}% served state`);
+      const version = contender.version ? ` v${contender.version}` : '';
+      const comparison = contender.vsHighlight == null ? '' : `; ${comparisonCell(contender)} against the highlighted tool`;
+      const trace = contender.traceUrl ? `[${contender.label}](${contender.traceUrl})` : contender.label;
+      lines.push(`- ${trace}${version}: ${splits.join(', ')} across ${formatNumber(contender.runs)} runs${comparison}`);
+    }
     lines.push(dataLine('Run report', benchmark.reportUrl, 'the committed JSON every figure comes from'));
     lines.push(dataLine('Committed traces', benchmark.tracesUrl, 'one trace per scored run'));
     lines.push('');
@@ -76,6 +113,7 @@ export function buildLlmsTxt(siteData, showcase) {
   lines.push('## Data');
   lines.push('');
   lines.push(dataLine('Markdown mirror', `${SITE_URL}/index.md`, 'the whole page as markdown, generated from the two data files'));
+  lines.push(dataLine('Interactive demo', `${SITE_URL}/?step=1`, 'the anchored-edit guide, one step per URL'));
   lines.push(dataLine('Machine data', `${SITE_URL}/data/site-data.json`, 'stars, downloads, activity, history, and benchmark numbers, refreshed daily'));
   lines.push(dataLine('Curated showcase', `${SITE_URL}/data/showcase.json`, 'the narrative behind every tool, one entry per problem'));
   lines.push(dataLine('Scenario matrix', `${SITE_URL}/data/benchmark-matrix.json`, 'pass counts per scenario and contender behind the benchmark chart'));
@@ -144,8 +182,10 @@ export function buildIndexMd(siteData, showcase) {
     lines.push('');
     if (benchmark) {
       lines.push(`${benchmark.contenderCount} contenders over ${benchmark.models} models × ${benchmark.scenarios} scenarios, ${benchmark.runsPerContender} runs each (${formatNumber(benchmark.totalRuns)} total).`);
-      const highlight = highlightSummary(benchmark);
-      if (highlight) lines.push(highlight);
+      lines.push('');
+      lines.push(...benchmarkTable(benchmark));
+      lines.push('');
+      lines.push('Every rate is a pass rate over the shared model × scenario grid, the interval is a 95% Wilson interval, and the comparison column is the exact two-sided McNemar test against the highlighted tool with a Holm adjustment across rivals.');
       lines.push('');
       lines.push(dataLine('Run report', benchmark.reportUrl, 'the committed JSON every figure comes from'));
       lines.push(dataLine('Committed traces', benchmark.tracesUrl, 'one trace per scored run'));

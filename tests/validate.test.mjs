@@ -139,6 +139,13 @@ test('the schema drives required keys, types, and unknown keys', () => {
   assert.match(extraKeyResult.stderr, /identity unexpected key color/);
 });
 
+test('the validator accepts a data file without the optional showEvidence toggle', () => {
+  const optional = structuredClone(DATA);
+  delete optional.sections.showEvidence;
+  const result = runValidator(optional, SHOWCASE);
+  assert.equal(result.status, 0, result.stderr);
+});
+
 test('the validator refuses a benchmark block that contradicts itself', () => {
   const mismatched = structuredClone(DATA);
   mismatched.benchmark.focusCounts.staleness += 1;
@@ -155,6 +162,14 @@ test('the validator refuses a benchmark block that contradicts itself', () => {
   const noHighlight = structuredClone(DATA);
   for (const contender of noHighlight.benchmark.contenders) contender.highlight = false;
   assert.match(runValidator(noHighlight, SHOWCASE).stderr, /benchmark has no highlighted contender/);
+});
+
+test('the validator re-derives the benchmark cost total from the contenders', () => {
+  const drifted = structuredClone(DATA);
+  drifted.benchmark.contenders[0].costUsd += 1;
+  const result = runValidator(drifted, SHOWCASE);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /costUsd .* does not match the contender total/);
 });
 
 test('the validator refuses a duplicated project and a malformed fetchedAt', () => {
@@ -286,7 +301,7 @@ test('the validator refuses benchmark history that drifts from the current repor
   assert.match(runValidator(misdated, SHOWCASE).stderr, /benchmarkHistory newest entry is dated 2026-09-19/);
 });
 
-test('the site validator refuses a stale CSP hash and an un-preloaded module', () => {
+test('the site validator refuses a stale CSP hash and a mis-preloaded module', () => {
   const staleHash = runSiteValidator((dir) => {
     const path = join(dir, 'index.html');
     writeFileSync(path, readFileSync(path, 'utf8').replace(/'sha256-[A-Za-z0-9+/=]+'/, "'sha256-AAAA'"));
@@ -296,10 +311,20 @@ test('the site validator refuses a stale CSP hash and an un-preloaded module', (
 
   const missingPreload = runSiteValidator((dir) => {
     const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('  <link rel="modulepreload" href="assets/js/charts.js">\n', ''));
+    writeFileSync(path, readFileSync(path, 'utf8').replace('  <link rel="modulepreload" href="assets/js/view-model.js">\n', ''));
   });
   assert.equal(missingPreload.status, 1);
-  assert.match(missingPreload.stderr, /assets\/js\/charts\.js is not preloaded/);
+  assert.match(missingPreload.stderr, /assets\/js\/view-model\.js is statically imported but not preloaded/);
+
+  const eagerDynamic = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace(
+      '<link rel="modulepreload" href="assets/js/render.js">',
+      '<link rel="modulepreload" href="assets/js/render.js">\n  <link rel="modulepreload" href="assets/js/demos.js">',
+    ));
+  });
+  assert.equal(eagerDynamic.status, 1);
+  assert.match(eagerDynamic.stderr, /assets\/js\/demos\.js is loaded on demand but preloaded/);
 });
 
 test('the site validator refuses third-party assets, README ghosts, and noscript strays', () => {
@@ -410,6 +435,13 @@ test('the site validator refuses a CSP without Trusted Types and a DOM sink', ()
   assert.equal(handler.status, 1);
   assert.match(handler.stderr, /uses a DOM sink that Trusted Types forbids \(setAttribute\("onclick"\)/);
 
+  const styleAttribute = runSiteValidator((dir) => {
+    const path = join(dir, 'assets', 'js', 'ui.js');
+    writeFileSync(path, `${readFileSync(path, 'utf8')}\nnode.setAttribute("style", "color: red");\n`);
+  });
+  assert.equal(styleAttribute.status, 1);
+  assert.match(styleAttribute.stderr, /sets an inline style attribute, which the CSP forbids \(setAttribute\("style"\)/);
+
   const scriptText = runSiteValidator((dir) => {
     const path = join(dir, 'assets', 'js', 'render.js');
     writeFileSync(path, readFileSync(path, 'utf8').replace(
@@ -510,11 +542,11 @@ test('the data validator refuses schema keywords it cannot enforce', () => {
   const keyword = runDataValidatorOnCopy((dir) => {
     const path = join(dir, 'data', 'site-data.schema.json');
     const schema = JSON.parse(readFileSync(path, 'utf8'));
-    schema.properties.identity.properties.displayName.oneOf = [{ type: 'string' }];
+    schema.properties.identity.properties.displayName.patternProperties = { '^x': { type: 'string' } };
     writeFileSync(path, JSON.stringify(schema, null, 2));
   });
   assert.equal(keyword.status, 1);
-  assert.match(keyword.stderr, /identity\.displayName schema uses an unsupported keyword oneOf/);
+  assert.match(keyword.stderr, /identity\.displayName schema uses an unsupported keyword patternProperties/);
 
   const format = runDataValidatorOnCopy((dir) => {
     const path = join(dir, 'data', 'showcase.schema.json');
@@ -533,6 +565,84 @@ test('the data validator refuses schema keywords it cannot enforce', () => {
   });
   assert.equal(type.status, 1);
   assert.match(type.stderr, /principles\.items schema uses an unsupported type text/);
+});
+
+function rewriteSchema(copy, file, mutate) {
+  const path = join(copy, 'data', file);
+  const schema = JSON.parse(readFileSync(path, 'utf8'));
+  mutate(schema);
+  writeFileSync(path, `${JSON.stringify(schema, null, 2)}\n`);
+}
+
+test('the data validator enforces const, oneOf, anyOf, not, minProperties, and uniqueItems', () => {
+  const constant = runDataValidatorOnCopy((dir) => {
+    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
+      schema.properties.identity.properties.displayName.const = 'Someone else';
+    });
+  });
+  assert.equal(constant.status, 1);
+  assert.match(constant.stderr, /identity\.displayName invalid/);
+
+  const exclusive = runDataValidatorOnCopy((dir) => {
+    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
+      schema.properties.identity.properties.displayName.oneOf = [{ type: 'string' }, { type: 'string' }];
+    });
+  });
+  assert.equal(exclusive.status, 1);
+  assert.match(exclusive.stderr, /identity\.displayName invalid/);
+
+  const permissive = runDataValidatorOnCopy((dir) => {
+    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
+      schema.properties.identity.properties.displayName.anyOf = [{ type: 'number' }, { type: 'string' }];
+    });
+  });
+  assert.equal(permissive.status, 0, permissive.stderr);
+
+  const negated = runDataValidatorOnCopy((dir) => {
+    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
+      schema.properties.identity.properties.displayName.not = { type: 'string' };
+    });
+  });
+  assert.equal(negated.status, 1);
+  assert.match(negated.stderr, /identity\.displayName invalid/);
+
+  const tooFewKeys = runDataValidatorOnCopy((dir) => {
+    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
+      schema.properties.stats.minProperties = 5;
+    });
+  });
+  assert.equal(tooFewKeys.status, 1);
+  assert.match(tooFewKeys.stderr, /stats invalid/);
+
+  const duplicated = runDataValidatorOnCopy((dir) => {
+    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
+      schema.properties.activity.properties.highlights.uniqueItems = true;
+    });
+    const dataPath = join(dir, 'data', 'site-data.json');
+    const data = JSON.parse(readFileSync(dataPath, 'utf8'));
+    data.activity.highlights[1] = data.activity.highlights[0];
+    writeFileSync(dataPath, `${JSON.stringify(data, null, 2)}\n`);
+  });
+  assert.equal(duplicated.status, 1);
+  assert.match(duplicated.stderr, /activity\.highlights\.1 duplicates an earlier item/);
+});
+
+test('the data validator resolves $ref definitions and reports a missing one', () => {
+  const resolvable = runDataValidatorOnCopy((dir) => {
+    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
+      schema.definitions = { name: { type: 'string', minLength: 1 } };
+      schema.properties.identity.properties.displayName = { $ref: '#/definitions/name' };
+    });
+  });
+  assert.equal(resolvable.status, 0, resolvable.stderr);
+
+  const dangling = runDataValidatorOnCopy((dir) => {
+    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
+      schema.properties.identity.properties.displayName = { $ref: '#/definitions/missing' };
+    });
+  });
+  assert.equal(dangling.status, 1);
+  assert.match(dangling.stderr, /identity\.displayName references the missing schema #\/definitions\/missing/);
 });
 
 test('the data validator refuses an interval that is not the Wilson interval', () => {
@@ -630,6 +740,15 @@ test('the validator refuses a chart color that cannot be measured', () => {
   });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /cannot measure the light accent and red chart colors under normal vision/);
+});
+
+test('the validator refuses a palette token that is neither measured nor declared decorative', () => {
+  const result = runSiteValidator((dir) => {
+    const path = join(dir, 'assets', 'css', 'style.css');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('  --ink: #1b1814;\n', '  --ink: #1b1814;\n  --ghost: #123456;\n'));
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /palette token --ghost is neither measured for contrast nor declared decorative/);
 });
 
 test('the runtime guard rejects a document missing any schema-required key', () => {
@@ -800,10 +919,19 @@ test('the site validator refuses a missing markdown link and a drifted agent man
 test('the site validator refuses a hero stat block that drifted from the data', () => {
   const result = runSiteValidator((dir) => {
     const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('<dd class="stat-value">97</dd>', '<dd class="stat-value">96</dd>'));
+    writeFileSync(path, readFileSync(path, 'utf8').replace(/(<dd class="stat-value" aria-hidden="true">)\d+(<\/dd>)/, '$10$2'));
   });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /the hero stat block does not match the machine data/);
+});
+
+test('the site validator refuses intro paragraphs that drifted from the showcase', () => {
+  const result = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace(/<p class="intro-paragraph">[^<]*<\/p>/, '<p class="intro-paragraph">drifted</p>'));
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /the intro paragraphs do not match the showcase/);
 });
 
 test('the site validator refuses a noscript list missing a project', () => {

@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
   "title": "site-data",
+  "description": "The machine-owned half of the site data: identity, the curated project manifest, and every number the refresh workflow derives.",
   "type": "object",
   "required": ["identity", "projects", "stats", "activity", "sections"],
   "additionalProperties": false,
@@ -129,6 +130,7 @@
               "runs": { "type": "integer", "minimum": 1 },
               "passed": { "type": "integer", "minimum": 0 },
               "errors": { "type": "integer", "minimum": 0 },
+              "costUsd": { "type": "number", "minimum": 0 },
               "outcomes": {
                 "type": "object",
                 "additionalProperties": { "type": "integer", "minimum": 1 }
@@ -174,7 +176,8 @@
         "showAbout": { "type": "boolean" },
         "showProblems": { "type": "boolean" },
         "showHeroStats": { "type": "boolean" },
-        "showCampfire": { "type": "boolean" }
+        "showCampfire": { "type": "boolean" },
+        "showEvidence": { "type": "boolean" }
       }
     },
     "history": {

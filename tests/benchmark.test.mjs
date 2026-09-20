@@ -303,7 +303,7 @@ test('buildScenarioMatrix counts passes per scenario and contender in focus orde
   ]);
 });
 
-test('buildScenarioMatrix keys missing model ids and records unknown ones', () => {
+test('buildScenarioMatrix resolves a single declared model and drops runs it cannot place', () => {
   const single = buildScenarioMatrix({
     generatedAt: '2026-09-20T12:03:04.357Z',
     models: [{ id: 'only' }],
@@ -320,8 +320,8 @@ test('buildScenarioMatrix keys missing model ids and records unknown ones', () =
     models: [{ id: 'a' }, { id: 'b' }],
     runs: [run('alpha', 'single-line', { modelId: undefined })],
   }, new Map(), ['alpha']);
-  assert.deepEqual(multiple.models, ['a', 'b', '']);
-  assert.deepEqual(multiple.cells, [[[[2], 1]]]);
+  assert.deepEqual(multiple.models, ['a', 'b']);
+  assert.deepEqual(multiple.cells, [[[[], 0]]]);
 
   const unordered = buildScenarioMatrix({
     generatedAt: '2026-09-20T12:03:04.357Z',

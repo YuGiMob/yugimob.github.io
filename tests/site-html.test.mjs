@@ -1,33 +1,100 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
-import { buildHeroStatsBlock, readHeroStatsBlock, updateHeroStatsFile } from '../scripts/site-html-lib.mjs';
+import { applyGeneratedBlocks, buildHeroStatsBlock, buildIntroParagraphs, readHeroStatsBlock, readIntroParagraphs, updateIndexFile } from '../scripts/site-html-lib.mjs';
 import { ROOT, withRepoCopy } from './helpers.mjs';
 
 const DATA = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.json'), 'utf8'));
+const SHOWCASE = JSON.parse(readFileSync(join(ROOT, 'data', 'showcase.json'), 'utf8'));
 
 test('the committed hero stat block already matches the data', () => {
   const source = readFileSync(join(ROOT, 'index.html'), 'utf8');
   assert.equal(readHeroStatsBlock(source), buildHeroStatsBlock(DATA));
 });
 
-test('updateHeroStatsFile rewrites a drifted block and leaves a matching one alone', () => {
+test('the committed intro paragraphs already match the showcase', () => {
+  const source = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  assert.equal(readIntroParagraphs(source), buildIntroParagraphs(SHOWCASE));
+});
+
+test('buildIntroParagraphs escapes markup and tolerates a missing intro', () => {
+  assert.equal(buildIntroParagraphs({}), '');
+  assert.equal(buildIntroParagraphs(null), '');
+  const escaped = buildIntroParagraphs({ intro: { paragraphs: ['a < b & c > d'] } });
+  assert.match(escaped, /a &lt; b &amp; c &gt; d/);
+});
+
+test('applyGeneratedBlocks rewrites both blocks and leaves unknown markup alone', () => {
+  const source = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  const next = applyGeneratedBlocks(source, { ...DATA, stats: { ...DATA.stats, totalStars: 1 } }, SHOWCASE);
+  assert.notEqual(next, source);
+  assert.match(next, /<dd class="stat-value" aria-hidden="true">1<\/dd>/);
+  assert.equal(applyGeneratedBlocks('nothing here', DATA, SHOWCASE), 'nothing here');
+});
+
+test('applyGeneratedBlocks writes dollar signs in the intro prose verbatim', () => {
+  const source = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  const prose = "It costs $3 a month, and $&, and $', and $$, and $1 stay literal.";
+  const showcase = { ...SHOWCASE, intro: { ...SHOWCASE.intro, paragraphs: [prose] } };
+  const built = buildIntroParagraphs(showcase);
+  const next = applyGeneratedBlocks(source, DATA, showcase);
+  assert.ok(built.includes('$3 a month'));
+  assert.ok(next.includes(built));
+  assert.equal(readIntroParagraphs(next), built);
+});
+
+test('updateIndexFile rewrites a drifted block and leaves a matching one alone', () => {
   withRepoCopy((copy) => {
     const target = join(copy, 'index.html');
+    assert.equal(updateIndexFile(target, DATA, SHOWCASE).changed, false);
     const committed = readHeroStatsBlock(readFileSync(target, 'utf8'));
-    assert.equal(updateHeroStatsFile(target, DATA).changed, false);
     const drifted = buildHeroStatsBlock({ ...DATA, stats: { ...DATA.stats, totalStars: 5 } });
-    writeFileSync(target, readFileSync(target, 'utf8').replace(committed, drifted));
-    const result = updateHeroStatsFile(target, DATA);
+    const introBefore = readIntroParagraphs(readFileSync(target, 'utf8'));
+    writeFileSync(target, readFileSync(target, 'utf8').replace(committed, drifted).replace(introBefore, '<p class="intro-paragraph">drifted</p>'));
+    const result = updateIndexFile(target, DATA, SHOWCASE);
     assert.equal(result.changed, true);
     assert.equal(readHeroStatsBlock(readFileSync(target, 'utf8')), committed);
+    assert.equal(readIntroParagraphs(readFileSync(target, 'utf8')), buildIntroParagraphs(SHOWCASE));
   });
 });
 
-test('updateHeroStatsFile reports a missing file and a missing block', () => {
+test('updateIndexFile leaves the intro block alone without a showcase', () => {
   withRepoCopy((copy) => {
-    assert.equal(updateHeroStatsFile(join(copy, 'missing.html'), DATA).ok, false);
-    assert.equal(updateHeroStatsFile(join(copy, '404.html'), DATA).reason, 'no-block');
+    const target = join(copy, 'index.html');
+    const intro = readIntroParagraphs(readFileSync(target, 'utf8'));
+    writeFileSync(target, readFileSync(target, 'utf8').replace('I\'m YuGiMob.', 'Someone else.'));
+    assert.equal(updateIndexFile(target, DATA, null).changed, false);
+    assert.match(readFileSync(target, 'utf8'), /Someone else\./);
+    assert.notEqual(intro, null);
+  });
+});
+
+test('updateIndexFile reports a missing file and a missing block', () => {
+  withRepoCopy((copy) => {
+    assert.equal(updateIndexFile(join(copy, 'missing.html'), DATA, SHOWCASE).ok, false);
+    assert.equal(updateIndexFile(join(copy, '404.html'), DATA, SHOWCASE).reason, 'no-block');
+  });
+});
+
+test('build-static rewrites a drifted block and reports a missing page', () => {
+  withRepoCopy((copy) => {
+    const script = join(copy, 'scripts', 'build-static.mjs');
+    const target = join(copy, 'index.html');
+    const committed = readFileSync(target, 'utf8');
+    const drifted = committed.replace(/(<dd class="stat-value" aria-hidden="true">)[^<]*<\/dd>/, (unused, open) => `${open}0</dd>`);
+    writeFileSync(target, drifted);
+    const rewritten = spawnSync(process.execPath, [script], { cwd: copy, encoding: 'utf8' });
+    assert.equal(rewritten.status, 0, rewritten.stderr);
+    assert.match(rewritten.stdout, /index\.html: written/);
+    assert.equal(readFileSync(target, 'utf8'), committed);
+    const clean = spawnSync(process.execPath, [script], { cwd: copy, encoding: 'utf8' });
+    assert.equal(clean.status, 0, clean.stderr);
+    assert.match(clean.stdout, /index\.html: unchanged/);
+    rmSync(target);
+    const broken = spawnSync(process.execPath, [script], { cwd: copy, encoding: 'utf8' });
+    assert.equal(broken.status, 1);
+    assert.match(broken.stderr, /build:static: index\.html was not rewritten \(missing\)/);
   });
 });

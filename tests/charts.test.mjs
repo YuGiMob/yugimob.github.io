@@ -22,6 +22,7 @@ const BENCHMARK = {
       version: '1.2.3',
       highlight: true,
       overall: 90,
+      costUsd: 0.25,
       safety: 88,
       served: 92,
       low: 80,
@@ -45,6 +46,7 @@ const BENCHMARK = {
       runs: 10,
       passed: 5,
       errors: 0,
+      costUsd: 0.1,
       outcomes: { applied: 10 },
       traceUrl: 'https://github.com/tester/trace-b.json',
     },
@@ -90,12 +92,12 @@ test('benchmarkTableRows formats every contender in rank order', () => {
   const rows = benchmarkTableRows({
     contenders: [
       { label: 'b', version: null, overall: 70, safety: null, served: 80, low: 60, high: 80, runs: 10, passed: 7, errors: 0 },
-      { label: 'a', version: '1.2.3', overall: 90, safety: 88, served: 92, low: 80, high: 95, runs: 1000, passed: 900, errors: 2 },
+      { label: 'a', version: '1.2.3', overall: 90, safety: 88, served: 92, low: 80, high: 95, runs: 1000, passed: 900, errors: 2, costUsd: 0.5 },
     ],
   });
   assert.deepEqual(rows, [
-    { tool: 'a', version: '1.2.3', overall: '90.0%', safety: '88.0%', served: '92.0%', interval: '80.0–95.0', difference: '—', runs: '1,000', passed: '900', errors: '2' },
-    { tool: 'b', version: '', overall: '70.0%', safety: '—', served: '80.0%', interval: '60.0–80.0', difference: '—', runs: '10', passed: '7', errors: '0' },
+    { tool: 'a', version: '1.2.3', overall: '90.0%', safety: '88.0%', served: '92.0%', interval: '80.0–95.0', difference: '—', runs: '1,000', passed: '900', errors: '2', cost: '$0.50' },
+    { tool: 'b', version: '', overall: '70.0%', safety: '—', served: '80.0%', interval: '60.0–80.0', difference: '—', runs: '10', passed: '7', errors: '0', cost: '—' },
   ]);
 });
 
@@ -157,7 +159,9 @@ test('benchmarkChart renders rows, meters, outcomes, legends, sources, and a tab
     const table = classes(node, 'chart-data');
     assert.equal(table.length, 1);
     assert.equal(tags(table[0], 'TR').length, 3);
-    assert.equal(tags(table[0], 'TH').length, 10);
+    assert.equal(tags(table[0], 'TH').length, 11);
+    assert.deepEqual(tags(table[0], 'TH').slice(0, 3).map((cell) => cell.textContent), ['tool', 'version', 'overall pass rate']);
+    assert.equal(classes(node, 'bench-cost').length, 2);
 
   });
 });
@@ -295,7 +299,16 @@ test('benchmarkMatrix renders a scenario grid of pass counts', () => {
     assert.equal(tags(controller.node, 'TH').length, 5);
     assert.deepEqual(classes(controller.node, 'matrix-cell').map((cell) => cell.textContent), ['1/1 for tool-a', '0/1 for tool-b', '2/2 for tool-a', '1/2 for tool-b']);
     assert.deepEqual(classes(controller.node, 'matrix-cell').map((cell) => cell.classList.contains('is-full')), [true, false, true, false]);
-    assert.equal(classes(controller.node, 'matrix-cell')[1].title, 'tool-b on single-line: 0 of 1 runs passed');
+    assert.equal(classes(controller.node, 'matrix-cell')[1].title, 'tool-b on single-line: 0 of 1 runs passed; failed for m1, m2');
+    const scroll = classes(controller.node, 'matrix-scroll')[0];
+    assert.equal(scroll.getAttribute('role'), 'region');
+    assert.equal(scroll.getAttribute('tabindex'), '0');
+    const focusButtons = classes(controller.node, 'matrix-filter-button');
+    assert.deepEqual(focusButtons.map((button) => button.textContent), ['every focus', 'core', 'staleness']);
+    assert.deepEqual(classes(controller.node, 'matrix-cell').map((cell) => !cell.parentNode.hidden), [true, true, true, true]);
+    focusButtons[2].dispatch('click');
+    assert.deepEqual(classes(controller.node, 'matrix-cell').map((cell) => !cell.parentNode.hidden), [false, false, true, true]);
+    assert.equal(focusButtons[2].getAttribute('aria-pressed'), 'true');
     assert.equal(benchmarkMatrix(BENCHMARK, null), null);
     assert.equal(benchmarkMatrix(BENCHMARK, { models: ['m'], scenarios: [], contenders: [], cells: [] }), null);
   });

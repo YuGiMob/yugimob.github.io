@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkUrl, collectLinks, verdictFor } from '../scripts/link-lib.mjs';
+import { checkUrl, collectLinks, collectTextLinks, verdictFor } from '../scripts/link-lib.mjs';
 
 const SITE = {
   identity: { links: { github: 'https://github.com/tester' }, avatarUrl: 'assets/avatar.png' },
@@ -36,6 +36,17 @@ test('collectLinks gathers absolute URLs and every label', () => {
 
 test('collectLinks tolerates a partial document', () => {
   assert.equal(collectLinks({}, {}).size, 0);
+});
+
+test('collectTextLinks keeps probeable URLs and drops local or reserved hosts', () => {
+  const found = collectTextLinks('See https://github.com/a/b, http://localhost:8123/, https://example.com/x, https://notexample.com/y, https://real.example.org (also https://yugimob.github.io/index.md).');
+  assert.deepEqual([...found], ['https://github.com/a/b', 'https://notexample.com/y', 'https://yugimob.github.io/index.md']);
+});
+
+test('collectLinks merges document URLs with their labels and dedupes', () => {
+  const urls = collectLinks(SITE, SHOWCASE, [{ label: 'README', text: 'Read https://github.com/tester/tool-a and https://yugimob.github.io/.' }]);
+  assert.deepEqual([...urls.keys()].at(-1), 'https://yugimob.github.io/');
+  assert.deepEqual([...urls.get('https://github.com/tester/tool-a')], ['tool-a', 'tool-a showcase', 'README']);
 });
 
 test('verdictFor maps statuses to ok, warn, and fail', () => {
@@ -91,6 +102,19 @@ test('checkUrl falls back to GET when HEAD is not allowed', async () => {
     sleepImpl: async () => {},
   });
   assert.equal(status, 404);
+  assert.deepEqual(methods, ['HEAD', 'GET']);
+});
+
+test('checkUrl retries with GET when HEAD is refused', async () => {
+  const methods = [];
+  const status = await checkUrl('https://example.com', {
+    fetchImpl: async (url, options) => {
+      methods.push(options.method);
+      return response(options.method === 'HEAD' ? 403 : 200);
+    },
+    sleepImpl: async () => {},
+  });
+  assert.equal(status, 200);
   assert.deepEqual(methods, ['HEAD', 'GET']);
 });
 

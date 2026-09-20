@@ -167,8 +167,6 @@ function renderError() {
   }
   const navLinks = document.querySelector('.nav-links');
   if (navLinks) navLinks.hidden = true;
-  const stats = document.getElementById('hero-stats');
-  if (stats) stats.hidden = true;
   const notice = document.getElementById('data-age');
   if (notice) notice.hidden = true;
   const paragraphs = document.getElementById('intro-paragraphs');

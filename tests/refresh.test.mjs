@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { benchmarkSnapshot, buildActivity, buildDaily, buildHighlights, upsertHistory } from '../scripts/refresh-lib.mjs';
+import { benchmarkSnapshot, buildActivity, buildDaily, buildHighlights, buildScenarioMatrix, scenarioCoverage, upsertHistory } from '../scripts/refresh-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -148,4 +148,35 @@ test('refresh-data.mjs imports every refresh-lib helper it calls', async () => {
   const body = source.slice(block.index + block[0].length);
   const missing = Object.keys(library).filter((name) => !imported.has(name) && new RegExp(`\\b${name}\\b`).test(body));
   assert.deepEqual(missing, []);
+});
+
+test('scenarioCoverage accepts only a report whose scenarios all declare a focus', () => {
+  const focusById = new Map([['single-line', 'core'], ['stale-line', 'staleness']]);
+  assert.equal(scenarioCoverage({ runs: [{ scenarioId: 'single-line' }, { scenarioId: 'stale-line' }] }, focusById), true);
+  assert.equal(scenarioCoverage({ runs: [{ scenarioId: 'ghost' }] }, focusById), false);
+  assert.equal(scenarioCoverage({ runs: [{ scenarioId: 'single-line' }, {}] }, focusById), false);
+  assert.equal(scenarioCoverage({}, focusById), true);
+  assert.equal(scenarioCoverage({ runs: [{ scenarioId: 'single-line' }] }), false);
+});
+
+test('buildScenarioMatrix dedupes declared models and drops runs it cannot place', () => {
+  const report = {
+    generatedAt: '2026-09-20T00:00:00.000Z',
+    models: [{ id: 'm1' }, { id: 'm1' }],
+    runs: [
+      { contenderId: 'a', scenarioId: 's1', modelId: 'm1', pass: true },
+      { contenderId: 'a', scenarioId: 's1', pass: true },
+      { contenderId: 'b', scenarioId: 's1', modelId: 'm2', pass: false },
+    ],
+  };
+  const matrix = buildScenarioMatrix(report, new Map([['s1', 'core']]), ['a', 'b']);
+  assert.deepEqual(matrix.models, ['m1', 'm2']);
+  assert.deepEqual(matrix.cells, [[[[0], 1], [[], 1]]]);
+
+  const unplaceable = buildScenarioMatrix(
+    { models: [{ id: 'm1' }, { id: 'm2' }], runs: [{ contenderId: 'a', scenarioId: 's1', pass: true }] },
+    new Map([['s1', 'core']]),
+    ['a'],
+  );
+  assert.deepEqual(unplaceable.cells, [[[[], 0]]]);
 });

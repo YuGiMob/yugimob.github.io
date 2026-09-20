@@ -48,6 +48,7 @@ export function benchmarkTableRows(bench) {
     runs: formatNumber(contender.runs),
     passed: formatNumber(contender.passed),
     errors: formatNumber(contender.errors),
+    cost: Number.isFinite(contender.costUsd) ? `$${contender.costUsd.toFixed(2)}` : '—',
   }));
 }
 
@@ -65,6 +66,23 @@ export function historyTableRows(history) {
   }));
 }
 
+const TABLE_LABELS = {
+  tool: 'tool',
+  version: 'version',
+  overall: 'overall pass rate',
+  safety: 'staleness scenarios',
+  served: 'served-state scenarios',
+  interval: '95% interval',
+  difference: 'paired difference vs the highlighted tool',
+  runs: 'runs',
+  passed: 'passed',
+  errors: 'errors',
+  cost: 'API cost',
+  date: 'date',
+  stars: 'GitHub stars',
+  downloads: 'installs / week',
+};
+
 function dataTable(summary, rows, caption) {
   if (rows.length === 0) return null;
   const details = el('details', 'chart-data');
@@ -74,7 +92,7 @@ function dataTable(summary, rows, caption) {
   const head = el('thead');
   const headRow = el('tr');
   for (const column of Object.keys(rows[0])) {
-    const cell = el('th', null, column);
+    const cell = el('th', null, TABLE_LABELS[column] ?? column);
     cell.setAttribute('scope', 'col');
     headRow.appendChild(cell);
   }
@@ -158,6 +176,7 @@ function contenderDetail(contender, bench) {
   const outcomes = contender.outcomes ?? {};
   const split = OUTCOME_ORDER.filter((kind) => outcomes[kind] > 0).map((kind) => `${formatNumber(outcomes[kind])} ${kind}`);
   if (split.length > 0) parts.push(`out of ${formatNumber(contender.runs)} runs: ${split.join(', ')}`);
+  if (Number.isFinite(contender.costUsd)) parts.push(`$${contender.costUsd.toFixed(2)} in API cost`);
   const comparison = comparisonSentence(contender, bench);
   if (comparison) parts.push(comparison);
   return parts.join('; ');
@@ -176,6 +195,7 @@ export function benchmarkChart(bench, benchmarkHistory) {
     const label = el('span', 'bench-label');
     label.appendChild(el('span', 'bench-name', contender.label));
     if (contender.version) label.appendChild(el('span', 'bench-version', `v${contender.version}`));
+    if (Number.isFinite(contender.costUsd)) label.appendChild(el('span', 'bench-cost', `$${contender.costUsd.toFixed(2)}`));
     if (contender.highlight) label.appendChild(el('span', 'bench-flag', 'this project'));
     if (contender.traceUrl) {
       const trace = link(contender.traceUrl, 'trace', 'bench-trace');
@@ -258,6 +278,9 @@ export function benchmarkMatrix(bench, matrix) {
     `${matrix.scenarios.length} scenarios × ${matrix.contenders.length} contenders; every cell counts the models that passed, out of the runs recorded.`
   );
   const scroll = el('div', 'matrix-scroll');
+  scroll.setAttribute('role', 'region');
+  scroll.setAttribute('aria-label', 'Scenario pass counts, scrollable');
+  scroll.setAttribute('tabindex', '0');
   const table = el('table', 'matrix-table');
   table.appendChild(el('caption', 'sr-only', 'Models that passed per scenario and contender.'));
   const head = el('thead');
@@ -287,11 +310,38 @@ export function benchmarkMatrix(bench, matrix) {
       const node = el('td', matrixCellClass(passed, runs));
       append(node, runs > 0 ? `${passed}/${runs}` : '—');
       if (runs > 0) node.appendChild(el('span', 'sr-only', ` for ${labels.get(id) ?? id}`));
-      node.title = `${labels.get(id) ?? id} on ${scenario.id}: ${passed} of ${runs} runs passed`;
+      const tool = labels.get(id) ?? id;
+      const failedModels = matrix.models.filter((unused, index) => !passedModels.includes(index));
+      node.title = runs > 0
+        ? `${tool} on ${scenario.id}: ${passed} of ${runs} runs passed${failedModels.length > 0 ? `; failed for ${failedModels.join(', ')}` : '; every recorded model passed'}`
+        : `${tool} on ${scenario.id}: no recorded run`;
       row.appendChild(node);
     });
     rows.appendChild(row);
   });
+  const focusButtons = [];
+  const applyFocus = (focus) => {
+    for (const button of focusButtons) {
+      const current = button.dataset.focus === focus;
+      button.classList.toggle('is-current', current);
+      button.setAttribute('aria-pressed', String(current));
+    }
+    Array.from(rows.children).forEach((row, index) => {
+      row.hidden = focus !== 'all' && matrix.scenarios[index]?.focus !== focus;
+    });
+  };
+  const filter = el('div', 'matrix-filter');
+  filter.setAttribute('role', 'group');
+  filter.setAttribute('aria-label', 'Filter scenarios by focus');
+  for (const focus of ['all', ...new Set(matrix.scenarios.map((scenario) => scenario.focus))]) {
+    const button = el('button', 'matrix-filter-button', focus === 'all' ? 'every focus' : focus);
+    button.type = 'button';
+    button.dataset.focus = focus;
+    button.addEventListener('click', () => applyFocus(focus));
+    filter.appendChild(button);
+    focusButtons.push(button);
+  }
+  applyFocus('all');
   append(table, head, rows);
   scroll.appendChild(table);
   const highlighted = (bench.contenders ?? []).find((entry) => entry.highlight === true) ?? null;
@@ -313,6 +363,7 @@ export function benchmarkMatrix(bench, matrix) {
     : null;
   append(
     body,
+    filter,
     scroll,
     el('p', 'chart-note', 'A full cell means every recorded model passed that scenario; an empty row means the scenario never reached the contender. The matrix is the same run set as the chart above.'),
     lossNote ? el('p', 'chart-note', lossNote) : null,

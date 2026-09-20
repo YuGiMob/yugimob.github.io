@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, withRepoCopy as withRepo } from './helpers.mjs';
 
@@ -98,18 +98,20 @@ test('a stale llms.txt is rebuilt even when the data is unchanged', () => {
   });
 });
 
-test('a stale hero stat block is rewritten even when the data is unchanged', () => {
+test('a stale static block is rewritten even when the data is unchanged', () => {
   withRepo((repo) => {
     const first = refresh(repo);
     assert.equal(first.status, 0, first.stderr);
     const path = join(repo, 'index.html');
     const committed = readFileSync(path, 'utf8');
-    const drifted = committed.replace(/(<dd class="stat-value">)[^<]*<\/dd>/, (unused, open) => `${open}0</dd>`);
+    const drifted = committed
+      .replace(/(<dd class="stat-value" aria-hidden="true">)[^<]*<\/dd>/, (unused, open) => `${open}0</dd>`)
+      .replace('I\'m YuGiMob. I build extensions', 'Someone else writes here.');
     assert.notEqual(drifted, committed);
     writeFileSync(path, drifted);
     const second = refresh(repo);
     assert.equal(second.status, 0, second.stderr);
-    assert.match(second.stdout, /index\.html hero stats: rewritten/);
+    assert.match(second.stdout, /index\.html static blocks: rewritten/);
     assert.equal(readFileSync(path, 'utf8'), committed);
   });
 });
@@ -125,6 +127,20 @@ test('a partial benchmark report keeps the existing block and still refreshes th
     assert.deepEqual(data.benchmark, before.benchmark);
     assert.deepEqual(data.benchmarkHistory, before.benchmarkHistory);
     assert.equal(data.projects.find((project) => project.name === 'pi-hashline-edit-pro').stars, 101);
+  });
+});
+
+test('a benchmark scenario with no focus in the sources keeps the existing block', () => {
+  withRepo((repo) => {
+    const before = readData(repo);
+    const result = refresh(repo, { YUGIMOB_LLM_REPORT: 'llm-report-unknown-scenario.json' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, /have no focus in the sources/);
+
+    const data = readData(repo);
+    assert.deepEqual(data.benchmark, before.benchmark);
+    assert.deepEqual(data.benchmarkHistory, before.benchmarkHistory);
+    assert.deepEqual(data.projects.find((project) => project.name === 'pi-hashline-edit-pro').stars, 101);
   });
 });
 
@@ -275,5 +291,24 @@ test('a failed npm batch query falls back to per-package requests', () => {
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stderr, /falling back to per-package requests/);
     assert.equal(readData(repo).projects.find((project) => project.name === 'pi-hashline-edit-pro').npmWeeklyDownloads, 5123);
+  });
+});
+
+test('the refresh sweeps its own stale temp files and leaves other scratch alone', () => {
+  withRepo((repo) => {
+    const old = new Date(Date.now() - 3600000);
+    const scratch = join(repo, 'data', 'scratch.tmp');
+    const pending = join(repo, 'data', 'site-data.json.999.tmp');
+    const sitemapPending = join(repo, 'sitemap.xml.999.tmp');
+    for (const file of [scratch, pending, sitemapPending]) {
+      writeFileSync(file, 'x');
+      utimesSync(file, old, old);
+    }
+
+    const result = refresh(repo);
+    assert.equal(result.status, 0, result.stderr);
+    assert.ok(existsSync(scratch));
+    assert.ok(!existsSync(pending));
+    assert.ok(!existsSync(sitemapPending));
   });
 });

@@ -69,7 +69,7 @@ function readJson(path, label) {
 }
 
 const SCHEMA_ANNOTATIONS = new Set(['$schema', '$id', 'title', 'description', 'default', 'examples', 'deprecated', 'readOnly', 'writeOnly']);
-const SCHEMA_KEYWORDS = new Set(['type', 'enum', 'properties', 'required', 'additionalProperties', 'items', 'minItems', 'maxItems', 'minLength', 'pattern', 'format', 'minimum', 'maximum']);
+const SCHEMA_KEYWORDS = new Set(['type', 'enum', 'const', 'properties', 'required', 'additionalProperties', 'items', 'minItems', 'maxItems', 'uniqueItems', 'minLength', 'pattern', 'format', 'minimum', 'maximum', 'minProperties', 'maxProperties', '$ref', 'definitions', 'oneOf', 'anyOf', 'allOf', 'not']);
 const SCHEMA_TYPES = new Set(['object', 'array', 'string', 'integer', 'number', 'boolean', 'null']);
 const SCHEMA_FORMATS = new Set(['uri', 'email', 'date-time']);
 
@@ -126,20 +126,70 @@ function checkSchemaDocument(schema, path, rootLabel, report) {
   if (isPlainObject(schema.additionalProperties)) {
     checkSchemaDocument(schema.additionalProperties, path ? `${path}.*` : '*', rootLabel, report);
   }
+  for (const [key, child] of Object.entries(schema.definitions ?? {})) {
+    checkSchemaDocument(child, `definitions.${key}`, rootLabel, report);
+  }
+  for (const branch of ['not']) {
+    if (isPlainObject(schema[branch])) checkSchemaDocument(schema[branch], path ? `${path}.${branch}` : branch, rootLabel, report);
+  }
+  for (const branch of ['oneOf', 'anyOf', 'allOf']) {
+    if (!Array.isArray(schema[branch])) continue;
+    schema[branch].forEach((child, index) => checkSchemaDocument(child, path ? `${path}.${branch}.${index}` : `${branch}.${index}`, rootLabel, report));
+  }
 }
 
 function label(path, rootLabel) {
   return path || rootLabel;
 }
 
-function validateAgainstSchema(value, schema, path, rootLabel, report = fail) {
+function resolveRef(root, ref) {
+  if (typeof ref !== 'string' || !ref.startsWith('#/')) return null;
+  let node = root;
+  for (const segment of ref.slice(2).split('/')) {
+    if (!isPlainObject(node)) return null;
+    node = node[segment];
+  }
+  return isPlainObject(node) ? node : null;
+}
+
+function schemaMatches(value, schema, path, rootLabel, root) {
+  let valid = true;
+  validateAgainstSchema(value, schema, path, rootLabel, () => { valid = false; }, root);
+  return valid;
+}
+
+function validateAgainstSchema(value, schema, path, rootLabel, report = fail, root = schema) {
   if (!isPlainObject(schema)) return;
+  if (typeof schema.$ref === 'string') {
+    const target = resolveRef(root, schema.$ref);
+    if (!target) {
+      report(`${label(path, rootLabel)} references the missing schema ${schema.$ref}`);
+      return;
+    }
+    validateAgainstSchema(value, target, path, rootLabel, report, root);
+    return;
+  }
   const types = schemaTypes(schema);
   if (types && !types.some((type) => isSchemaType(value, type))) {
     report(`${label(path, rootLabel)} invalid`);
     return;
   }
+  if ('const' in schema && !Object.is(value, schema.const)) {
+    report(`${label(path, rootLabel)} invalid`);
+    return;
+  }
   if ('enum' in schema && !schema.enum.some((option) => Object.is(option, value))) {
+    report(`${label(path, rootLabel)} invalid`);
+  }
+  if (Array.isArray(schema.anyOf) && !schema.anyOf.some((option) => schemaMatches(value, option, path, rootLabel, root))) {
+    report(`${label(path, rootLabel)} invalid`);
+  }
+  if (Array.isArray(schema.oneOf)) {
+    const matches = schema.oneOf.filter((option) => schemaMatches(value, option, path, rootLabel, root)).length;
+    if (matches !== 1) report(`${label(path, rootLabel)} invalid`);
+  }
+  for (const option of schema.allOf ?? []) validateAgainstSchema(value, option, path, rootLabel, report, root);
+  if (isPlainObject(schema.not) && schemaMatches(value, schema.not, path, rootLabel, root)) {
     report(`${label(path, rootLabel)} invalid`);
   }
   if (typeof value === 'string') {
@@ -154,13 +204,21 @@ function validateAgainstSchema(value, schema, path, rootLabel, report = fail) {
   if (Array.isArray(value)) {
     if ('minItems' in schema && value.length < schema.minItems) report(`${label(path, rootLabel)} invalid`);
     if ('maxItems' in schema && value.length > schema.maxItems) report(`${label(path, rootLabel)} invalid`);
+    if (schema.uniqueItems === true) {
+      const seen = new Set();
+      value.forEach((entry, index) => {
+        const key = JSON.stringify(entry);
+        if (seen.has(key)) report(path ? `${path}.${index} duplicates an earlier item` : `duplicate item ${index}`);
+        seen.add(key);
+      });
+    }
     if (Array.isArray(schema.items)) {
       schema.items.forEach((child, index) => {
-        if (index < value.length) validateAgainstSchema(value[index], child, `${path}.${index}`, rootLabel, report);
+        if (index < value.length) validateAgainstSchema(value[index], child, `${path}.${index}`, rootLabel, report, root);
       });
     } else if (schema.items) {
       value.forEach((entry, index) => {
-        validateAgainstSchema(entry, schema.items, `${path}.${index}`, rootLabel, report);
+        validateAgainstSchema(entry, schema.items, `${path}.${index}`, rootLabel, report, root);
       });
     }
   }
@@ -168,24 +226,26 @@ function validateAgainstSchema(value, schema, path, rootLabel, report = fail) {
     for (const key of schema.required ?? []) {
       if (!(key in value)) report(path ? `${path} missing ${key}` : `missing ${key}`);
     }
+    if ('minProperties' in schema && Object.keys(value).length < schema.minProperties) report(`${label(path, rootLabel)} invalid`);
+    if ('maxProperties' in schema && Object.keys(value).length > schema.maxProperties) report(`${label(path, rootLabel)} invalid`);
     const properties = schema.properties ?? {};
     for (const [key, entry] of Object.entries(value)) {
       const childPath = path ? `${path}.${key}` : key;
       if (key in properties) {
-        validateAgainstSchema(entry, properties[key], childPath, rootLabel, report);
+        validateAgainstSchema(entry, properties[key], childPath, rootLabel, report, root);
         continue;
       }
       if (schema.additionalProperties === false) {
         report(path ? `${path} unexpected key ${key}` : `unexpected key ${key}`);
       } else if (isPlainObject(schema.additionalProperties)) {
-        validateAgainstSchema(entry, schema.additionalProperties, childPath, rootLabel, report);
+        validateAgainstSchema(entry, schema.additionalProperties, childPath, rootLabel, report, root);
       }
     }
   }
 }
 
 function reportSchema(value, schema, rootLabel) {
-  validateAgainstSchema(value, schema, '', rootLabel, (message) => errors.push(message));
+  validateAgainstSchema(value, schema, '', rootLabel, (message) => errors.push(message), schema);
 }
 
 function needString(value, message) {
@@ -288,6 +348,15 @@ function validateComparisons(benchmark) {
   });
 }
 
+function validateCosts(benchmark) {
+  const costs = benchmark.contenders.map((contender) => (isPlainObject(contender) ? contender.costUsd : undefined));
+  if (!Number.isFinite(benchmark.costUsd) || costs.some((cost) => !Number.isFinite(cost))) return;
+  const total = costs.reduce((sum, cost) => sum + cost, 0);
+  if (Math.abs(total - benchmark.costUsd) > 0.01) {
+    fail(`benchmark costUsd ${benchmark.costUsd} does not match the contender total ${Math.round(total * 10000) / 10000}`);
+  }
+}
+
 function validateBenchmark(benchmark) {
   if (!isPlainObject(benchmark) || !Array.isArray(benchmark.contenders)) return;
   const labels = new Set();
@@ -313,6 +382,7 @@ function validateBenchmark(benchmark) {
     fail('benchmark focusCounts invalid');
   }
   validateComparisons(benchmark);
+  validateCosts(benchmark);
 }
 
 function validateBenchmarkHistory(benchmark, history) {

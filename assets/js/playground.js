@@ -147,10 +147,11 @@ export function buildPlayground() {
       item.dataset.anchor = line.anchor;
       item.setAttribute('role', 'option');
       item.setAttribute('aria-selected', selection && index >= selection.from && index <= selection.to ? 'true' : 'false');
-      item.setAttribute('aria-label', `line ${index + 1}, anchor ${line.anchor}: ${line.text || 'blank'}`);
+      const stale = isStale(session, line);
+      item.setAttribute('aria-label', `line ${index + 1}, anchor ${line.anchor}${stale ? ', changed on disk since it was served' : ''}: ${line.text || 'blank'}`);
       item.tabIndex = selection ? (index === selection.from ? 0 : -1) : index === 0 ? 0 : -1;
       if (selection && index >= selection.from && index <= selection.to) item.classList.add('is-selected');
-      if (isStale(session, line)) item.classList.add('is-drifted');
+      if (stale) item.classList.add('is-drifted');
       if (flashAnchors.has(line.anchor)) item.classList.add('is-flash');
       append(item, el('span', 'pg-anchor', line.anchor), el('code', 'pg-text', line.text || '\u00a0'));
       code.appendChild(item);
@@ -360,12 +361,13 @@ export function buildPlayground() {
     renderRequest(step.preview);
   }
 
-  function updateUrl() {
-    if (typeof window === 'undefined' || !window.history?.replaceState) return;
+  function updateUrl(replace = true) {
+    if (typeof window === 'undefined' || !window.history?.replaceState || !window.history?.pushState) return;
     const url = new URL(window.location.href);
     if (stepIndex > 0) url.searchParams.set(STEP_PARAM, String(stepIndex));
     else url.searchParams.delete(STEP_PARAM);
-    window.history.replaceState(null, '', url);
+    if (replace) window.history.replaceState(null, '', url);
+    else window.history.pushState(null, '', url);
   }
 
   function runStep() {
@@ -377,7 +379,7 @@ export function buildPlayground() {
     if (result) setResult(result.status, result.message, result.rows);
     stepIndex += 1;
     renderStep();
-    updateUrl();
+    updateUrl(false);
   }
 
   function replayTo(count) {
@@ -389,13 +391,17 @@ export function buildPlayground() {
     replaying = false;
   }
 
-  function reset() {
+  function resetState() {
     session = createSession(SOURCE);
     selection = null;
     stepIndex = 0;
     replacementText = REPLACEMENT;
     targetAnchor = session.lines[TARGET].anchor;
     flashAnchors = new Set();
+  }
+
+  function reset() {
+    resetState();
     renderCode();
     renderStep();
     setResult('info', 'Fresh session. read served every row again.', []);
@@ -460,12 +466,14 @@ export function buildPlayground() {
   window.addEventListener('popstate', () => {
     const target = Math.min(requestedStep(), steps.length);
     if (target === stepIndex) return;
-    reset();
+    resetState();
     replayTo(target);
     renderCode();
     renderStep();
-    if (target > 0) setResult('info', `Replayed ${target} of ${steps.length} steps from the link.`, []);
-    updateUrl();
+    const message = target > 0
+      ? `Replayed ${target} of ${steps.length} steps from the link.`
+      : 'A guided run through one edit. Press the button to start.';
+    setResult('info', message, []);
   });
 
   return createController(root, () => {}, null, caption);

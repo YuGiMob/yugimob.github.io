@@ -10,7 +10,14 @@ function readJson(relativePath) {
   return JSON.parse(readFileSync(join(ROOT, relativePath), 'utf8'));
 }
 
-const urls = collectLinks(readJson('data/site-data.json'), readJson('data/showcase.json'));
+const DOCUMENTS = [
+  { label: 'README', text: readFileSync(join(ROOT, 'README.md'), 'utf8') },
+  { label: 'CONTRIBUTING', text: readFileSync(join(ROOT, 'CONTRIBUTING.md'), 'utf8') },
+  { label: 'SECURITY', text: readFileSync(join(ROOT, 'SECURITY.md'), 'utf8') },
+  { label: 'package.json', text: readFileSync(join(ROOT, 'package.json'), 'utf8') },
+];
+
+const urls = collectLinks(readJson('data/site-data.json'), readJson('data/showcase.json'), DOCUMENTS);
 let failures = 0;
 
 for (const [url, labels] of urls) {

@@ -5,13 +5,14 @@ import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { problemsHeading } from '../assets/js/view-model.js';
 import { colorDistance, contrastRatio, paletteFrom, rootPaletteSource, simulateDichromacy } from './contrast-lib.mjs';
-import { buildHeroStatsBlock, readHeroStatsBlock } from './site-html-lib.mjs';
+import { buildHeroStatsBlock, buildIntroParagraphs, readHeroStatsBlock, readIntroParagraphs } from './site-html-lib.mjs';
 import { scriptSrcHash } from './csp-lib.mjs';
 import { SITE_REPOSITORY, SITE_URL } from './llms-lib.mjs';
 
 const ROOT = process.argv[2] ? resolve(process.argv[2]) : join(dirname(fileURLToPath(import.meta.url)), '..');
 const errors = [];
 const TRUSTED_TYPES_SINKS = /innerHTML|outerHTML|insertAdjacentHTML|srcdoc|createContextualFragment|parseHTMLUnsafe|setHTMLUnsafe|parseFromString|document\.writ(?:e|eln)\(|\beval\(|new (?:Async)?(?:Generator)?Function\(|importScripts\(|execCommand\(\s*['"]insertHTML|set(?:Timeout|Interval)\(\s*['"`]|setAttribute\(\s*['"](?:on[a-z]+|srcdoc)['"]/;
+const CSP_STYLE_SINKS = /setAttribute\(\s*['"]style['"]/;
 
 function scriptSink(source) {
   const target = source.match(/(?:const|let|var)\s+(\w+)\s*=\s*document\.getElementById\(\s*['"]structured-data['"]\s*\)/);
@@ -132,6 +133,8 @@ for (const file of listFiles('assets/js', '.js')) {
   for (const match of source.matchAll(/querySelector\('#([^']+)'\)/g)) referencedIds.add(match[1]);
   const sink = source.match(TRUSTED_TYPES_SINKS);
   if (sink) fail(`assets/js/${file}: uses a DOM sink that Trusted Types forbids (${sink[0]})`);
+  const styleSink = source.match(CSP_STYLE_SINKS);
+  if (styleSink) fail(`assets/js/${file}: sets an inline style attribute, which the CSP forbids (${styleSink[0]})`);
   const scriptSinkName = scriptSink(source);
   if (scriptSinkName) fail(`assets/js/${file}: uses a DOM sink that Trusted Types forbids (${scriptSinkName})`);
 }
@@ -148,32 +151,41 @@ if (structuredData && policy) {
   else if (declared !== actual) fail(`index.html: the CSP hash for the inline JSON-LD block is stale, expected 'sha256-${actual}'`);
 }
 
-function importTargets(source) {
+function staticImportTargets(source) {
   const targets = [];
   for (const match of source.matchAll(/^\s*(?:import|export)\b[^;]*?\bfrom\s+'(\.[^']+)'/gm)) targets.push(match[1]);
   for (const match of source.matchAll(/^\s*import\s+'(\.[^']+)'/gm)) targets.push(match[1]);
-  for (const match of source.matchAll(/\bimport\s*\(\s*'(\.[^']+)'\s*\)/g)) targets.push(match[1]);
   return targets;
 }
 
+function dynamicImportTargets(source) {
+  return [...source.matchAll(/\bimport\s*\(\s*'(\.[^']+)'\s*\)/g)].map((match) => match[1]);
+}
+
 const preloaded = new Set([...indexSource.matchAll(/<link rel="modulepreload" href="([^"]+)"/g)].map((match) => match[1]));
-const seen = new Set();
-const queue = ['assets/js/main.js'];
+const reach = new Map();
+const queue = [['assets/js/main.js', true]];
 while (queue.length > 0) {
-  const file = queue.shift();
-  if (seen.has(file)) continue;
-  seen.add(file);
-  if (file !== 'assets/js/main.js' && !preloaded.has(file)) fail(`index.html: ${file} is not preloaded`);
-  for (const target of importTargets(readText(file))) {
-    queue.push(posix.normalize(posix.join(posix.dirname(file), target)));
-  }
+  const [file, eager] = queue.shift();
+  const previous = reach.get(file);
+  if (previous === true || (previous === false && !eager)) continue;
+  reach.set(file, eager);
+  const source = readText(file);
+  for (const target of staticImportTargets(source)) queue.push([posix.normalize(posix.join(posix.dirname(file), target)), eager]);
+  for (const target of dynamicImportTargets(source)) queue.push([posix.normalize(posix.join(posix.dirname(file), target)), false]);
+}
+
+for (const [file, eager] of reach) {
+  if (file === 'assets/js/main.js') continue;
+  if (eager && !preloaded.has(file)) fail(`index.html: ${file} is statically imported but not preloaded`);
+  if (!eager && preloaded.has(file)) fail(`index.html: ${file} is loaded on demand but preloaded`);
 }
 for (const file of preloaded) {
   if (!existsSync(join(ROOT, file))) fail(`index.html: preloaded file ${file} is missing`);
 }
 
 for (const file of listFiles('assets/js', '.js')) {
-  if (!seen.has(`assets/js/${file}`)) fail(`assets/js/${file}: no module imports this file`);
+  if (!reach.has(`assets/js/${file}`)) fail(`assets/js/${file}: no module imports this file`);
 }
 
 const fetched = new Set([...indexSource.matchAll(/<link rel="preload" as="fetch" href="([^"]+)"/g)].map((match) => match[1]));
@@ -229,7 +241,7 @@ if (!filesBlock) {
   for (const path of listed) {
     if (!existsSync(join(ROOT, path))) fail(`README.md: listed path ${path} does not exist`);
   }
-  for (const [directory, suffix] of [['assets/js', '.js'], ['scripts', '.mjs'], ['.github/workflows', '.yml'], ['data', '.json']]) {
+  for (const [directory, suffix] of [['assets/js', '.js'], ['scripts', '.mjs'], ['.github/workflows', '.yml'], ['.github', '.yml'], ['data', '.json']]) {
     for (const file of listFiles(directory, suffix)) {
       if (!listed.has(`${directory}/${file}`)) fail(`README.md: ${directory}/${file} is not listed in the Files block`);
     }
@@ -269,6 +281,7 @@ const CONTRAST_PAIRS = [
   ['term-accent', 'term-bg'],
   ['term-green', 'term-bg'],
   ['term-red', 'term-bg'],
+  ['term-accent-2', 'term-bg'],
 ];
 for (const [scheme, palette] of [['light', lightPalette], ['dark', darkPalette]]) {
   for (const [foreground, background] of CONTRAST_PAIRS) {
@@ -280,6 +293,14 @@ for (const [scheme, palette] of [['light', lightPalette], ['dark', darkPalette]]
 
 const CATEGORY_COLORS = ['answer', 'evidence', 'accent', 'red', 'green', 'term-accent', 'rule-strong'];
 const MIN_CATEGORY_DISTANCE = 15;
+const NON_TEXT_TOKENS = new Set(['paper-2', 'rule', 'term-bg-2', 'term-bg-3', 'term-rule']);
+const measuredTokens = new Set([...CONTRAST_PAIRS.flat(), ...CATEGORY_COLORS]);
+for (const token of new Set([...lightPalette.keys(), ...darkPalette.keys()])) {
+  if (!measuredTokens.has(token) && !NON_TEXT_TOKENS.has(token)) {
+    fail(`assets/css/style.css: the palette token --${token} is neither measured for contrast nor declared decorative`);
+  }
+}
+
 const DICHROMACY_KINDS = ['protanopia', 'deuteranopia'];
 for (const [scheme, palette] of [['light', lightPalette], ['dark', darkPalette]]) {
   for (const kind of [null, ...DICHROMACY_KINDS]) {
@@ -411,6 +432,11 @@ if (existsSync(showcasePath)) {
   } catch (err) {
     fail(`showcase.json unusable for the drift check: ${err.message}`);
   }
+}
+
+if (showcase) {
+  const introBlock = readIntroParagraphs(indexSource) ?? '';
+  if (introBlock !== buildIntroParagraphs(showcase)) fail('index.html: the intro paragraphs do not match the showcase');
 }
 
 function elementText(source, id) {

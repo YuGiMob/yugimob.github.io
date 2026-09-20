@@ -11,18 +11,21 @@ house rules; this file is the short version for a coding agent making a change.
 - `npm run validate` — the three validators alone.
 - `npm run refresh:check` — run the daily data pipeline without writing anything.
 - `npm run build:llms` — regenerate `llms.txt`, `index.md`, `agent-readability.json`, and `feed.json` after a change to `data/`.
+- `npm run build:static` — regenerate the hero stat block and the intro paragraphs in `index.html` after a change to `data/`.
 - `npm run csp` — rewrite the inline JSON-LD hash in `index.html` after editing that block.
-- `python3 -m http.server 8123` — serve the site locally.
+- `npm run serve` — serve the site locally on port 8123.
+- `npm run test:watch` — rerun the suite as files change.
 
 ## Rules the validators enforce
 
-- No comments in any file. `npm run validate:style` rejects comment syntax in scripts, templates, markup, stylesheets, Markdown, and JSON.
+- No comments in any file. `npm run validate:style` rejects comment syntax in scripts, templates, markup, stylesheets, Markdown, JSON, and YAML.
 - No dependencies, runtime or dev. The page and the toolchain use the Node standard library and the browser platform.
 - No third-party requests from the page. Fonts, images, and scripts are self-hosted.
 - Machine numbers live in `data/site-data.json`; prose lives in `data/showcase.json`. Never paste a measured number into HTML or prose.
-- `index.html` embeds the hero numbers and the static identity copy. Edit the data and run the refresh instead of the HTML; `validate:site` refuses drift.
+- `index.html` embeds the hero numbers, the intro paragraphs, and the static identity copy. Edit the data and run `npm run build:static` instead of the HTML; `validate:site` refuses drift.
 - Every file in `assets/js`, `scripts`, `.github/workflows`, and `data` must appear in the README Files block.
-- Every module must be reachable from `assets/js/main.js` and preloaded in `index.html`.
+- Every module must be reachable from `assets/js/main.js`. Statically imported modules must be preloaded in `index.html`; modules behind a dynamic `import()` must not be.
+- `scripts/check-freshness.mjs` fails when the newest history snapshot is more than two days old or the benchmark report is more than fourteen days old. It runs on push and schedule, not on pull requests.
 - Schema changes live in `data/*.schema.json`; `validate:data` re-derives every number it can, including the Wilson intervals and the paired-difference intervals.
 - `.cache/`, `.lighthouseci/`, and `.omo/` are gitignored and never published.
 

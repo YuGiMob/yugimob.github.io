@@ -16,6 +16,14 @@ test('the committed sources pass the style validator', () => {
   assert.match(output, /^validate:style: ok \(\d+ files\)/);
 });
 
+test('the style validator refuses a comment in a TypeScript file', () => {
+  const result = runStyleValidator((copy) => {
+    writeFileSync(join(copy, 'tests', 'fixtures', 'refresh', 'probe.ts'), 'const value = 1; // leaked comment\n');
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /probe\.ts:\d+:\d+ has a line comment/);
+});
+
 test('the style validator refuses a script comment', () => {
   const line = runStyleValidator((copy) => {
     appendFileSync(join(copy, 'assets', 'js', 'avatar.js'), '\n// leaked comment\n');
@@ -42,6 +50,34 @@ test('the style validator does not mistake statement-position regexes for commen
     appendFileSync(join(copy, 'assets', 'js', 'avatar.js'), '\nconst flag = 1;\nif (flag) /^https?:\\/\\//.test("x");\nfunction check() { return /^https?:\\/\\//.test("x"); }\nthrow /^https?:\\/\\//.test("x");\nconst ratio = flag / 2;\n');
   });
   assert.equal(result.status, 0, result.stderr);
+});
+
+test('the style validator scans every text file in the tree, not a fixed list', () => {
+  const result = runStyleValidator((copy) => {
+    writeFileSync(join(copy, 'NOTES.md'), 'A note.\n<!-- a markup comment -->\n');
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /NOTES\.md:\d+:\d+ has a markup comment/);
+});
+
+test('the style validator leaves binary assets alone', () => {
+  const result = runStyleValidator((copy) => {
+    writeFileSync(join(copy, 'assets', 'probe.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]));
+  });
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('the style validator refuses YAML comments and leaves quoted hashes alone', () => {
+  const quoted = runStyleValidator((copy) => {
+    appendFileSync(join(copy, '.github', 'workflows', 'validate.yml'), '\nfragment: "a # inside quotes"\n');
+  });
+  assert.equal(quoted.status, 0, quoted.stderr);
+
+  const comment = runStyleValidator((copy) => {
+    appendFileSync(join(copy, '.github', 'workflows', 'validate.yml'), '\nkey: value # a leaked comment\n');
+  });
+  assert.equal(comment.status, 1);
+  assert.match(comment.stderr, /has a line comment/);
 });
 
 test('the style validator still refuses a comment after a division and a call', () => {

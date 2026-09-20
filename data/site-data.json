@@ -44,7 +44,7 @@
       "npm": "pi-git-commit",
       "license": "MIT",
       "npmWeeklyDownloads": 168,
-      "pushedAt": "2026-09-19T21:35:50Z"
+      "pushedAt": "2026-09-20T19:03:13Z"
     },
     {
       "name": "pi-msg-workflow",
@@ -90,7 +90,7 @@
   },
   "activity": {
     "window": "2026-08-21..2026-09-20",
-    "pushes": 175,
+    "pushes": 176,
     "highlights": [
       "closed issue #45 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #44 on YuGiMob/pi-hashline-edit-pro",
@@ -252,8 +252,8 @@
       },
       {
         "date": "2026-09-20",
-        "events": 4,
-        "pushes": 4
+        "events": 5,
+        "pushes": 5
       }
     ]
   },
@@ -261,7 +261,8 @@
     "showAbout": true,
     "showProblems": true,
     "showHeroStats": true,
-    "showCampfire": true
+    "showCampfire": true,
+    "showEvidence": true
   },
   "history": [
     {
@@ -310,6 +311,7 @@
         "runs": 315,
         "passed": 308,
         "errors": 1,
+        "costUsd": 0.3297,
         "outcomes": {
           "applied": 243,
           "recovered": 60,
@@ -333,6 +335,7 @@
         "runs": 315,
         "passed": 308,
         "errors": 3,
+        "costUsd": 0.3513,
         "outcomes": {
           "applied": 241,
           "recovered": 61,
@@ -363,6 +366,7 @@
         "runs": 315,
         "passed": 297,
         "errors": 1,
+        "costUsd": 0.3485,
         "outcomes": {
           "applied": 246,
           "recovered": 60,
@@ -392,6 +396,7 @@
         "runs": 315,
         "passed": 293,
         "errors": 2,
+        "costUsd": 0.3897,
         "outcomes": {
           "applied": 244,
           "recovered": 60,
@@ -421,6 +426,7 @@
         "runs": 315,
         "passed": 284,
         "errors": 0,
+        "costUsd": 0.3263,
         "outcomes": {
           "applied": 246,
           "recovered": 60,
@@ -449,6 +455,7 @@
         "runs": 315,
         "passed": 283,
         "errors": 2,
+        "costUsd": 0.3612,
         "outcomes": {
           "applied": 243,
           "recovered": 60,
@@ -479,6 +486,7 @@
         "runs": 315,
         "passed": 278,
         "errors": 1,
+        "costUsd": 0.3872,
         "outcomes": {
           "applied": 255,
           "recovered": 49,
@@ -509,6 +517,7 @@
         "runs": 315,
         "passed": 278,
         "errors": 4,
+        "costUsd": 0.3391,
         "outcomes": {
           "applied": 250,
           "recovered": 45,
@@ -540,6 +549,7 @@
         "runs": 315,
         "passed": 263,
         "errors": 0,
+        "costUsd": 0.6996,
         "outcomes": {
           "applied": 254,
           "recovered": 47,
@@ -570,6 +580,7 @@
         "runs": 315,
         "passed": 250,
         "errors": 5,
+        "costUsd": 0.354,
         "outcomes": {
           "applied": 261,
           "recovered": 38,
@@ -600,6 +611,7 @@
         "runs": 315,
         "passed": 243,
         "errors": 6,
+        "costUsd": 0.6556,
         "outcomes": {
           "applied": 266,
           "recovered": 34,

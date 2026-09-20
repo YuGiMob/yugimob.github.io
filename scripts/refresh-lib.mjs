@@ -1,8 +1,11 @@
+import { STALE_AFTER_DAYS } from '../assets/js/view-model.js';
+
 export const HISTORY_LIMIT = 120;
 export const MAX_ACTIVITY_DAYS = 120;
 export const MAX_HIGHLIGHTS = 5;
 export const BENCHMARK_HISTORY_LIMIT = 120;
-export const MAX_HISTORY_AGE_DAYS = 2;
+export const MAX_HISTORY_AGE_DAYS = STALE_AFTER_DAYS;
+export const MAX_BENCHMARK_AGE_DAYS = 14;
 
 export const BENCHMARK_REPOSITORY = 'https://github.com/YuGiMob/pi-edit-benchmark';
 export const BENCHMARK_REPORT_URL = `${BENCHMARK_REPOSITORY}/blob/main/results/llm-report.json`;
@@ -97,6 +100,13 @@ export function historyAgeDays(history, now = Date.now()) {
   if (!newest || typeof newest.date !== 'string') return null;
   const then = Date.parse(newest.date);
   return Number.isFinite(then) ? Math.max(0, Math.floor((now - then) / DAY_MS)) : null;
+}
+
+export function benchmarkAgeDays(benchmark, now = Date.now()) {
+  if (!benchmark || typeof benchmark.generatedAt !== 'string') return null;
+  const then = Date.parse(benchmark.generatedAt);
+  if (!Number.isFinite(then)) return null;
+  return Math.max(0, Math.floor((now - then) / DAY_MS));
 }
 
 export function parseScenarioFocus(source) {
@@ -234,6 +244,7 @@ export function summarizeBenchmark(report, focusById = new Map(), highlighted = 
       byFocus: new Map(BENCHMARK_FOCI.map((focus) => [focus, emptyTally()])),
       outcomes: new Map(),
       errors: 0,
+      costUsd: 0,
       tracePath: null,
       traceRank: -1,
       items: new Map(),
@@ -256,7 +267,9 @@ export function summarizeBenchmark(report, focusById = new Map(), highlighted = 
       entry.traceRank = rank;
       entry.tracePath = run.tracePath;
     }
-    costUsd += Number.isFinite(run.costUsd) ? run.costUsd : 0;
+    const runCost = Number.isFinite(run.costUsd) ? run.costUsd : 0;
+    costUsd += runCost;
+    entry.costUsd += runCost;
     contenders.set(id, entry);
   }
 
@@ -280,6 +293,7 @@ export function summarizeBenchmark(report, focusById = new Map(), highlighted = 
       runs: entry.overall.runs,
       passed: entry.overall.passed,
       errors: entry.errors,
+      costUsd: Math.round(entry.costUsd * 10000) / 10000,
       outcomes,
       traceUrl: benchmarkTraceUrl(entry.tracePath),
     };
@@ -349,6 +363,11 @@ export function benchmarkCoversFullMatrix(benchmark) {
   return benchmark.models * benchmark.scenarios === benchmark.runsPerContender;
 }
 
+export function scenarioCoverage(report, focusById = new Map()) {
+  const runs = Array.isArray(report?.runs) ? report.runs : [];
+  return runs.every((run) => typeof run.scenarioId === 'string' && focusById.has(run.scenarioId));
+}
+
 export function buildScenarioMatrix(report, focusById = new Map(), contenderOrder = []) {
   const runs = Array.isArray(report?.runs) ? report.runs : [];
   const order = Array.isArray(contenderOrder) ? contenderOrder : [];
@@ -359,10 +378,11 @@ export function buildScenarioMatrix(report, focusById = new Map(), contenderOrde
     if (typeof run.modelId === 'string' && run.modelId.length > 0) return run.modelId;
     return declared.length === 1 ? declared[0] : '';
   };
-  const models = [...declared];
+  const models = [...new Set(declared)];
   for (const run of runs) {
     const key = modelKey(run);
-    if (!models.includes(key)) models.push(key);
+    if (key.length === 0 || models.includes(key)) continue;
+    models.push(key);
   }
   const columnByContender = new Map(order.map((id, index) => [id, index]));
   const scenarios = new Map();
@@ -382,7 +402,9 @@ export function buildScenarioMatrix(report, focusById = new Map(), contenderOrde
     const column = columnByContender.get(run.contenderId);
     if (row === undefined || column === undefined) continue;
     const cell = cells[row][column];
-    cell.passes.set(models.indexOf(modelKey(run)), run.pass === true);
+    const modelIndex = models.indexOf(modelKey(run));
+    if (modelIndex < 0) continue;
+    cell.passes.set(modelIndex, run.pass === true);
     cell.runs += 1;
   }
   return {

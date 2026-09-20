@@ -8,15 +8,16 @@ runtime dependencies, so the whole loop is three commands.
 ```
 node --version
 npm run check
-python3 -m http.server 8123
+npm run serve
 ```
 
 Open <http://localhost:8123/> to see the page.
 
 ## House rules
 
-- **No comments.** Not in JavaScript, CSS, HTML, JSON, shell, or Markdown.
-  `npm run validate:style` enforces this, along with LF endings, spaces for
+- **No comments.** Not in JavaScript, TypeScript, CSS, HTML, JSON, YAML, shell, or Markdown.
+  `npm run validate:style` walks every text file in the tree and enforces this,
+  along with LF endings, spaces for
   indentation, and a final newline. Make the code self-explanatory instead:
   clear names, small functions, obvious control flow.
 - **No dependencies.** The page and the toolchain run on the Node standard
@@ -54,6 +55,8 @@ passes the parsed documents down.
 
 Scripts follow the same split: `scripts/refresh-lib.mjs` holds the pure
 arithmetic, and `scripts/refresh-data.mjs` only performs I/O and gating.
+`scripts/build-static.mjs` and `scripts/build-llms.mjs` regenerate the derived
+files, and `scripts/serve.mjs` serves the tree for local work.
 
 ## Adding a tool
 
@@ -65,7 +68,7 @@ arithmetic, and `scripts/refresh-data.mjs` only performs I/O and gating.
    `assets/js/playground.js`.
 3. Add the repository to the `<noscript>` list in `index.html` with its install
    command. `validate:site` checks both directions.
-4. Run `npm run build:llms` and `npm run check`.
+4. Run `npm run build:llms`, `npm run build:static`, and `npm run check`.
 
 ## Generated files
 
@@ -74,7 +77,7 @@ These are derived. Edit the inputs, then regenerate:
 | file | regenerate with |
 | --- | --- |
 | `llms.txt`, `index.md`, `agent-readability.json`, `feed.json` | `npm run build:llms` |
-| the hero stat block in `index.html` | `npm run refresh` (or edit it in step with the data) |
+| the hero stat block and the intro paragraphs in `index.html` | `npm run build:static` |
 | the CSP hash in `index.html` | `npm run csp` |
 | `sitemap.xml` lastmod | `npm run refresh` |
 
@@ -87,9 +90,11 @@ change can be reviewed first.
 site validator, and `node --test` with coverage thresholds. Fix the first
 failure before re-running; each validator prints every problem it found.
 
-CI runs the same command on Node 22 and 24, then the freshness check, so a data
-snapshot older than two days fails every push and pull request until the daily
-refresh heals it. Two more workflows gate a change: Lighthouse
+CI runs the same command on Node 22 and 24, and on pushes and scheduled runs it
+also checks freshness: a history snapshot older than two days, or a benchmark
+report older than fourteen days, fails until the daily refresh heals it. Pull
+requests skip the freshness gate so an outage cannot block an unrelated
+contribution. Two more workflows gate a change: Lighthouse
 (`.lighthouserc.json`) audits the committed page for accessibility and layout
 stability, and zizmor audits the workflows themselves (`.github/zizmor.yml`).
 Keep the README file listing in step with the tree, since `validate:site` reads

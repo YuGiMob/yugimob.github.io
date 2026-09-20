@@ -6,51 +6,14 @@ import { fileURLToPath } from 'node:url';
 const ROOT = process.argv[2] ? resolve(process.argv[2]) : join(dirname(fileURLToPath(import.meta.url)), '..');
 const errors = [];
 
-const JS_DIRECTORIES = ['assets/js', 'scripts', 'tests'];
-const TEXT_FILES = [
-  'index.html',
-  '404.html',
-  'README.md',
-  'SECURITY.md',
-  'CONTRIBUTING.md',
-  'LICENSE',
-  '.github/CODEOWNERS',
-  '.github/pull_request_template.md',
-  'assets/css/style.css',
-  'data/site-data.json',
-  'data/showcase.json',
-  'data/site-data.schema.json',
-  'data/showcase.schema.json',
-  'data/benchmark-matrix.json',
-  'data/benchmark-matrix.schema.json',
-  'llms.txt',
-  'index.md',
-  'agent-readability.json',
-  'robots.txt',
-  'sitemap.xml',
-  '.well-known/security.txt',
-  '.github/dependabot.yml',
-  '.github/zizmor.yml',
-  '.github/workflows/codeql.yml',
-  '.github/workflows/links.yml',
-  '.github/workflows/refresh-data.yml',
-  '.github/workflows/scorecard.yml',
-  '.github/workflows/validate.yml',
-  '.github/workflows/lighthouse.yml',
-  '.github/workflows/zizmor.yml',
-  'package.json',
-  '.lighthouserc.json',
-  'feed.json',
-  'AGENTS.md',
-  '.nvmrc',
-];
+const SKIP_DIRECTORIES = new Set(['.git', '.omo', '.cache', '.lighthouseci', 'node_modules']);
+const SKIP_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.woff', '.woff2', '.ttf', '.otf', '.pdf', '.zip', '.gz']);
 
 const REGEX_PREFIX_CHARS = new Set(['(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '+', '-', '*', '%', '^', '~', '<', '>', '/']);
 const REGEX_PREFIX_WORDS = new Set(['return', 'typeof', 'instanceof', 'in', 'of', 'new', 'delete', 'void', 'throw', 'case', 'do', 'else', 'yield', 'await']);
 const CONTROL_WORDS = new Set(['if', 'while', 'for', 'with']);
 
-function scriptFiles(directory) {
-  const files = [];
+function discoverFiles(directory = '.', files = []) {
   let entries;
   try {
     entries = readdirSync(join(ROOT, directory), { withFileTypes: true });
@@ -59,9 +22,14 @@ function scriptFiles(directory) {
     return files;
   }
   for (const entry of entries) {
-    const path = `${directory}/${entry.name}`;
-    if (entry.isDirectory()) files.push(...scriptFiles(path));
-    else if (entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) files.push(path);
+    const path = directory === '.' ? entry.name : `${directory}/${entry.name}`;
+    if (entry.isDirectory()) {
+      if (!SKIP_DIRECTORIES.has(entry.name)) discoverFiles(path, files);
+      continue;
+    }
+    const dot = entry.name.lastIndexOf('.');
+    if (dot !== -1 && SKIP_EXTENSIONS.has(entry.name.slice(dot).toLowerCase())) continue;
+    files.push(path);
   }
   return files;
 }
@@ -283,10 +251,51 @@ function checkStylesheet(source, file) {
   }
 }
 
+function skipQuoted(line, start, quote) {
+  let cursor = start + 1;
+  while (cursor < line.length) {
+    if (quote === '"' && line[cursor] === '\\') {
+      cursor += 2;
+      continue;
+    }
+    if (line[cursor] !== quote) {
+      cursor += 1;
+      continue;
+    }
+    if (quote === "'" && line[cursor + 1] === "'") {
+      cursor += 2;
+      continue;
+    }
+    return cursor + 1;
+  }
+  return cursor;
+}
+
+function checkYaml(source, file) {
+  let offset = 0;
+  for (const line of String(source).split('\n')) {
+    let cursor = 0;
+    while (cursor < line.length) {
+      const char = line[cursor];
+      if (char === '"' || char === "'") {
+        cursor = skipQuoted(line, cursor, char);
+        continue;
+      }
+      if (char === '#' && (cursor === 0 || line[cursor - 1] === ' ' || line[cursor - 1] === '\t')) {
+        errors.push(`${file}:${lineAndColumn(source, offset + cursor)} has a line comment; this codebase does not use comments`);
+        break;
+      }
+      cursor += 1;
+    }
+    offset += line.length + 1;
+  }
+}
+
 function checkComments(source, file) {
-  if (file.endsWith('.js') || file.endsWith('.mjs')) checkScript(source, file);
+  if (file.endsWith('.js') || file.endsWith('.mjs') || file.endsWith('.ts')) checkScript(source, file);
   else if (file.endsWith('.html') || file.endsWith('.md')) checkMarkup(source, file);
   else if (file.endsWith('.css')) checkStylesheet(source, file);
+  else if (file.endsWith('.yml') || file.endsWith('.yaml')) checkYaml(source, file);
 }
 
 function checkText(source, file) {
@@ -300,7 +309,7 @@ function checkText(source, file) {
   }
 }
 
-const files = [...JS_DIRECTORIES.flatMap(scriptFiles), ...TEXT_FILES];
+const files = discoverFiles().sort();
 for (const file of files) {
   let source;
   try {

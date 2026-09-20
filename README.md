@@ -58,9 +58,10 @@ data/site-data.json      machine numbers          data/showcase.json  curated pr
              demos.js · playground.js · charts.js (dynamic imports)
 ```
 
-The same refresh rewrites the hero stat block in `index.html` and regenerates
-`llms.txt`, `index.md`, `agent-readability.json`, and `feed.json`, so the page, the
-machine files, and the agent index cannot drift apart. Validators re-derive every
+The same refresh rewrites the generated blocks in `index.html` (the hero stat
+block and the intro paragraphs) and regenerates `llms.txt`, `index.md`,
+`agent-readability.json`, and `feed.json`, so the page, the machine files, and the
+agent index cannot drift apart. Validators re-derive every
 rule they can, and the test suite runs them against a temporary copy of the tree.
 
 ## Files
@@ -119,8 +120,10 @@ scripts/build-csp.mjs           refresh the inline JSON-LD CSP hash
 scripts/csp-lib.mjs             script-src directive and hash helpers
 scripts/sitemap-lib.mjs         sitemap lastmod reader and atomic writer
 scripts/contrast-lib.mjs        WCAG contrast and dichromacy helpers
-scripts/site-html-lib.mjs        hero stat block builder and atomic writer
-scripts/check-freshness.mjs     fail when the newest history snapshot is too old
+scripts/site-html-lib.mjs        hero stat block and intro builder with an atomic writer
+scripts/build-static.mjs        regenerate the generated blocks in index.html
+scripts/serve.mjs               dependency-free static file server for local work
+scripts/check-freshness.mjs     fail when the history or benchmark snapshot is too old
 tests/                          node:test unit and integration tests
 package.json                    scripts only, no runtime dependencies
 .nvmrc                          the Node version CI and local runs share
@@ -169,9 +172,10 @@ evidence, hero stats, and footer blocks.
    the manifest.
 3. If the entry names a demo, implement it in `assets/js/demos.js` and register
    it in `BUILDERS`; the `hashline` demo lives in `assets/js/playground.js`.
-4. Run `npm run build:llms` and `npm run check`. The validators reject unknown
-   demo ids, names missing from the manifest, duplicated projects, unsorted
-   history, and a `llms.txt` that no longer matches the data files.
+4. Run `npm run build:llms`, `npm run build:static`, and `npm run check`. The
+   validators reject unknown demo ids, names missing from the manifest,
+   duplicated projects, unsorted history, a drifted static block, and a
+   `llms.txt` that no longer matches the data files.
 
 ## Data model
 
@@ -184,7 +188,7 @@ weekly npm downloads, stats, activity (window, pushes, highlights, per-day
 events), and `history`: one snapshot per day with total stars and total weekly
 downloads. The About panel renders the highlights and the public-repo and
 forks-received totals, and the footer prints a notice when either the activity
-or the benchmark snapshot is more than three days old. The `stats` totals cover
+or the benchmark snapshot is more than two days old. The `stats` totals cover
 every public repository the API returns, forks and the site repository included,
 so they can differ from the sum of the curated project cards.
 
@@ -249,7 +253,7 @@ written atomically (temp file then rename) with a change summary, and the
 candidate is revalidated before the rename, so a document the schema rejects
 can never reach `data/site-data.json`. A successful write also regenerates
 `llms.txt`, `index.md`, `agent-readability.json`, and `feed.json` from the two data
-files, rewrites the hero stat block in `index.html`, and writes the benchmark matrix.
+files, rewrites the generated blocks in `index.html`, and writes the benchmark matrix.
 If the existing file is present but unusable,
 the refresh exits with an error without
 writing, so a corrupt file cannot wipe curated content.
@@ -281,9 +285,9 @@ The site refreshes itself daily through
 validates the data files, and commits `data/site-data.json`,
 `data/benchmark-matrix.json`, `sitemap.xml`, `index.html`, `llms.txt`, `index.md`,
 `agent-readability.json`, and `feed.json` only when at least one of them changed,
-and fails when the newest history snapshot is still more than two days old, so an
-outage cannot pass silently. It can also be
-triggered manually from the Actions tab.
+and fails when the newest history snapshot is more than two days old or the
+benchmark report is more than fourteen days old, so an outage cannot pass
+silently. It can also be triggered manually from the Actions tab.
 
 ## Validating
 
@@ -291,13 +295,14 @@ triggered manually from the Actions tab.
 npm run validate
 ```
 
-`npm run validate` runs three checkers. The style checker refuses comments in
-any script and enforces LF endings, spaces for indentation, no trailing
+`npm run validate` runs three checkers. The style checker walks every text file
+in the tree by extension, refuses comments in any script, and enforces LF
+endings, spaces for indentation, no trailing
 whitespace, and a final newline. Its comment scan reads strings, templates,
 and regexes as text, reaches comments inside template-literal expressions, and
-scans HTML, CSS, and Markdown for their comment syntax too. The data validator
-walks the JSON files against the schema files themselves, so a rule lives in
-one place, then
+scans HTML, CSS, Markdown, and YAML for their comment syntax too. The data
+validator walks the JSON files against the schema files themselves, so a rule
+lives in one place, then
 cross-references showcase names with the manifest, verifies every `demo` id,
 and re-derives the benchmark arithmetic (contender counts, `models × scenarios`,
 outcome totals, recomputes the Wilson interval around each pass rate, and
@@ -306,7 +311,8 @@ refuses histories,
 daily activity, benchmark history, or highlight lists beyond the documented
 caps. It prints
 `validate: ok` and lists every failure it finds in one run. The site validator
-checks internal links, element ids the scripts depend on, module preloads and
+checks internal links, element ids the scripts depend on, module preloads (every
+statically imported module is preloaded and every on-demand module is not) and
 the full module reachability graph, the runtime data preloads, the README file
 listing in both directions, the noscript list's completeness, local stylesheet
 references, the `Content-Security-Policy` on both pages (including the Trusted
@@ -321,7 +327,8 @@ refuses static copy that drifts from the data files (`<title>`, meta description
 social tags, the inline JSON-LD identity, `#display-name`, `#class-title`,
 `#problems-heading`), inline `style` and event-handler attributes the CSP forbids,
 a sitemap or `robots.txt` that disagrees with the canonical URL, a `security.txt`
-that expires within 60 days, a palette pair below the 4.5:1 contrast minimum, two
+that expires within 60 days, a palette pair below the 4.5:1 contrast minimum, a
+palette token that is neither measured nor declared decorative, two
 chart colors closer than 15 ΔE under normal, protan, or deutan vision, a
 `robots.txt` without content signals, a `feed.json` that is not valid JSON Feed
 1.1, the required `Content-Security-Policy` directives, a chart color that
@@ -334,8 +341,10 @@ drive editor validation through the `$schema` keys in the data files. The
 workflow runs all three on every refresh and on push. `npm run csp` rewrites the
 CSP hash in place after the inline JSON-LD changes. Separate tests keep
 `llms.txt`, `index.md`, `agent-readability.json`, and `feed.json` in step with
-the two data files, and `npm run build:llms` regenerates them by hand. The data validator
-re-derives every McNemar comparison and its Holm adjustment from the matrix,
+the two data files, and `npm run build:llms` regenerates them by hand. The
+generated blocks in `index.html` come from `npm run build:static`. The data
+validator re-derives every McNemar comparison and its Holm adjustment from the
+matrix,
 and refuses a benchmark matrix whose totals or paired counts disagree with the
 benchmark block.
 
@@ -354,7 +363,8 @@ refresh activity, history, and benchmark helpers, plus a parse check for every
 script and integration checks that the committed data and site structure pass
 their validators and that each validator refuses broken input, including
 comments, CRLF, a comment inside a template expression or a stylesheet, a
-stale hero stat block, a noscript list missing a project, and static copy that
+a drifted hero stat block or intro paragraph, a noscript list missing a project,
+and static copy that
 drifted from the data.
 The refresh pipeline is also driven end to end against committed API fixtures,
 with and without the GitHub API and in dry-run mode, so the fetch, the benchmark
@@ -379,7 +389,7 @@ code slips.
 ## Serving locally
 
 ```
-python3 -m http.server 8123
+npm run serve
 ```
 
 Then open <http://localhost:8123/>.

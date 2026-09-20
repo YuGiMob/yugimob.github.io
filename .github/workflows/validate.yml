@@ -33,4 +33,5 @@ jobs:
         run: npm run check
 
       - name: Check data freshness
+        if: github.event_name != 'pull_request'
         run: node scripts/check-freshness.mjs

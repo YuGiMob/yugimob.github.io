@@ -34,8 +34,9 @@ export function renderIdentity(data) {
 }
 
 export function renderIntro(showcase) {
-  setText('intro-headline', showcase.intro?.headline);
   const paragraphs = document.getElementById('intro-paragraphs');
+  if (paragraphs && paragraphs.childNodes.length > 0) return;
+  setText('intro-headline', showcase.intro?.headline);
   if (!paragraphs) return;
   for (const paragraph of showcase.intro?.paragraphs ?? []) {
     paragraphs.appendChild(el('p', 'intro-paragraph', paragraph));
@@ -49,7 +50,9 @@ export function renderHeroStats(data) {
   for (const stat of heroStatRows(data)) {
     const item = el('div', 'stat');
     const dd = el('dd', 'stat-value', '0');
-    append(item, el('dt', 'stat-label', stat.label), dd);
+    dd.setAttribute('aria-hidden', 'true');
+    const readout = el('dd', 'sr-only', formatNumber(stat.value));
+    append(item, el('dt', 'stat-label', stat.label), dd, readout);
     list.appendChild(item);
     let animated = false;
     observeVisibility(dd, () => {
@@ -218,8 +221,8 @@ export function renderDegradedNotice(message) {
 function activityChart(daily) {
   const width = 320;
   const height = 44;
-  const gap = 3;
-  const barWidth = (width - gap * (daily.length - 1)) / daily.length;
+  const gap = daily.length > 1 ? Math.min(3, (width / daily.length) * 0.4) : 0;
+  const barWidth = Math.max(0.5, (width - gap * (daily.length - 1)) / daily.length);
   const peak = Math.max(1, extent(daily.map((entry) => entry.pushes))[1]);
   const chart = svg('svg', {
     class: 'activity-chart',
@@ -319,7 +322,7 @@ export function applyVisibility(sections, showcase) {
   };
   const showProblems = sections.showProblems ?? true;
   setHidden('problems', !showProblems);
-  setHidden('evidence', !(showProblems && Boolean(showcase.evidence)));
+  setHidden('evidence', !(showProblems && (sections.showEvidence ?? true) && Boolean(showcase.evidence)));
   setHidden('colophon', !(sections.showAbout ?? true));
   setHidden('campfire', !(sections.showCampfire ?? true));
   const stats = document.getElementById('hero-stats');

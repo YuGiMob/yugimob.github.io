@@ -24,5 +24,8 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Validate the committed site
+        run: npm run validate
+
       - name: Check external links
         run: node scripts/check-links.mjs

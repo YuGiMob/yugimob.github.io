@@ -16,6 +16,7 @@ import {
   sleep,
   scenarioMatrixMatchesBenchmark,
   summarizeBenchmark,
+  scenarioCoverage,
   upsertHistory,
 } from './refresh-lib.mjs';
 import { join, dirname } from 'node:path';
@@ -23,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { writeAgentFiles } from './llms-lib.mjs';
-import { updateHeroStatsFile } from './site-html-lib.mjs';
+import { updateIndexFile } from './site-html-lib.mjs';
 import { updateSitemapFile } from './sitemap-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -33,6 +34,7 @@ const MATRIX_FILE = join(ROOT, 'data', 'benchmark-matrix.json');
 const MATRIX_TMP_FILE = `${MATRIX_FILE}.${process.pid}.tmp`;
 const SITEMAP_FILE = join(ROOT, 'sitemap.xml');
 const INDEX_FILE = join(ROOT, 'index.html');
+const SHOWCASE_FILE = join(ROOT, 'data', 'showcase.json');
 const VALIDATOR_FILE = join(ROOT, 'scripts', 'validate-data.mjs');
 const CACHE_DIR = join(ROOT, '.cache');
 const CACHE_FILE = join(CACHE_DIR, 'fetch-state.json');
@@ -74,9 +76,20 @@ function assertCandidateValid(candidateFile, message, matrixCandidate = null) {
   }
 }
 
+const TMP_PREFIXES = [
+  [ROOT, 'index.html.'],
+  [ROOT, 'index.md.'],
+  [ROOT, 'llms.txt.'],
+  [ROOT, 'agent-readability.json.'],
+  [ROOT, 'feed.json.'],
+  [ROOT, 'sitemap.xml.'],
+  [join(ROOT, 'data'), 'site-data.json.'],
+  [join(ROOT, 'data'), 'benchmark-matrix.json.'],
+];
+
 function cleanupStaleTmpFiles() {
   const cutoff = Date.now() - 10 * 60 * 1000;
-  for (const [directory, prefix] of [[join(ROOT, 'data'), 'site-data.json.'], [ROOT, 'llms.txt.'], [ROOT, 'index.md.'], [ROOT, 'agent-readability.json.'], [ROOT, 'feed.json.'], [join(ROOT, 'data'), 'benchmark-matrix.json.'], [ROOT, 'index.html.']]) {
+  for (const [directory, prefix] of TMP_PREFIXES) {
     try {
       for (const entry of readdirSync(directory)) {
         if (!entry.startsWith(prefix) || !entry.endsWith('.tmp')) continue;
@@ -406,15 +419,10 @@ if (!benchmarkReport || focusById.size === 0) {
   console.warn('benchmark report or scenario sources unavailable; keeping the existing block');
 } else if (!Array.isArray(benchmarkReport.runs)) {
   console.warn('benchmark report has no run list; keeping the existing block');
+} else if (!scenarioCoverage(benchmarkReport, focusById)) {
+  const unknown = new Set(benchmarkReport.runs.map((run) => run.scenarioId ?? '(no scenario id)').filter((id) => !focusById.has(id)));
+  console.warn(`${unknown.size} benchmark scenario(s) have no focus in the sources: ${[...unknown].join(', ')}; keeping the existing block`);
 } else {
-  const unknownScenarios = new Set(
-    benchmarkReport.runs
-      .map((run) => run.scenarioId)
-      .filter((id) => id && !focusById.has(id)),
-  );
-  if (unknownScenarios.size > 0) {
-    console.warn(`${unknownScenarios.size} benchmark scenario(s) have no focus in the sources: ${[...unknownScenarios].join(', ')}`);
-  }
   const benchmark = summarizeBenchmark(benchmarkReport, focusById, (id) =>
     data.projects.some((project) => project.name === id),
   );
@@ -498,9 +506,15 @@ if (DRY_RUN && (dataChanged || matrixChanged)) {
 }
 if (DRY_RUN) summary.push(dataChanged || matrixChanged ? 'dry run: the candidate was not written' : 'dry run: nothing to write');
 else {
-  const heroBlock = updateHeroStatsFile(INDEX_FILE, data);
-  if (!heroBlock.ok) console.warn('index.html hero stats: skipped', heroBlock.reason);
-  else if (heroBlock.changed) summary.push('index.html hero stats: rewritten');
+  let showcase = null;
+  try {
+    showcase = JSON.parse(readFileSync(SHOWCASE_FILE, 'utf8'));
+  } catch (err) {
+    console.warn('data/showcase.json unreadable; the intro block was left alone:', err.message);
+  }
+  const indexBlocks = updateIndexFile(INDEX_FILE, data, showcase);
+  if (!indexBlocks.ok) console.warn('index.html static blocks: skipped', indexBlocks.reason);
+  else if (indexBlocks.changed) summary.push('index.html static blocks: rewritten');
   const agentFiles = writeAgentFiles(ROOT);
   const rewritten = Object.entries(agentFiles).filter(([, written]) => written).map(([file]) => file);
   if (rewritten.length > 0) summary.push(`${rewritten.join(', ')}: rewritten`);

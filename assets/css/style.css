@@ -1827,6 +1827,30 @@ a:hover {
   overscroll-behavior: contain;
 }
 
+.matrix-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.matrix-filter-button {
+  padding: 4px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.matrix-filter-button.is-current {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
 .matrix-table {
   width: 100%;
   border-collapse: collapse;
@@ -1907,6 +1931,12 @@ a:hover {
 
 .bench-version {
   color: var(--ink-3);
+  font-size: 0.7rem;
+}
+
+.bench-cost {
+  color: var(--ink-3);
+  font-family: var(--mono);
   font-size: 0.7rem;
 }
 

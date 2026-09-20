@@ -81,6 +81,7 @@ export function repositoryFacts(stats) {
 }
 
 const DAY_MS = 86400000;
+export const STALE_AFTER_DAYS = 2;
 
 function dayCount(days) {
   return `${days} ${days === 1 ? 'day' : 'days'}`;
@@ -93,7 +94,7 @@ export function staleDays(date, today) {
   return Math.max(0, Math.round((now - then) / DAY_MS));
 }
 
-export function stalenessNotice(data, today, limit = 3) {
+export function stalenessNotice(data, today, limit = STALE_AFTER_DAYS) {
   const messages = [];
   const activityDays = staleDays(data.activity?.fetchedAt, today);
   const benchmarkDays = staleDays(data.benchmark?.generatedAt, today);

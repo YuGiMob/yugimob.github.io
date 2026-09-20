@@ -42,10 +42,6 @@
   <link rel="stylesheet" href="assets/css/style.css">
   <link rel="modulepreload" href="assets/js/ui.js">
   <link rel="modulepreload" href="assets/js/avatar.js">
-  <link rel="modulepreload" href="assets/js/hashline.js">
-  <link rel="modulepreload" href="assets/js/playground.js">
-  <link rel="modulepreload" href="assets/js/charts.js">
-  <link rel="modulepreload" href="assets/js/demos.js">
   <link rel="modulepreload" href="assets/js/lazy.js">
   <link rel="modulepreload" href="assets/js/demo-registry.js">
   <link rel="modulepreload" href="assets/js/render.js">
@@ -98,7 +94,11 @@
           </div>
         </div>
         <h1 class="intro-headline"><span class="intro-claim" id="intro-headline">I make coding agents fail loudly.</span></h1>
-        <div id="intro-paragraphs"></div>
+        <div id="intro-paragraphs">
+          <p class="intro-paragraph">I'm YuGiMob. I build extensions for pi, the terminal coding agent, and publish them on npm. This page is where they live, each with a demo you can run.</p>
+          <p class="intro-paragraph">The pattern behind all of them is the same. An agent changes a file that looks right and is subtly wrong, or runs a command a human would have paused on. Most fixes are better prompts and good intentions. I would rather move the failure into the tool, where it can be refused, caught, or made impossible.</p>
+          <p class="intro-paragraph">If you run coding agents against real repositories, you have watched at least one of these failures happen. Each tool below starts with the problem it exists to kill; the benchmark at the end is how I check my own work, including the runs I lose.</p>
+        </div>
         <p class="notice" id="data-notice" role="status" hidden></p>
         <div class="intro-actions">
           <a class="btn btn-primary" href="#problems">See the problems</a>
@@ -107,15 +107,18 @@
         <dl class="intro-stats" id="hero-stats">
           <div class="stat">
             <dt class="stat-label">GitHub stars</dt>
-            <dd class="stat-value">97</dd>
+            <dd class="stat-value" aria-hidden="true">97</dd>
+            <dd class="sr-only">97</dd>
           </div>
           <div class="stat">
             <dt class="stat-label">packages on npm</dt>
-            <dd class="stat-value">5</dd>
+            <dd class="stat-value" aria-hidden="true">5</dd>
+            <dd class="sr-only">5</dd>
           </div>
           <div class="stat">
             <dt class="stat-label">npm installs / week</dt>
-            <dd class="stat-value">5,403</dd>
+            <dd class="stat-value" aria-hidden="true">5,403</dd>
+            <dd class="sr-only">5,403</dd>
           </div>
         </dl>
       </div>

@@ -167,12 +167,25 @@ test('renderIntro writes the headline and one paragraph per entry', () => {
   withDom(() => renderIntro({}));
 });
 
+test('renderIntro leaves pre-rendered paragraphs and the headline alone', () => {
+  withDom((dom) => {
+    const headline = register(dom.document, 'intro-headline');
+    headline.textContent = 'Static headline.';
+    const paragraphs = register(dom.document, 'intro-paragraphs');
+    paragraphs.appendChild(element('p'));
+    renderIntro(SHOWCASE);
+    assert.equal(headline.textContent, 'Static headline.');
+    assert.equal(paragraphs.childNodes.length, 1);
+  });
+});
+
 test('renderHeroStats renders three stats and animates them on first view', () => {
   withDom((dom) => {
     const list = register(dom.document, 'hero-stats');
     renderHeroStats(DATA);
     assert.deepEqual(classes(list, 'stat-label').map((node) => node.textContent), ['GitHub stars', 'packages on npm', 'npm installs / week']);
     assert.deepEqual(classes(list, 'stat-value').map((node) => node.textContent), ['0', '0', '0']);
+    assert.deepEqual(classes(list, 'sr-only').map((node) => node.textContent), ['12', '1', '34']);
     assert.equal(dom.observers.length, 3);
 
     for (const observer of dom.observers) observer.trigger([{ isIntersecting: true }]);
@@ -381,6 +394,19 @@ test('renderActivity skips the chart and highlights for empty data', async () =>
   });
 });
 
+test('the activity chart keeps every bar inside the viewBox at the 120-day cap', () => {
+  withDom((dom) => {
+    const panel = register(dom.document, 'activity-panel');
+    const daily = Array.from({ length: 120 }, (unused, index) => ({ date: `2026-01-${index + 1}`, events: index, pushes: index % 9 }));
+    renderActivity({ ...DATA, activity: { ...DATA.activity, daily }, history: [] });
+    const bars = findAll(panel, (node) => node.tagName === 'RECT');
+    assert.equal(bars.length, 120);
+    for (const bar of bars) assert.ok(Number(bar.getAttribute('width')) > 0, 'every bar has a positive width');
+    const last = bars[bars.length - 1];
+    assert.ok(Number(last.getAttribute('x')) + Number(last.getAttribute('width')) <= 320);
+  });
+});
+
 test('renderFooter writes the link, the year, and the staleness notice', () => {
   withDom((dom) => {
     const github = register(dom.document, 'github-link');
@@ -419,6 +445,8 @@ test('applyVisibility defaults to showing sections and follows the evidence bloc
     applyVisibility({}, { evidence: { name: 'tool' } });
     for (const id of ids) assert.equal(nodes.get(id).hidden, false);
     applyVisibility({}, {});
+    assert.equal(nodes.get('evidence').hidden, true);
+    applyVisibility({ showEvidence: false }, { evidence: { name: 'tool' } });
     assert.equal(nodes.get('evidence').hidden, true);
     assert.equal(nodes.get('problems').hidden, false);
   });
