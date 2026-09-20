@@ -1,8 +1,8 @@
 {
   "identity": {
     "displayName": "YuGiMob",
-    "classTitle": "Coding-agent extensions and benchmarks",
-    "tagline": "Extensions for the pi coding agent: anchored file edits, Tor-routed requests, guarded commits, and a benchmark with published traces.",
+    "classTitle": "Coding-agent extensions that fail loudly",
+    "tagline": "Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, guarded commits, and a benchmark that publishes the traces.",
     "avatarUrl": "https://avatars.githubusercontent.com/u/110136195?s=216&v=4",
     "links": {
       "github": "https://github.com/YuGiMob",
@@ -11,7 +11,7 @@
   },
   "about": {
     "paragraphs": [
-      "I build extensions for pi, the terminal coding agent, and publish them on npm, together with a benchmark that measures whether they actually help."
+      "I build extensions for pi, the terminal coding agent, and publish them on npm: anchored edits, keyless web tools, Tor routing, guarded commits, and a benchmark that publishes the traces."
     ]
   },
   "projects": [

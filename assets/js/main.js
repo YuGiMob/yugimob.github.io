@@ -29,19 +29,21 @@ async function fetchJson(url) {
 }
 
 function fallbackShowcase(data) {
+  const paragraphs = data.about?.paragraphs ?? [];
   return {
-    featured: null,
-    projects: data.projects.map((project) => ({
+    intro: { headline: data.identity.classTitle, paragraphs },
+    problems: data.projects.map((project) => ({
       name: project.name,
-      kicker: project.language || 'Artifact',
-      tagline: project.description || 'Public repository',
-      highlights: ['Curated public repository'],
-      size: 'small',
+      kicker: project.language || 'Project',
+      headline: project.description || project.name,
+      problem: 'The full story for this tool could not be loaded.',
+      answer: project.description || 'Public repository.',
+      highlights: ['Public repository'],
+      size: 'default',
     })),
-    benchmark: null,
+    evidence: null,
     principles: [],
-    about: data.about?.paragraphs ?? [],
-    lab: { title: 'Benchmark results', intro: 'Benchmark figures come from committed run reports in pi-edit-benchmark.' },
+    colophon: paragraphs,
   };
 }
 
@@ -110,24 +112,40 @@ function setupChrome() {
   window.addEventListener('scroll', update, { passive: true });
 }
 
+function setText(id, value) {
+  const node = document.getElementById(id);
+  if (node && value) node.textContent = value;
+}
+
+function setMeta(selector, value) {
+  const node = document.querySelector(selector);
+  if (node && value) node.setAttribute('content', value);
+}
+
 function renderIdentity(data) {
   const identity = data.identity;
   hydrateAvatar(document.getElementById('avatar'), identity.avatarUrl, identity.displayName);
   document.title = `${identity.displayName} · ${identity.classTitle}`;
-  const set = (id, value) => {
-    const node = document.getElementById(id);
-    if (node && value) node.textContent = value;
-  };
-  set('display-name', identity.displayName);
-  set('class-title', identity.classTitle);
-  set('tagline', identity.tagline);
+  setText('display-name', identity.displayName);
+  setText('class-title', identity.classTitle);
+  setMeta('meta[name="description"]', identity.tagline);
+  setMeta('meta[property="og:title"]', `${identity.displayName} · ${identity.classTitle}`);
+  setMeta('meta[property="og:description"]', identity.tagline);
+  setMeta('meta[name="twitter:title"]', `${identity.displayName} · ${identity.classTitle}`);
+  setMeta('meta[name="twitter:description"]', identity.tagline);
   const navGithub = document.getElementById('nav-github');
-  if (navGithub) {
-    navGithub.href = identity.links?.github || navGithub.href;
-  }
+  if (navGithub && identity.links?.github) navGithub.href = identity.links.github;
   const heroGithub = document.getElementById('hero-github');
   if (heroGithub && identity.links?.github) heroGithub.href = identity.links.github;
+}
 
+function renderIntro(showcase) {
+  setText('intro-headline', showcase.intro?.headline);
+  const paragraphs = document.getElementById('intro-paragraphs');
+  if (!paragraphs) return;
+  for (const paragraph of showcase.intro?.paragraphs ?? []) {
+    paragraphs.appendChild(el('p', 'intro-paragraph', paragraph));
+  }
 }
 
 function renderHeroStats(data) {
@@ -141,9 +159,8 @@ function renderHeroStats(data) {
   ];
   for (const [label, value] of stats) {
     const item = el('div', 'stat');
-    const dt = el('dt', 'stat-label', label);
     const dd = el('dd', 'stat-value', '0');
-    append(item, dt, dd);
+    append(item, el('dt', 'stat-label', label), dd);
     list.appendChild(item);
     let animated = false;
     observeVisibility(dd, () => {
@@ -180,120 +197,148 @@ function projectChips(project) {
   return chips;
 }
 
-function renderFeatured(featured, project) {
-  const section = document.getElementById('featured');
-  const panel = document.getElementById('featured-panel');
-  if (!section || !panel) return;
-  if (!featured || !project) {
-    section.hidden = true;
-    return;
-  }
-  const kicker = document.getElementById('featured-kicker');
-  if (kicker) kicker.textContent = featured.kicker;
-  const heading = document.getElementById('featured-heading');
-  if (heading) heading.textContent = featured.headline;
-
-  const copy = el('div', 'feature-copy');
-  for (const paragraph of featured.summary) copy.appendChild(el('p', 'feature-summary', paragraph));
-  const points = el('dl', 'feature-points');
-  for (const point of featured.points) {
-    const item = el('div', 'feature-point');
-    append(item, el('dt', 'feature-point-title', point.title), el('dd', 'feature-point-body', point.body));
-    points.appendChild(item);
-  }
-  copy.appendChild(points);
-  copy.appendChild(projectChips(project));
-  copy.appendChild(installActions(project));
-
-  const demoBox = el('div', 'feature-demo');
-  const playground = buildPlayground();
-  append(demoBox, playground.node, playground.caption);
-  const controller = observeVisibility(playground.node, () => playground.start(), () => playground.stop());
-
-  const wrap = el('div', 'feature');
-  append(wrap, copy, demoBox);
-  panel.appendChild(wrap);
-  return () => {
-    if (controller) controller.disconnect();
-    playground.destroy();
-  };
+function answerBlock(entry, project) {
+  const answer = el('div', 'answer');
+  answer.appendChild(el('p', 'answer-label', 'What I built'));
+  const name = el('h4', 'answer-name');
+  name.appendChild(link(project.url, project.name));
+  answer.appendChild(name);
+  answer.appendChild(el('p', 'answer-text', entry.answer));
+  const points = el('ul', 'answer-points');
+  for (const highlight of entry.highlights) points.appendChild(el('li', 'answer-point', highlight));
+  answer.appendChild(points);
+  answer.appendChild(projectChips(project));
+  answer.appendChild(installActions(project));
+  return answer;
 }
 
-function renderForge(entries, projects) {
-  const grid = document.getElementById('forge-grid');
-  if (!grid) return [];
-  const cleanups = [];
-  for (const entry of entries) {
-    const project = projects.get(entry.name);
-    if (!project) continue;
-    const card = el('article', `forge-card ${entry.size === 'large' ? 'is-large' : 'is-small'}`);
+function problemHead(number, entry) {
+  const head = el('header', 'problem-head');
+  const heading = el('div', 'problem-heading');
+  append(heading, el('p', 'problem-kicker', entry.kicker), el('h3', 'problem-title', entry.headline));
+  append(head, el('span', 'problem-number', number), heading);
+  return head;
+}
 
-    const copy = el('div', 'forge-copy');
-    copy.appendChild(el('p', 'forge-kicker', entry.kicker));
-    const title = el('h3', 'forge-title');
-    title.appendChild(link(project.url, project.name));
-    copy.appendChild(title);
-    copy.appendChild(el('p', 'forge-tagline', entry.tagline));
-    const highlights = el('ul', 'forge-highlights');
-    for (const highlight of entry.highlights) highlights.appendChild(el('li', 'forge-highlight', highlight));
-    copy.appendChild(highlights);
-    copy.appendChild(projectChips(project));
-    copy.appendChild(installActions(project));
+function mountDemo(entry, cleanups) {
+  const box = el('div', 'problem-demo');
+  const demo = entry.demo === 'hashline' ? buildPlayground() : entry.demo ? buildDemo(entry.demo) : null;
+  if (!demo) return box;
+  append(box, demo.node, demo.caption);
+  const observer = observeVisibility(demo.node, () => demo.start(), () => demo.stop());
+  cleanups.push(() => {
+    if (observer) observer.disconnect();
+    demo.destroy();
+  });
+  return box;
+}
 
-    card.appendChild(copy);
-    if (entry.demo) {
-      const demo = buildDemo(entry.demo);
-      if (demo) {
-        const box = el('div', 'forge-demo');
-        box.appendChild(demo.node);
-        card.appendChild(box);
-        const observer = observeVisibility(demo.node, () => demo.start(), () => demo.stop());
-        cleanups.push(() => {
-          if (observer) observer.disconnect();
-          demo.destroy();
-        });
-      }
-    }
-    grid.appendChild(card);
+function renderProblemIndex(showcase) {
+  const list = document.getElementById('problem-index');
+  if (!list) return;
+  const rows = showcase.problems.map((problem) => ({
+    href: `#problem-${problem.name}`,
+    headline: problem.headline,
+    tool: problem.name,
+  }));
+  if (showcase.evidence) {
+    rows.push({ href: '#evidence', headline: showcase.evidence.headline, tool: showcase.evidence.name });
   }
+  rows.forEach((row, index) => {
+    const anchor = el('a', 'index-link');
+    anchor.href = row.href;
+    append(
+      anchor,
+      el('span', 'index-number', String(index + 1).padStart(2, '0')),
+      el('span', 'index-headline', row.headline),
+      el('span', 'index-tool', row.tool),
+      el('span', 'index-arrow', '→'),
+    );
+    const item = el('li', 'index-row');
+    item.appendChild(anchor);
+    list.appendChild(item);
+  });
+}
+
+function renderProblems(showcase, projects) {
+  const container = document.getElementById('problem-list');
+  if (!container) return [];
+  const cleanups = [];
+  showcase.problems.forEach((entry, index) => {
+    const project = projects.get(entry.name);
+    if (!project) return;
+    const article = el('article', `problem${entry.size === 'hero' ? ' is-hero' : ''}`);
+    article.id = `problem-${entry.name}`;
+    article.appendChild(problemHead(String(index + 1).padStart(2, '0'), entry));
+    article.appendChild(el('p', 'problem-statement', entry.problem));
+    const grid = el('div', 'problem-grid');
+    const copy = el('div', 'problem-copy');
+    copy.appendChild(answerBlock(entry, project));
+    append(grid, copy, mountDemo(entry, cleanups));
+    article.appendChild(grid);
+    container.appendChild(article);
+  });
   return cleanups;
 }
 
-function renderLab(showcase) {
-  const grid = document.getElementById('lab-grid');
-  if (!grid) return [];
-  const heading = document.getElementById('lab-heading');
-  if (heading) heading.textContent = showcase.lab.title;
-  const intro = document.getElementById('lab-intro');
-  if (intro) intro.textContent = showcase.lab.intro;
-
-  const charts = [];
-  if (showcase.benchmark) {
-    const chart = benchmarkChart(showcase.benchmark);
-    chart.node.classList.add('is-wide');
-    charts.push(chart);
+function renderEvidence(showcase, projects) {
+  const section = document.getElementById('evidence');
+  const body = document.getElementById('evidence-body');
+  const evidence = showcase.evidence;
+  if (!section || !body) return [];
+  if (!evidence) {
+    section.hidden = true;
+    return [];
   }
-
+  const project = projects.get(evidence.name);
+  setText('evidence-kicker', evidence.kicker);
+  setText('evidence-heading', evidence.headline);
+  if (evidence.intro) body.appendChild(el('p', 'section-lede', evidence.intro));
+  const article = el('div', 'evidence');
+  article.id = `problem-${evidence.name}`;
+  article.appendChild(el('p', 'problem-statement', evidence.problem));
   const cleanups = [];
-  for (const chart of charts) {
-    grid.appendChild(chart.node);
+  const grid = el('div', 'problem-grid');
+  const copy = el('div', 'problem-copy');
+  if (project) copy.appendChild(answerBlock(evidence, project));
+  const demoBox = el('div', 'problem-demo is-wide');
+  if (evidence.benchmark) {
+    const chart = benchmarkChart(evidence.benchmark);
+    chart.node.classList.add('is-wide');
+    demoBox.appendChild(chart.node);
     const observer = observeVisibility(chart.node, () => chart.start(), () => chart.stop());
     cleanups.push(() => {
       if (observer) observer.disconnect();
       chart.stop();
     });
   }
+  append(grid, copy, demoBox);
+  article.appendChild(grid);
+  if (evidence.demo) {
+    const trace = buildDemo(evidence.demo);
+    if (trace) {
+      const box = el('div', 'evidence-trace');
+      append(box, trace.node);
+      article.appendChild(box);
+      const observer = observeVisibility(trace.node, () => trace.start(), () => trace.stop());
+      cleanups.push(() => {
+        if (observer) observer.disconnect();
+        trace.destroy();
+      });
+    }
+  }
+  body.appendChild(article);
   return cleanups;
 }
 
-function renderAbout(showcase) {
-  const prose = document.getElementById('about-prose');
+function renderColophon(showcase) {
+  const prose = document.getElementById('colophon-prose');
   if (prose) {
-    for (const paragraph of showcase.about) prose.appendChild(el('p', 'about-paragraph', paragraph));
+    for (const paragraph of showcase.colophon ?? []) prose.appendChild(el('p', 'colophon-paragraph', paragraph));
   }
   const principles = document.getElementById('principles');
   if (principles) {
-    for (const principle of showcase.principles) principles.appendChild(el('li', 'principle', principle));
+    for (const principle of showcase.principles ?? []) principles.appendChild(el('li', 'principle', principle));
   }
 }
 
@@ -354,18 +399,18 @@ function renderFooter(identity) {
     githubLink.href = identity.links?.github || 'https://github.com/YuGiMob';
     githubLink.textContent = `${identity.displayName} on GitHub`;
   }
-  const year = document.getElementById('campfire-year');
-  if (year) year.textContent = `© ${new Date().getFullYear()} ${identity.displayName}`;
+  setText('campfire-year', `© ${new Date().getFullYear()} ${identity.displayName}`);
 }
 
 function renderStructuredData(data, showcase) {
   const target = document.getElementById('structured-data');
   if (!target) return;
-  const projects = showcase.featured
-    ? [showcase.featured.name, ...showcase.projects.map((entry) => entry.name)]
-    : data.projects.map((project) => project.name);
+  const names = [
+    ...showcase.problems.map((problem) => problem.name),
+    ...(showcase.evidence ? [showcase.evidence.name] : []),
+  ];
   const byName = new Map(data.projects.map((project) => [project.name, project]));
-  const items = projects
+  const items = names
     .map((name) => byName.get(name))
     .filter(Boolean)
     .map((project, index) => ({
@@ -391,7 +436,7 @@ function renderStructuredData(data, showcase) {
         url: 'https://yugimob.github.io/',
         image: data.identity.avatarUrl,
         sameAs: [data.identity.links?.github].filter(Boolean),
-        knowsAbout: showcase.principles,
+        knowsAbout: showcase.principles ?? [],
       },
       {
         '@type': 'ItemList',
@@ -403,14 +448,15 @@ function renderStructuredData(data, showcase) {
   target.textContent = JSON.stringify(graph);
 }
 
-function applyVisibility(sections) {
+function applyVisibility(sections, showcase) {
   const setHidden = (id, hidden) => {
     const node = document.getElementById(id);
     if (node) node.hidden = hidden;
   };
-  setHidden('featured', !(sections.showArtifacts ?? true));
-  setHidden('forge', !(sections.showArtifacts ?? true));
-  setHidden('about', !(sections.showBackground ?? true));
+  const showArtifacts = sections.showArtifacts ?? true;
+  setHidden('problems', !showArtifacts);
+  setHidden('evidence', !(showArtifacts && Boolean(showcase.evidence)));
+  setHidden('colophon', !(sections.showBackground ?? true));
   setHidden('campfire', !(sections.showCampfire ?? true));
   const stats = document.getElementById('hero-stats');
   if (stats) stats.hidden = !(sections.showAbilityScores ?? true);
@@ -426,15 +472,16 @@ async function init() {
   const projects = new Map(data.projects.map((project) => [project.name, project]));
 
   renderIdentity(data);
+  renderIntro(showcase);
   renderHeroStats(data);
-  renderFeatured(showcase.featured, projects.get(showcase.featured?.name));
-  renderForge(showcase.projects, projects);
-  renderLab(showcase);
-  renderAbout(showcase);
+  renderProblemIndex(showcase);
+  renderProblems(showcase, projects);
+  renderEvidence(showcase, projects);
+  renderColophon(showcase);
   renderActivity(data);
   renderFooter(data.identity);
   renderStructuredData(data, showcase);
-  applyVisibility(data.sections);
+  applyVisibility(data.sections, showcase);
   setupNav();
   setupAnchorAlignment();
   setupChrome();
@@ -442,8 +489,8 @@ async function init() {
 
 init().catch((error) => {
   console.warn('YuGiMob:', error);
-  const fallback = document.getElementById('display-name');
-  if (fallback) fallback.textContent = 'Site data unavailable';
-  const tagline = document.getElementById('tagline');
-  if (tagline) tagline.textContent = 'Check data/site-data.json and data/showcase.json';
+  setText('intro-headline', 'This page could not load its data.');
+  setText('display-name', 'YuGiMob');
+  const paragraphs = document.getElementById('intro-paragraphs');
+  if (paragraphs) paragraphs.appendChild(el('p', 'intro-paragraph', 'Check data/site-data.json and data/showcase.json.'));
 });

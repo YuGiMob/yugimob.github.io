@@ -26,7 +26,7 @@ function meter(className, value) {
 
 export function benchmarkChart(bench) {
   const { root, body } = chartFrame(
-    'Evidence',
+    'Results',
     'Pass rate by editing tool',
     `${bench.models} models × ${bench.scenarios} scenarios × ${bench.contenderCount} contenders · ${bench.runsPerContender} runs each`,
   );

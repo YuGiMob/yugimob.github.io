@@ -5,25 +5,30 @@ showcase for the pi-coding-agent extensions and tools built by YuGiMob.
 Plain HTML, CSS, and JavaScript, with no build step, no framework, and no
 runtime dependencies. GitHub Pages serves the files directly.
 
-The flagship gets a live, interactive playground, every other artifact gets a
-demo of its interaction pattern, and the benchmark section charts the numbers
-behind the work.
+The page opens with an introduction, then presents one problem per tool and
+the extension that answers it, each with a live demo of the interaction it
+changes. The benchmark at the end shows the runs, including the ones the
+flagship loses.
 
 ## Page sections
 
-- **Hero** (`#hero`): avatar, name and tagline, live counters for stars,
-  packages, and weekly installs.
-- **Flagship** (`#featured`): pi-hashline-edit-pro, with an interactive
-  hashline playground: real 4-letter anchor allocation, a served-row record,
-  real `[E_RANGE_STALE]` refusals, and a guided six-step run through one edit.
-- **Projects** (`#forge`): five cards, each with a live demo: a pipeline graph
-  for search, fetch, and render (pi-unsloth-webtools), a Tor circuit
-  (pi-tor-proxy), a workflow pipeline (pi-msg-workflow), a guarded commit
-  transcript (pi-git-commit), and a benchmark run trace (pi-edit-benchmark).
-- **Benchmarks** (`#lab`): benchmark pass rates from committed run reports.
-- **About** (`#about`): prose, the principles behind the tools, and a
-  pushes-per-day chart built from public GitHub events.
-- Footer (`#campfire`): the GitHub link.
+- **Intro** (`#intro`): who I am, what the page is, and why the failure modes
+  matter. Live counters for stars, packages, and weekly installs.
+- **The problems** (`#problems`): an index of six failures, then one entry per
+  tool. Each entry leads with the problem, then the answer: the project,
+  install command, source link, and a working demo.
+  - pi-hashline-edit-pro gets the flagship treatment with an interactive
+    hashline playground: real 4-letter anchor allocation, a served-row record,
+    real `[E_RANGE_STALE]` refusals, and a guided six-step run through one edit.
+  - The other entries run a pipeline graph (pi-unsloth-webtools), a Tor circuit
+    (pi-tor-proxy), a workflow pipeline (pi-msg-workflow), and a guarded commit
+    transcript (pi-git-commit).
+- **The evidence** (`#evidence`): pi-edit-benchmark as the answer to "everyone
+  claims their tool is better": benchmark pass rates from committed run
+  reports, plus a scored trace showing a refusal and a recovery.
+- **About** (`#colophon`): why the tools exist, the principles behind them, and
+  a pushes-per-day chart built from public GitHub events.
+- Footer (`#campfire`): the GitHub link and the daily-refresh note.
 
 ## Files
 
@@ -57,12 +62,13 @@ weekly npm downloads, stats, activity (window, pushes, highlights, per-day
 events), and `history`: one snapshot per day with total stars, total weekly
 downloads, and pushes.
 
-**`data/showcase.json`** is curated by hand. It holds the featured project
-narrative, one entry per showcased project (kicker, tagline,
-highlights, demo id, size), the benchmark snapshot, the principles, the about
-prose, and the lab intro. The two files are joined by project name; the
-validator fails if a showcased name is missing from the manifest, duplicated,
-or if the featured project is repeated in the grid.
+**`data/showcase.json`** is curated by hand. It holds the introduction, one
+entry per problem/tool pair (kicker, problem headline, problem paragraph,
+answer paragraph, highlights, demo id, size), the evidence block
+(with the benchmark snapshot and trace demo), the principles, and the
+colophon prose. The two files are joined by project name; the validator
+fails if a showcased name is missing from the manifest, duplicated, or if the
+same project is used for both a problem and the evidence.
 
 ## Refreshing data
 

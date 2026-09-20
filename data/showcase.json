@@ -1,111 +1,121 @@
 {
-  "featured": {
-    "name": "pi-hashline-edit-pro",
-    "kicker": "Flagship",
-    "headline": "Edits addressed by anchors, not line numbers",
-    "summary": [
-      "Line numbers shift whenever something above them changes, and fuzzy matching can silently pick the wrong occurrence. pi-hashline-edit-pro avoids both by giving every served line a unique four-letter anchor. The anchor is the only address an edit may use, so inserting or deleting lines never invalidates the lines you did not touch.",
-      "It disables the built-in edit tool and registers read, replace, insert, anchor_grep, and undo_last_change instead. On its own 34-scenario benchmark it places first at 95.2% overall and 94.3% on the stale-and-drift cases, and the traces for every run are in the repository."
-    ],
-    "points": [
-      {
-        "title": "Anchors survive edits",
-        "body": "Every served line carries its own anchor. An insertion or deletion reassigns nothing else, so a follow-up edit needs no re-read."
-      },
-      {
-        "title": "Stale edits are refused",
-        "body": "The session remembers the text it served. If the file changed underneath, the tool returns [E_RANGE_STALE] and the current range instead of editing a neighbour."
-      },
-      {
-        "title": "Undo restores the bytes",
-        "body": "The last replace or insert on a file reverts byte-for-byte, including BOM and line endings, and the undo record survives a session restart."
-      },
-      {
-        "title": "Batches are atomic",
-        "body": "Edits to the same file are grouped into one batch with one diff and one undo. If any member is stale, the whole batch is refused and nothing is written."
-      }
-    ],
-    "demo": "hashline"
+  "intro": {
+    "headline": "I make coding agents fail loudly.",
+    "paragraphs": [
+      "I'm YuGiMob. I build extensions for pi, the terminal coding agent, and publish them on npm. This page is where they live, each with a demo you can run.",
+      "The pattern behind all of them is the same. An agent changes a file that looks right and is subtly wrong, or runs a command a human would have paused on. Most fixes are better prompts and good intentions. I would rather move the failure into the tool, where it can be refused, caught, or made impossible.",
+      "If you run coding agents against real repositories, you have watched at least one of these failures happen. Each tool below starts with the problem it exists to kill; the benchmark at the end is how I check my own work, including the runs I lose."
+    ]
   },
-  "projects": [
+  "problems": [
+    {
+      "name": "pi-hashline-edit-pro",
+      "kicker": "Anchored edits",
+      "headline": "The edit lands on the wrong line",
+      "problem": "Line numbers shift the moment anything above them changes, and fuzzy matching will happily edit a similar block somewhere else. The agent reports success, the diff looks plausible, and the mistake surfaces three edits later.",
+      "answer": "Every served line gets its own four-letter anchor. An edit may only name anchors, so inserting or deleting lines never renumbers what you did not touch. If the file changed underneath, the tool refuses with [E_RANGE_STALE] instead of guessing, and the last edit can be undone byte-for-byte, line endings included.",
+      "highlights": [
+        "Anchors survive inserts, deletes, and re-reads",
+        "Stale edits are refused, not guessed",
+        "Undo restores the exact bytes",
+        "Edits to one file land as a single atomic batch"
+      ],
+      "demo": "hashline",
+      "size": "hero"
+    },
     {
       "name": "pi-unsloth-webtools",
       "kicker": "Web tools",
-      "tagline": "Search, fetch, and render tools for pi with no API key: a seven-engine search with dedup and ranking, HTML-to-Markdown and PDF extraction ported from the Unsloth Studio codebase, and a Jina Reader fallback for pages that need JavaScript.",
+      "headline": "Web access costs a key and returns soup",
+      "problem": "Almost every way to give an agent the web wants an API key, a paid tier, or a browser farm. When it finally fetches something, it hands the model a wall of navigation, cookie banners, and tracking scripts, and calls that reading.",
+      "answer": "One tool for search, one for fetch, one for pages that need JavaScript. Search fans out across seven engines and dedupes and ranks what comes back, with no key. Fetch normalizes the URL, blocks private addresses, and turns HTML or PDF text into Markdown. Render falls back to Jina Reader when the page only exists after JavaScript runs.",
       "highlights": [
         "Seven search engines behind one tool",
-        "HTML and PDF text extraction",
+        "HTML-to-Markdown and PDF extraction",
+        "SSRF guard and a 512 KiB cap",
         "Jina Reader fallback for JavaScript pages"
       ],
       "demo": "webtools",
-      "size": "large"
+      "size": "default"
     },
     {
       "name": "pi-tor-proxy",
       "kicker": "Network privacy",
-      "tagline": "Routes every request the pi agent makes through Tor. It downloads and verifies its own Tor binary, gives each pi instance its own circuit, and checks the exit IP against check.torproject.org.",
+      "headline": "Agent traffic leaks where it comes from",
+      "problem": "The moment an agent fetches a URL, your IP and your resolver are part of the request. Setting one proxy variable is not a privacy story, and a shared circuit links every request back to the same exit, which is its own kind of fingerprint.",
+      "answer": "The extension downloads its own Tor binary, verifies it against a SHA-256 hash, and routes every request through it. Each pi instance gets its own circuit via IsolateSOCKSAuth, and the exit IP is checked against check.torproject.org so you can see that the route is actually Tor.",
       "highlights": [
-        "Downloads and SHA-256 verifies its own Tor binary",
+        "Self-managed, hash-verified Tor binary",
         "Per-instance circuit via IsolateSOCKSAuth",
-        "Exit IP checked against check.torproject.org"
+        "Exit IP checked against check.torproject.org",
+        "Nothing to configure in your other tools"
       ],
       "demo": "tor",
-      "size": "large"
+      "size": "default"
     },
     {
       "name": "pi-msg-workflow",
       "kicker": "Agent workflow",
-      "tagline": "Numbered message and command stores plus configurable review workflows: a start phase, rounds that reset the context between passes, and a final commit or summary.",
+      "headline": "Long runs forget the plan",
+      "problem": "Ask an agent to review a change in three passes and the original plan, the corrections, and the review comments all dissolve into one context window. By the last round it is negotiating with a summary of a summary, and the thing you asked for first is somewhere in the middle.",
+      "answer": "Numbered message and command stores keep the plan outside the conversation, where you can edit it. A workflow is a start phase, one or more rounds that reset the context between passes, and a final commit or summary. Each round sees the messages it needs, not the entire history.",
       "highlights": [
         "/msg, /cmd, and /workflow",
         "Numbered, editable message stores",
-        "Rounds reset the context between passes"
+        "Rounds reset the context between passes",
+        "Start, loop, and finish as configuration"
       ],
       "demo": "workflow",
-      "size": "large"
+      "size": "default"
     },
     {
       "name": "pi-git-commit",
       "kicker": "Guardrails",
-      "tagline": "A commit flow that keeps an agent from committing carelessly: a bash guard for mutative git commands, a structured git_commit tool, and a /commit command that a human has to run first.",
+      "headline": "The agent commits like it owns the repo",
+      "problem": "An agent with shell access will eventually run git commit -am \"fix\", or stage a file you never looked at. A rule in a prompt is not a guardrail; it is a wish with good manners.",
+      "answer": "The bash guard blocks mutative git commands before they run. Commits go through a structured git_commit tool with a type (FIX, IMPROVE, NEW) and a message, and the flow only opens after a human runs /commit. The agent can prepare the commit; it cannot decide to make it.",
       "highlights": [
         "Mutative git commands in bash are blocked",
         "FIX, IMPROVE, and NEW typed commits",
-        "The flow opens only after /commit"
+        "The flow opens only after /commit",
+        "One guard instead of prompt heroics"
       ],
       "demo": "git",
-      "size": "large"
-    },
-    {
-      "name": "pi-edit-benchmark",
-      "kicker": "Benchmark",
-      "tagline": "Drives real models through each editing tool's own tools and scores correctness, safety, and robustness, with a full trace for every run.",
-      "highlights": [
-        "34 scenarios, 8 models, 2,176 runs",
-        "Stale and drift scenarios are scored",
-        "Every verdict links to its trace"
-      ],
-      "demo": "trace",
-      "size": "large"
+      "size": "default"
     }
   ],
-  "benchmark": {
-    "source": "https://github.com/YuGiMob/pi-edit-benchmark",
-    "generatedAt": "2026-09-04T15:00:39.514Z",
-    "models": 8,
-    "scenarios": 34,
-    "contenderCount": 8,
-    "runsPerContender": 272,
-    "contenders": [
-      { "label": "hashline-edit-pro", "overall": 95.2, "safety": 94.3, "errors": 0, "highlight": true },
-      { "label": "hashline-context-edit", "overall": 79.8, "safety": 90.9, "errors": 0 },
-      { "label": "hashline-edit", "overall": 79.0, "safety": 89.8, "errors": 1 },
-      { "label": "aft-pi", "overall": 77.2, "safety": 78.4, "errors": 1 },
-      { "label": "hashline-readmap", "overall": 76.5, "safety": 81.8, "errors": 3 },
-      { "label": "pix-edit", "overall": 72.1, "safety": 80.7, "errors": 10 },
-      { "label": "semantic-edit", "overall": 66.9, "safety": 69.3, "errors": 10 },
-      { "label": "built-in edit", "overall": 65.1, "safety": 67.0, "errors": 5 }
-    ]
+  "evidence": {
+    "name": "pi-edit-benchmark",
+    "kicker": "Evidence",
+    "headline": "Everyone claims their tool is better",
+    "problem": "Editing-tool READMEs ship with a demo GIF and a claim, and almost none of them publish the runs where they lose. If the only evidence is a highlight reel, it is not evidence; it is marketing with extra steps.",
+    "answer": "pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness across 34 scenarios. Eight models, eight contenders, 272 runs each. Every verdict links to its trace, including the runs my own tool fails.",
+    "highlights": [
+      "34 scenarios, 8 models, 2,176 runs",
+      "Stale and drift scenarios are scored",
+      "Every verdict links to its trace",
+      "The losses are published too"
+    ],
+    "demo": "trace",
+    "intro": "The figures come from committed run reports in pi-edit-benchmark, and every bar links back to the project that produced it. The trace beside the chart shows one run being scored, including the refusal that became the point.",
+    "benchmark": {
+      "source": "https://github.com/YuGiMob/pi-edit-benchmark",
+      "generatedAt": "2026-09-04T15:00:39.514Z",
+      "models": 8,
+      "scenarios": 34,
+      "contenderCount": 8,
+      "runsPerContender": 272,
+      "contenders": [
+        { "label": "hashline-edit-pro", "overall": 95.2, "safety": 94.3, "errors": 0, "highlight": true },
+        { "label": "hashline-context-edit", "overall": 79.8, "safety": 90.9, "errors": 0 },
+        { "label": "hashline-edit", "overall": 79.0, "safety": 89.8, "errors": 1 },
+        { "label": "aft-pi", "overall": 77.2, "safety": 78.4, "errors": 1 },
+        { "label": "hashline-readmap", "overall": 76.5, "safety": 81.8, "errors": 3 },
+        { "label": "pix-edit", "overall": 72.1, "safety": 80.7, "errors": 10 },
+        { "label": "semantic-edit", "overall": 66.9, "safety": 69.3, "errors": 10 },
+        { "label": "built-in edit", "overall": 65.1, "safety": 67.0, "errors": 5 }
+      ]
+    }
   },
   "principles": [
     "Make the wrong operation impossible, not merely discouraged.",
@@ -115,13 +125,9 @@
     "Measure before claiming, and publish the traces.",
     "Keep the site static; let a scheduled job refresh the numbers."
   ],
-  "about": [
-    "I build extensions for pi, the terminal coding agent, and publish them on npm. The same pattern shows up in most of the work: an agent makes a change that looks right and is subtly wrong, and the fix is to make that failure impossible rather than paper over it.",
-    "pi-hashline-edit-pro is the main one. It replaces line numbers and fuzzy matching with four-letter anchors, refuses stale edits, and can undo byte-for-byte. When I wanted to know whether it was actually better than the alternatives, I wrote pi-edit-benchmark, ran 8 models over 34 scenarios, and published the traces, including the runs it loses.",
-    "The rest is here too: Tor routing, numbered review workflows, a guarded commit flow, and the web tools. The numbers on this page refresh from the GitHub and npm APIs every day through a scheduled workflow."
-  ],
-  "lab": {
-    "title": "Benchmark results",
-    "intro": "The figures come from committed run reports in pi-edit-benchmark, and every verdict links back to a trace. The rest of the numbers on this page refresh daily at 06:00 UTC."
-  }
+  "colophon": [
+    "I started building these because I kept watching agents do plausible-looking damage. Not crashes; worse. A rename that missed one call site, a commit nobody reviewed, a fetch that sent my address to a stranger. Each extension closes one of those holes in a way a prompt cannot.",
+    "The tools are hand-written TypeScript, published on npm under MIT (the web tools are AGPL). The numbers on this page are pulled from the GitHub and npm APIs every day by a scheduled workflow, so the stars and downloads are measured, not maintained.",
+    "No framework, no build step, no runtime dependencies. Plain HTML, CSS, and JavaScript, served straight from GitHub Pages."
+  ]
 }

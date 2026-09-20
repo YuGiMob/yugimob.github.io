@@ -46,6 +46,10 @@ function needBoolean(value, label) {
 function needStringOrNull(value, label) {
   if (value !== null && typeof value !== 'string') fail(`${label} invalid`);
 }
+function needStringArray(value, label) {
+  if (!Array.isArray(value) || value.length === 0) fail(`${label} invalid`);
+  for (const entry of value) needString(entry, `${label} entry`);
+}
 function checkIntegers(obj, keys, prefix) {
   for (const k of keys) needInteger(obj[k], `${prefix}${k}`);
 }
@@ -141,46 +145,45 @@ try {
 } catch (err) {
   fail(`data/showcase.schema.json unparsable: ${err.message}`);
 }
-const showcaseKeys = ['featured', 'projects', 'benchmark', 'principles', 'about', 'lab'];
+const showcaseKeys = ['intro', 'problems', 'evidence', 'principles', 'colophon'];
 hasOnly(showcase, showcaseKeys);
 for (const key of showcaseKeys) if (!(key in showcase)) fail(`showcase missing ${key}`);
-const featured = showcase.featured;
-needObject(featured, 'showcase.featured');
-hasOnly(featured, ['name', 'kicker', 'headline', 'summary', 'points', 'demo']);
-for (const key of ['name', 'kicker', 'headline', 'demo']) needString(featured[key], `showcase.featured.${key}`);
-if (!Array.isArray(featured.summary) || featured.summary.length === 0) fail('showcase.featured.summary invalid');
-for (const paragraph of featured.summary) needString(paragraph, 'showcase featured summary');
-if (!Array.isArray(featured.points) || featured.points.length === 0) fail('showcase.featured.points invalid');
-for (const point of featured.points) {
-  needObject(point, 'showcase point');
-  hasOnly(point, ['title', 'body']);
-  needString(point.title, 'showcase point title');
-  needString(point.body, 'showcase point body');
-}
 const projectNames = new Set(data.projects.map((project) => project.name));
-if (!projectNames.has(featured.name)) fail(`showcase featured project missing from site-data: ${featured.name}`);
-if (!Array.isArray(showcase.projects) || showcase.projects.length === 0) fail('showcase.projects invalid');
-const showcaseNames = new Set();
-for (const item of showcase.projects) {
-  needObject(item, 'showcase project');
-  hasOnly(item, ['name', 'kicker', 'tagline', 'highlights', 'demo', 'size']);
-  for (const key of ['name', 'kicker', 'tagline', 'size']) needString(item[key], `showcase project ${item.name || '?'} ${key}`);
-  if (!projectNames.has(item.name)) fail(`showcase project missing from site-data: ${item.name}`);
-  if (item.name === featured.name) fail(`showcase project duplicates featured: ${item.name}`);
-  if (showcaseNames.has(item.name)) fail(`showcase project duplicated: ${item.name}`);
-  showcaseNames.add(item.name);
-  if (!Array.isArray(item.highlights) || item.highlights.length === 0) fail(`showcase project ${item.name} highlights invalid`);
-  for (const highlight of item.highlights) needString(highlight, `showcase project ${item.name} highlight`);
-  if (item.size !== 'large' && item.size !== 'small') fail(`showcase project ${item.name} size invalid`);
-  if ('demo' in item) needString(item.demo, `showcase project ${item.name} demo`);
+const usedNames = new Set();
+needObject(showcase.intro, 'showcase.intro');
+hasOnly(showcase.intro, ['headline', 'paragraphs']);
+needString(showcase.intro.headline, 'showcase.intro.headline');
+needStringArray(showcase.intro.paragraphs, 'showcase.intro.paragraphs');
+if (!Array.isArray(showcase.problems) || showcase.problems.length === 0) fail('showcase.problems invalid');
+const problemAllowed = ['name', 'kicker', 'headline', 'problem', 'answer', 'highlights', 'demo', 'size'];
+for (const item of showcase.problems) {
+  needObject(item, 'showcase problem');
+  hasOnly(item, problemAllowed);
+  for (const key of ['name', 'kicker', 'headline', 'problem', 'answer']) needString(item[key], `showcase problem ${item.name || '?'} ${key}`);
+  if (!projectNames.has(item.name)) fail(`showcase problem missing from site-data: ${item.name}`);
+  if (usedNames.has(item.name)) fail(`showcase problem duplicated: ${item.name}`);
+  usedNames.add(item.name);
+  needStringArray(item.highlights, `showcase problem ${item.name} highlights`);
+  if (item.size !== 'hero' && item.size !== 'default') fail(`showcase problem ${item.name} size invalid`);
+  if ('demo' in item) needString(item.demo, `showcase problem ${item.name} demo`);
 }
-const bench = showcase.benchmark;
-needObject(bench, 'showcase.benchmark');
+const evidence = showcase.evidence;
+needObject(evidence, 'showcase.evidence');
+hasOnly(evidence, ['name', 'kicker', 'headline', 'problem', 'answer', 'highlights', 'demo', 'intro', 'benchmark']);
+for (const key of ['name', 'kicker', 'headline', 'problem', 'answer']) needString(evidence[key], `showcase.evidence.${key}`);
+if (!projectNames.has(evidence.name)) fail(`showcase evidence missing from site-data: ${evidence.name}`);
+if (usedNames.has(evidence.name)) fail(`showcase evidence duplicated: ${evidence.name}`);
+usedNames.add(evidence.name);
+needStringArray(evidence.highlights, 'showcase.evidence.highlights');
+if ('demo' in evidence) needString(evidence.demo, 'showcase.evidence.demo');
+if ('intro' in evidence) needString(evidence.intro, 'showcase.evidence.intro');
+const bench = evidence.benchmark;
+needObject(bench, 'showcase.evidence.benchmark');
 hasOnly(bench, ['source', 'generatedAt', 'models', 'scenarios', 'contenderCount', 'runsPerContender', 'contenders']);
-needUri(bench.source, 'showcase.benchmark.source');
-needString(bench.generatedAt, 'showcase.benchmark.generatedAt');
-checkIntegers(bench, ['models', 'scenarios', 'contenderCount', 'runsPerContender'], 'showcase.benchmark.');
-if (!Array.isArray(bench.contenders) || bench.contenders.length === 0) fail('showcase.benchmark.contenders invalid');
+needUri(bench.source, 'showcase.evidence.benchmark.source');
+needString(bench.generatedAt, 'showcase.evidence.benchmark.generatedAt');
+checkIntegers(bench, ['models', 'scenarios', 'contenderCount', 'runsPerContender'], 'showcase.evidence.benchmark.');
+if (!Array.isArray(bench.contenders) || bench.contenders.length === 0) fail('showcase.evidence.benchmark.contenders invalid');
 for (const contender of bench.contenders) {
   needObject(contender, 'benchmark contender');
   hasOnly(contender, ['label', 'overall', 'safety', 'errors', 'highlight']);
@@ -190,12 +193,6 @@ for (const contender of bench.contenders) {
   needInteger(contender.errors, `benchmark contender ${contender.label} errors`);
   if ('highlight' in contender) needBoolean(contender.highlight, `benchmark contender ${contender.label} highlight`);
 }
-if (!Array.isArray(showcase.principles) || showcase.principles.length === 0) fail('showcase.principles invalid');
-for (const principle of showcase.principles) needString(principle, 'showcase principle');
-if (!Array.isArray(showcase.about) || showcase.about.length === 0) fail('showcase.about invalid');
-for (const paragraph of showcase.about) needString(paragraph, 'showcase about paragraph');
-needObject(showcase.lab, 'showcase.lab');
-hasOnly(showcase.lab, ['title', 'intro']);
-needString(showcase.lab.title, 'showcase.lab.title');
-needString(showcase.lab.intro, 'showcase.lab.intro');
+needStringArray(showcase.principles, 'showcase.principles');
+needStringArray(showcase.colophon, 'showcase.colophon');
 console.log('validate: ok');
