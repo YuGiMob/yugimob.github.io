@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { problemsHeading } from '../assets/js/view-model.js';
 import { contrastRatio, paletteFrom, rootPaletteSource } from './contrast-lib.mjs';
 import { scriptSrcHash } from './csp-lib.mjs';
+import { SITE_REPOSITORY, SITE_URL } from './llms-lib.mjs';
 
 const ROOT = process.argv[2] ? resolve(process.argv[2]) : join(dirname(fileURLToPath(import.meta.url)), '..');
 const errors = [];
@@ -86,6 +87,7 @@ for (const [page, source] of html) {
   if (!policy) fail(`${page}: missing the Content-Security-Policy meta tag`);
   else if (!policy[1].includes("default-src 'self'")) fail(`${page}: CSP does not default to 'self'`);
   else if (!policy[1].includes("require-trusted-types-for 'script'")) fail(`${page}: CSP does not require Trusted Types for scripts`);
+  else if (!policy[1].includes("trusted-types 'none'")) fail(`${page}: CSP does not forbid Trusted Types policies`);
   if (!/<html[^>]*\slang="[^"]+"/.test(source)) fail(`${page}: <html> is missing a lang attribute`);
   for (const match of source.matchAll(/<img\b[^>]*>/g)) {
     if (!/\salt="[^"]*"/.test(match[0])) fail(`${page}: <img> is missing an alt attribute`);
@@ -267,6 +269,44 @@ const llms = readText('llms.txt');
 if (!/^# \S/.test(llms)) fail('llms.txt: missing an H1 title');
 for (const project of siteData?.projects ?? []) {
   if (!llms.includes(project.name)) fail(`llms.txt: missing project ${project.name}`);
+}
+
+const markdown = readText('index.md');
+if (!/^# \S/.test(markdown)) fail('index.md: missing an H1 title');
+for (const project of siteData?.projects ?? []) {
+  if (!markdown.includes(project.name)) fail(`index.md: missing project ${project.name}`);
+}
+
+for (const [rel, target] of [['describedby', 'llms.txt'], ['describedby', 'agent-readability.json'], ['alternate', 'index.md']]) {
+  const pattern = new RegExp(`<link[^>]*rel="${rel}"[^>]*href="${target.replace('.', '\\.')}"`);
+  if (!pattern.test(indexSource)) fail(`index.html: missing the rel=${rel} link to ${target}`);
+}
+
+const readabilityText = readText('agent-readability.json');
+let readability = null;
+try {
+  readability = JSON.parse(readabilityText);
+} catch (err) {
+  fail(`agent-readability.json unusable: ${err.message}`);
+}
+if (readability) {
+  if (readability.site !== SITE_URL) fail('agent-readability.json: site is not the canonical URL');
+  if (readability.repository !== SITE_REPOSITORY) fail('agent-readability.json: repository is not the site repository');
+  if (readability.name !== siteData?.identity?.displayName) fail('agent-readability.json: name does not match the display name');
+  if (readability.description !== siteData?.identity?.tagline) fail('agent-readability.json: description does not match the tagline');
+  const artifacts = readability.artifacts && typeof readability.artifacts === 'object' ? Object.values(readability.artifacts) : [];
+  for (const file of ['llms.txt', 'index.md', 'data/site-data.json', 'data/showcase.json', 'data/benchmark-matrix.json', 'sitemap.xml']) {
+    if (!artifacts.some((url) => typeof url === 'string' && url.endsWith(`/${file}`))) {
+      fail(`agent-readability.json: does not list ${file}`);
+    }
+  }
+  for (const url of artifacts) {
+    if (typeof url !== 'string' || !url.startsWith(`${SITE_URL}/`)) {
+      fail(`agent-readability.json: ${url} is not on the canonical site`);
+      continue;
+    }
+    if (!existsSync(join(ROOT, url.slice(SITE_URL.length + 1)))) fail(`agent-readability.json: ${url} does not exist`);
+  }
 }
 
 const showcasePath = join(ROOT, 'data', 'showcase.json');

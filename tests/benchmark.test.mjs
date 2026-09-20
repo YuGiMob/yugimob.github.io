@@ -3,10 +3,14 @@ import assert from 'node:assert/strict';
 import {
   benchmarkCoversFullMatrix,
   benchmarkTraceUrl,
+  buildScenarioMatrix,
   contenderLabel,
+  holmAdjust,
   isTimestamp,
+  mcnemarExact,
   parseScenarioFocus,
   retryDelayMs,
+  scenarioMatrixMatchesBenchmark,
   sleep,
   summarizeBenchmark,
   wilsonInterval,
@@ -206,4 +210,177 @@ test('benchmarkCoversFullMatrix accepts a complete report and rejects partial on
   assert.equal(benchmarkCoversFullMatrix({ ...complete, contenders: [{ runs: 5 }, { runs: 6 }] }), false);
   assert.equal(benchmarkCoversFullMatrix({ ...complete, totalRuns: 11 }), false);
   assert.equal(benchmarkCoversFullMatrix({ ...complete, models: 1 }), false);
+});
+
+test('mcnemarExact matches the exact two-sided binomial tail', () => {
+  assert.equal(mcnemarExact(10, 0), 0.001953);
+  assert.equal(mcnemarExact(0, 10), 0.001953);
+  assert.equal(mcnemarExact(14, 8), 0.286279);
+  assert.equal(mcnemarExact(8, 14), 0.286279);
+  assert.equal(mcnemarExact(0, 0), 1);
+  assert.equal(mcnemarExact(-1, 4), 1);
+  assert.equal(mcnemarExact(2.5, 4), 1);
+});
+
+test('holmAdjust applies the Holm step-down and caps at one', () => {
+  assert.deepEqual(holmAdjust([0.043285, 0.002599, 1, 0.000116]), [0.08657, 0.007797, 1, 0.000464]);
+  assert.deepEqual(holmAdjust([0.5]), [0.5]);
+  assert.deepEqual(holmAdjust([]), []);
+  assert.deepEqual(holmAdjust([0, 0, 0]), [0, 0, 0]);
+  assert.deepEqual(holmAdjust([2, -1, Number.NaN]), [1, 0, 1]);
+});
+
+test('summarizeBenchmark pairs every contender against the highlighted one', () => {
+  const focus = parseScenarioFocus(SCENARIO_SOURCE);
+  const report = {
+    generatedAt: '2026-09-20T12:03:04.357Z',
+    models: [{ id: 'm' }],
+    runs: [
+      run('alpha', 'single-line', { modelId: 'm' }),
+      run('alpha', 'stale-line', { modelId: 'm' }),
+      run('beta', 'single-line', { modelId: 'm', pass: false, outcome: 'rejected' }),
+      run('beta', 'stale-line', { modelId: 'm' }),
+    ],
+  };
+  const summary = summarizeBenchmark(report, focus, (id) => id === 'alpha');
+  const alpha = summary.contenders.find((entry) => entry.id === 'alpha');
+  const beta = summary.contenders.find((entry) => entry.id === 'beta');
+  assert.equal(alpha.vsHighlight, null);
+  assert.deepEqual(beta.vsHighlight, { b: 1, c: 0, p: 1, pAdjusted: 1 });
+});
+
+test('buildScenarioMatrix counts passes per scenario and contender in focus order', () => {
+  const focus = parseScenarioFocus(SCENARIO_SOURCE);
+  const report = {
+    generatedAt: '2026-09-20T12:03:04.357Z',
+    models: [{ id: 'm' }],
+    runs: [
+      run('alpha', 'single-line', { modelId: 'm' }),
+      run('alpha', 'stale-line', { modelId: 'm' }),
+      run('alpha', 'undo-restore', { modelId: 'm', pass: false, outcome: 'error' }),
+      run('beta', 'single-line', { modelId: 'm' }),
+      run('beta', 'stale-line', { modelId: 'm', pass: false, outcome: 'rejected' }),
+      run('beta', 'undo-restore', { modelId: 'm' }),
+    ],
+  };
+  const matrix = buildScenarioMatrix(report, focus, ['alpha', 'beta']);
+  assert.equal(matrix.generatedAt, report.generatedAt);
+  assert.deepEqual(matrix.models, ['m']);
+  assert.deepEqual(matrix.scenarios, [
+    { id: 'single-line', focus: 'core' },
+    { id: 'stale-line', focus: 'staleness' },
+    { id: 'undo-restore', focus: 'served-state' },
+  ]);
+  assert.deepEqual(matrix.contenders, ['alpha', 'beta']);
+  assert.deepEqual(matrix.cells, [
+    [[[0], 1], [[0], 1]],
+    [[[0], 1], [[], 1]],
+    [[[], 1], [[0], 1]],
+  ]);
+});
+
+test('buildScenarioMatrix keys missing model ids and records unknown ones', () => {
+  const single = buildScenarioMatrix({
+    generatedAt: '2026-09-20T12:03:04.357Z',
+    models: [{ id: 'only' }],
+    runs: [
+      run('alpha', 'single-line', { modelId: undefined }),
+      run('beta', 'single-line', { modelId: 'extra' }),
+    ],
+  }, new Map(), ['alpha', 'beta']);
+  assert.deepEqual(single.models, ['only', 'extra']);
+  assert.deepEqual(single.cells, [[[[0], 1], [[1], 1]]]);
+
+  const multiple = buildScenarioMatrix({
+    generatedAt: '2026-09-20T12:03:04.357Z',
+    models: [{ id: 'a' }, { id: 'b' }],
+    runs: [run('alpha', 'single-line', { modelId: undefined })],
+  }, new Map(), ['alpha']);
+  assert.deepEqual(multiple.models, ['a', 'b', '']);
+  assert.deepEqual(multiple.cells, [[[[2], 1]]]);
+
+  const unordered = buildScenarioMatrix({
+    generatedAt: '2026-09-20T12:03:04.357Z',
+    models: [{ id: 'a' }, { id: 'b' }],
+    runs: [
+      run('alpha', 'single-line', { modelId: 'b' }),
+      run('alpha', 'single-line', { modelId: 'a', pass: false }),
+      run('alpha', 'single-line', { modelId: 'a' }),
+    ],
+  }, new Map(), ['alpha']);
+  assert.deepEqual(unordered.cells, [[[[0, 1], 3]]]);
+});
+
+test('buildScenarioMatrix tolerates an empty or malformed report', () => {
+  const matrix = buildScenarioMatrix(null, new Map(), ['alpha']);
+  assert.deepEqual(matrix, { generatedAt: null, models: [], scenarios: [], contenders: ['alpha'], cells: [] });
+});
+
+test('scenarioMatrixMatchesBenchmark accepts a consistent matrix and rejects drift', () => {
+  const benchmark = {
+    generatedAt: '2026-09-20T12:03:04.357Z',
+    scenarios: 2,
+    focusCounts: { core: 1, staleness: 1, 'served-state': 0 },
+    contenderCount: 2,
+    contenders: [
+      { id: 'alpha', runs: 4, passed: 3, highlight: true, vsHighlight: null },
+      { id: 'beta', runs: 4, passed: 2, highlight: false, vsHighlight: { b: 2, c: 1, p: 1, pAdjusted: 1 } },
+    ],
+  };
+  const matrix = {
+    generatedAt: '2026-09-20T12:03:04.357Z',
+    models: ['m1', 'm2'],
+    scenarios: [{ id: 'single-line', focus: 'core' }, { id: 'stale-line', focus: 'staleness' }],
+    contenders: ['alpha', 'beta'],
+    cells: [
+      [[[0], 2], [[0, 1], 2]],
+      [[[0, 1], 2], [[], 2]],
+    ],
+  };
+  assert.equal(scenarioMatrixMatchesBenchmark(matrix, benchmark), true);
+  assert.equal(scenarioMatrixMatchesBenchmark(null, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark(matrix, null), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, models: [] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, scenarios: null }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark(matrix, { ...benchmark, contenders: [] }), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, generatedAt: '2026-01-01T00:00:00Z' }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark(matrix, { ...benchmark, contenderCount: 3 }), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, scenarios: [{ id: 'x', focus: 'core' }] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[[[0], 2], [[0, 1], 2]]] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, contenders: ['alpha'] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, scenarios: [{ id: 'x', focus: 'speed' }, { id: 'stale-line', focus: 'staleness' }] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, scenarios: [{ id: 'x', focus: 'served-state' }, { id: 'stale-line', focus: 'staleness' }] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [null, matrix.cells[1]] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[[[0], 2]], matrix.cells[1]] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[null, [[0, 1], 2]], matrix.cells[1]] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[[[0]], [[0, 1], 2]], matrix.cells[1]] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[[[0], 2], [0, 2]], matrix.cells[1]] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[[[0], 2], [[0, 1], 2]], [[[0, 1], 1], [[], 2]]] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[[[0], 2], [[0, 1], 2]], [[[0, 1], '2'], [[], 2]]] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[[[0], 2], [[0, 1], 2]], [[[0, 1], 2], [[2], 2]]] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[[[0], 2], [[0, 1], 2]], [[[0, 1], 2], [[-1], 2]]] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[[[0], 2], [[0, 1], 2]], [[[0, 1], 2], [[0, 0, 1], 2]]] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[[[0], 2], [[0, 1], 2]], [[[0, 1], 2], [[0], 1]]] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, contenders: ['alpha', 'ghost'] }, benchmark), false);
+  const noHighlight = structuredClone(benchmark);
+  for (const contender of noHighlight.contenders) contender.highlight = false;
+  assert.equal(scenarioMatrixMatchesBenchmark(matrix, noHighlight), false);
+  const selfCompared = structuredClone(benchmark);
+  selfCompared.contenders[0].vsHighlight = { b: 1, c: 1, p: 1 };
+  assert.equal(scenarioMatrixMatchesBenchmark(matrix, selfCompared), false);
+  const missing = structuredClone(benchmark);
+  delete missing.contenders[1].vsHighlight;
+  assert.equal(scenarioMatrixMatchesBenchmark(matrix, missing), false);
+  const pairingDrift = structuredClone(benchmark);
+  pairingDrift.contenders[1].vsHighlight = { b: 1, c: 0, p: 1 };
+  assert.equal(scenarioMatrixMatchesBenchmark(matrix, pairingDrift), false);
+  const pDrift = structuredClone(benchmark);
+  pDrift.contenders[1].vsHighlight.p = 0.5;
+  assert.equal(scenarioMatrixMatchesBenchmark(matrix, pDrift), false);
+  const adjustedDrift = structuredClone(benchmark);
+  adjustedDrift.contenders[1].vsHighlight.pAdjusted = 0.5;
+  assert.equal(scenarioMatrixMatchesBenchmark(matrix, adjustedDrift), false);
+  const washed = structuredClone(benchmark);
+  washed.contenders[1].vsHighlight = { b: 2, c: 1, p: 1 };
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[[[0], 2], [[0], 2]], [[[0, 1], 2], [[0], 2]]] }, washed), false);
 });

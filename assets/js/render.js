@@ -2,7 +2,8 @@ import { hydrateAvatar } from './avatar.js';
 import { el, append, link, copyButton, formatNumber, extent, animateValue, svg, setText, setMeta, observeVisibility } from './ui.js';
 import { buildDemo } from './demos.js';
 import { buildPlayground, PLAYGROUND_ID } from './playground.js';
-import { benchmarkChart, historyPanel } from './charts.js';
+import { benchmarkChart, benchmarkMatrix, historyPanel } from './charts.js';
+import { fetchJson } from './fetch-json.js';
 import {
   activityLine,
   heroStatRows,
@@ -110,10 +111,12 @@ function problemHead(number, entry) {
 function lazyMount(container, build) {
   let mounted = null;
   let settled = false;
+  let observer = null;
   const mount = () => {
     if (settled) return mounted;
     settled = true;
     window.removeEventListener('beforeprint', mount);
+    if (observer) observer.disconnect();
     container.classList.remove('is-loading');
     try {
       mounted = build();
@@ -135,7 +138,56 @@ function lazyMount(container, build) {
     return;
   }
   window.addEventListener('beforeprint', mount);
-  const observer = new IntersectionObserver((entries, self) => {
+  observer = new IntersectionObserver((entries, self) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    self.disconnect();
+    mount();
+  }, { rootMargin: '200px 0px' });
+  observer.observe(container);
+}
+
+function lazyFetchMount(container, url, build) {
+  let mounted = null;
+  let settled = false;
+  let observer = null;
+  const showFailure = () => {
+    container.classList.remove('is-loading');
+    if (!container.querySelector('.chart-note')) {
+      container.appendChild(el('p', 'chart-note', 'This panel could not be loaded from the data.'));
+    }
+  };
+  const useData = (data) => {
+    container.classList.remove('is-loading');
+    try {
+      mounted = build(data);
+    } catch (error) {
+      console.warn('YuGiMob:', error);
+      mounted = null;
+    }
+    if (!mounted) {
+      showFailure();
+      return;
+    }
+    append(container, mounted.node, mounted.caption);
+    observeVisibility(mounted.node, () => mounted.start(), () => mounted.stop());
+  };
+  const mount = () => {
+    if (settled) return;
+    settled = true;
+    window.removeEventListener('beforeprint', mount);
+    if (observer) observer.disconnect();
+    fetchJson(url, 1).then(useData).catch((error) => {
+      console.warn('YuGiMob:', error);
+      showFailure();
+    });
+  };
+  container.classList.add('is-loading');
+  if (typeof IntersectionObserver !== 'function') {
+    mount();
+    return;
+  }
+  window.addEventListener('beforeprint', mount);
+  observer = new IntersectionObserver((entries, self) => {
     if (!entries.some((entry) => entry.isIntersecting)) return;
     self.disconnect();
     mount();
@@ -222,6 +274,11 @@ export function renderEvidence(showcase, projects, benchmark, benchmarkHistory) 
   }
   append(grid, copy, demoBox);
   article.appendChild(grid);
+  if (benchmark) {
+    const matrixBox = el('div', 'evidence-matrix');
+    lazyFetchMount(matrixBox, 'data/benchmark-matrix.json', (data) => benchmarkMatrix(benchmark, data));
+    article.appendChild(matrixBox);
+  }
   if (evidence.demo) {
     const box = el('div', 'evidence-trace');
     lazyMount(box, () => buildDemo(evidence.demo));

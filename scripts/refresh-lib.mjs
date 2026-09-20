@@ -120,6 +120,59 @@ export function wilsonInterval(passed, total, z = 1.96) {
   return { low: Math.round(Math.max(0, centre - margin) * 1000) / 10, high: Math.round(Math.min(1, centre + margin) * 1000) / 10 };
 }
 
+const LOG_GAMMA_COEFFICIENTS = [
+  676.5203681218851,
+  -1259.1392167224028,
+  771.32342877765313,
+  -176.61502916214059,
+  12.507343278686905,
+  -0.13857109526572012,
+  9.9843695780195716e-6,
+  1.5056327351493116e-7,
+];
+
+function logGamma(value) {
+  const x = value - 1;
+  let sum = 0.99999999999980993;
+  for (let index = 0; index < LOG_GAMMA_COEFFICIENTS.length; index += 1) {
+    sum += LOG_GAMMA_COEFFICIENTS[index] / (x + index + 1);
+  }
+  const t = x + LOG_GAMMA_COEFFICIENTS.length - 0.5;
+  return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(sum);
+}
+
+function logCombination(n, k) {
+  if (k < 0 || k > n) return Number.NEGATIVE_INFINITY;
+  return logGamma(n + 1) - logGamma(k + 1) - logGamma(n - k + 1);
+}
+
+export function mcnemarExact(b, c) {
+  if (!Number.isInteger(b) || !Number.isInteger(c) || b < 0 || c < 0) return 1;
+  const n = b + c;
+  if (n === 0) return 1;
+  let tail = 0;
+  for (let index = 0; index <= Math.min(b, c); index += 1) {
+    tail += Math.exp(logCombination(n, index) - n * Math.LN2);
+  }
+  return Math.round(Math.min(1, 2 * tail) * 1000000) / 1000000;
+}
+
+export function holmAdjust(values) {
+  const entries = values.map((value, index) => ({
+    value: Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1,
+    index,
+  }));
+  entries.sort((a, b) => a.value - b.value || a.index - b.index);
+  const adjusted = new Array(entries.length);
+  let running = 0;
+  const total = entries.length;
+  for (let rank = 0; rank < total; rank += 1) {
+    running = Math.max(running, Math.min(1, entries[rank].value * (total - rank)));
+    adjusted[entries[rank].index] = Math.round(running * 1000000) / 1000000;
+  }
+  return adjusted;
+}
+
 export function benchmarkTraceUrl(tracePath) {
   const segments = String(tracePath ?? '').split('/').filter(Boolean);
   if (segments.length < 2) return BENCHMARK_TRACES_URL;
@@ -156,6 +209,7 @@ export function summarizeBenchmark(report, focusById = new Map(), highlighted = 
       errors: 0,
       tracePath: null,
       traceRank: -1,
+      items: new Map(),
     };
     const focus = focusById.get(run.scenarioId) ?? null;
     const passed = run.pass === true;
@@ -169,6 +223,7 @@ export function summarizeBenchmark(report, focusById = new Map(), highlighted = 
     const outcome = OUTCOME_KINDS.includes(run.outcome) ? run.outcome : 'error';
     entry.outcomes.set(outcome, (entry.outcomes.get(outcome) ?? 0) + 1);
     if (outcome === 'error') entry.errors += 1;
+    entry.items.set(`${run.modelId ?? ''}|${run.scenarioId ?? ''}`, passed);
     const rank = passed && outcome === 'recovered' ? 2 : passed ? 1 : 0;
     if (run.tracePath && rank > entry.traceRank) {
       entry.traceRank = rank;
@@ -204,6 +259,28 @@ export function summarizeBenchmark(report, focusById = new Map(), highlighted = 
   });
 
   rows.sort((a, b) => b.overall - a.overall || (b.safety ?? 0) - (a.safety ?? 0) || a.id.localeCompare(b.id));
+
+  const highlightedRow = rows.find((row) => row.highlight) ?? null;
+  if (highlightedRow) {
+    const reference = contenders.get(highlightedRow.id);
+    for (const row of rows) {
+      const entry = contenders.get(row.id);
+      let b = 0;
+      let c = 0;
+      for (const [key, pass] of entry.items) {
+        if (!reference.items.has(key)) continue;
+        const referencePass = reference.items.get(key);
+        if (referencePass && !pass) b += 1;
+        else if (!referencePass && pass) c += 1;
+      }
+      row.vsHighlight = row === highlightedRow ? null : { b, c, p: mcnemarExact(b, c) };
+    }
+    const rivals = rows.filter((row) => row.vsHighlight != null);
+    const adjusted = holmAdjust(rivals.map((row) => row.vsHighlight.p));
+    rivals.forEach((row, index) => {
+      row.vsHighlight.pAdjusted = adjusted[index];
+    });
+  }
 
   const runsPerContender = rows.length > 0 ? Math.round(runs.length / rows.length) : 0;
   const models = Array.isArray(report?.models) ? report.models.length : 0;
@@ -242,6 +319,136 @@ export function benchmarkCoversFullMatrix(benchmark) {
   if (benchmark.contenders.some((entry) => entry.runs !== benchmark.runsPerContender)) return false;
   if (benchmark.totalRuns !== benchmark.contenderCount * benchmark.runsPerContender) return false;
   return benchmark.models * benchmark.scenarios === benchmark.runsPerContender;
+}
+
+export function buildScenarioMatrix(report, focusById = new Map(), contenderOrder = []) {
+  const runs = Array.isArray(report?.runs) ? report.runs : [];
+  const order = Array.isArray(contenderOrder) ? contenderOrder : [];
+  const declared = (Array.isArray(report?.models) ? report.models : [])
+    .map((model) => model?.id)
+    .filter((id) => typeof id === 'string' && id.length > 0);
+  const modelKey = (run) => {
+    if (typeof run.modelId === 'string' && run.modelId.length > 0) return run.modelId;
+    return declared.length === 1 ? declared[0] : '';
+  };
+  const models = [...declared];
+  for (const run of runs) {
+    const key = modelKey(run);
+    if (!models.includes(key)) models.push(key);
+  }
+  const columnByContender = new Map(order.map((id, index) => [id, index]));
+  const scenarios = new Map();
+  for (const run of runs) {
+    if (typeof run.scenarioId !== 'string' || run.scenarioId.length === 0) continue;
+    if (!scenarios.has(run.scenarioId)) scenarios.set(run.scenarioId, focusById.get(run.scenarioId) ?? 'core');
+  }
+  const rank = (focus) => {
+    const index = BENCHMARK_FOCI.indexOf(focus);
+    return index === -1 ? BENCHMARK_FOCI.length : index;
+  };
+  const scenarioIds = [...scenarios.keys()].sort((a, b) => rank(scenarios.get(a)) - rank(scenarios.get(b)) || a.localeCompare(b));
+  const rowByScenario = new Map(scenarioIds.map((id, index) => [id, index]));
+  const cells = scenarioIds.map(() => order.map(() => ({ passes: new Map(), runs: 0 })));
+  for (const run of runs) {
+    const row = rowByScenario.get(run.scenarioId);
+    const column = columnByContender.get(run.contenderId);
+    if (row === undefined || column === undefined) continue;
+    const cell = cells[row][column];
+    cell.passes.set(models.indexOf(modelKey(run)), run.pass === true);
+    cell.runs += 1;
+  }
+  return {
+    generatedAt: typeof report?.generatedAt === 'string' ? report.generatedAt : null,
+    models,
+    scenarios: scenarioIds.map((id) => ({ id, focus: scenarios.get(id) })),
+    contenders: order,
+    cells: cells.map((row) => row.map((cell) => [
+      [...cell.passes.entries()].filter(([, pass]) => pass).map(([index]) => index).sort((a, b) => a - b),
+      cell.runs,
+    ])),
+  };
+}
+
+export function scenarioMatrixMatchesBenchmark(matrix, benchmark) {
+  if (!matrix || !benchmark) return false;
+  if (!Array.isArray(matrix.models) || matrix.models.length === 0) return false;
+  if (!Array.isArray(matrix.scenarios) || !Array.isArray(matrix.contenders) || !Array.isArray(matrix.cells)) return false;
+  if (!Array.isArray(benchmark.contenders) || benchmark.contenders.length === 0) return false;
+  if (matrix.generatedAt !== benchmark.generatedAt) return false;
+  if (matrix.contenders.length !== benchmark.contenderCount) return false;
+  if (matrix.scenarios.length !== benchmark.scenarios) return false;
+  if (matrix.cells.length !== matrix.scenarios.length) return false;
+  const focusCounts = Object.fromEntries(BENCHMARK_FOCI.map((focus) => [focus, 0]));
+  for (const scenario of matrix.scenarios) {
+    if (!scenario || !BENCHMARK_FOCI.includes(scenario.focus)) return false;
+    focusCounts[scenario.focus] += 1;
+  }
+  for (const focus of BENCHMARK_FOCI) {
+    if ((benchmark.focusCounts?.[focus] ?? 0) !== focusCounts[focus]) return false;
+  }
+  const passedByContender = matrix.contenders.map(() => 0);
+  const runsByContender = matrix.contenders.map(() => 0);
+  const passSets = matrix.contenders.map(() => []);
+  for (const row of matrix.cells) {
+    if (!Array.isArray(row) || row.length !== matrix.contenders.length) return false;
+    for (let column = 0; column < row.length; column += 1) {
+      const cell = row[column];
+      if (!Array.isArray(cell) || cell.length !== 2) return false;
+      const indices = cell[0];
+      const cellRuns = cell[1];
+      if (!Array.isArray(indices) || !Number.isInteger(cellRuns) || cellRuns < 0) return false;
+      const unique = new Set();
+      for (const index of indices) {
+        if (!Number.isInteger(index) || index < 0 || index >= matrix.models.length) return false;
+        if (unique.has(index)) return false;
+        unique.add(index);
+      }
+      if (indices.length > cellRuns) return false;
+      passedByContender[column] += indices.length;
+      runsByContender[column] += cellRuns;
+      passSets[column].push(unique);
+    }
+  }
+  const byId = new Map(benchmark.contenders.map((entry) => [entry?.id, entry]));
+  for (let column = 0; column < matrix.contenders.length; column += 1) {
+    const contender = byId.get(matrix.contenders[column]);
+    if (!contender) return false;
+    if (runsByContender[column] !== contender.runs) return false;
+    if (passedByContender[column] !== contender.passed) return false;
+  }
+  const referenceColumn = matrix.contenders.findIndex((id) => byId.get(id)?.highlight === true);
+  if (referenceColumn === -1) return false;
+  const rivals = [];
+  for (let column = 0; column < matrix.contenders.length; column += 1) {
+    const contender = byId.get(matrix.contenders[column]);
+    if (column === referenceColumn) {
+      if (contender.vsHighlight != null) return false;
+      continue;
+    }
+    let b = 0;
+    let c = 0;
+    for (let rowIndex = 0; rowIndex < passSets[column].length; rowIndex += 1) {
+      const rival = passSets[column][rowIndex];
+      const reference = passSets[referenceColumn][rowIndex];
+      for (const index of reference) {
+        if (!rival.has(index)) b += 1;
+      }
+      for (const index of rival) {
+        if (!reference.has(index)) c += 1;
+      }
+    }
+    const comparison = contender.vsHighlight;
+    if (!comparison) return false;
+    if (comparison.b !== b || comparison.c !== c) return false;
+    if (typeof comparison.p !== 'number' || comparison.p !== mcnemarExact(b, c)) return false;
+    rivals.push(comparison);
+  }
+  const adjusted = holmAdjust(rivals.map((comparison) => comparison.p));
+  for (let index = 0; index < rivals.length; index += 1) {
+    const stored = rivals[index].pAdjusted;
+    if (!Number.isFinite(stored) || Math.abs(stored - adjusted[index]) > 0.000001) return false;
+  }
+  return true;
 }
 
 export function sleep(ms) {

@@ -10,14 +10,20 @@ import { isValidSiteData } from '../assets/js/site-data.js';
 const DATA = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.json'), 'utf8'));
 const SHOWCASE = JSON.parse(readFileSync(join(ROOT, 'data', 'showcase.json'), 'utf8'));
 
-function runValidator(data, showcase) {
+function runValidator(data, showcase, matrix = null) {
   const dir = mkdtempSync(join(tmpdir(), 'yugimob-validate-'));
   try {
     const dataPath = join(dir, 'site-data.json');
     const showcasePath = join(dir, 'showcase.json');
     writeFileSync(dataPath, JSON.stringify(data, null, 2));
     writeFileSync(showcasePath, JSON.stringify(showcase, null, 2));
-    return spawnSync(process.execPath, [join(ROOT, 'scripts', 'validate-data.mjs'), dataPath, showcasePath], { encoding: 'utf8' });
+    const args = [join(ROOT, 'scripts', 'validate-data.mjs'), dataPath, showcasePath];
+    if (matrix) {
+      const matrixPath = join(dir, 'benchmark-matrix.json');
+      writeFileSync(matrixPath, JSON.stringify(matrix, null, 2));
+      args.push(matrixPath);
+    }
+    return spawnSync(process.execPath, args, { encoding: 'utf8' });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -369,6 +375,13 @@ test('the site validator refuses a CSP without Trusted Types and a DOM sink', ()
   assert.equal(noTrustedTypes.status, 1);
   assert.match(noTrustedTypes.stderr, /CSP does not require Trusted Types/);
 
+  const noPolicyBan = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace("; trusted-types 'none'", ''));
+  });
+  assert.equal(noPolicyBan.status, 1);
+  assert.match(noPolicyBan.stderr, /CSP does not forbid Trusted Types policies/);
+
   const sink = runSiteValidator((dir) => {
     const path = join(dir, 'assets', 'js', 'ui.js');
     writeFileSync(path, `${readFileSync(path, 'utf8')}\ndocument.body.innerHTML = 'x';\n`);
@@ -587,4 +600,143 @@ test('the runtime guard rejects a document missing any schema-required key', () 
     delete broken[key];
     assert.equal(isValidSiteData(broken), false, `the guard accepted a document without ${key}`);
   }
+});
+
+const MATRIX = JSON.parse(readFileSync(join(ROOT, 'data', 'benchmark-matrix.json'), 'utf8'));
+
+test('the data validator re-derives the paired McNemar p-value', () => {
+  const drifted = structuredClone(DATA);
+  const compared = drifted.benchmark.contenders.find((entry) => entry.vsHighlight != null);
+  compared.vsHighlight.p = 0.5;
+  const result = runValidator(drifted, SHOWCASE, MATRIX);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /vsHighlight p does not match the exact McNemar test/);
+});
+
+test('the data validator re-derives the Holm adjustment across the rivals', () => {
+  const drifted = structuredClone(DATA);
+  const compared = drifted.benchmark.contenders.find((entry) => entry.vsHighlight != null);
+  compared.vsHighlight.pAdjusted = 0.5;
+  const result = runValidator(drifted, SHOWCASE, MATRIX);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /vsHighlight pAdjusted does not match the Holm adjustment/);
+});
+
+test('the data validator refuses a pair that contradicts the highlight and the run count', () => {
+  const highlighted = structuredClone(DATA);
+  highlighted.benchmark.contenders.find((entry) => entry.highlight).vsHighlight = { b: 1, c: 1, p: 1 };
+  const highlightResult = runValidator(highlighted, SHOWCASE, MATRIX);
+  assert.equal(highlightResult.status, 1);
+  assert.match(highlightResult.stderr, /is highlighted and cannot compare itself to the highlight/);
+
+  const oversized = structuredClone(DATA);
+  const compared = oversized.benchmark.contenders.find((entry) => entry.vsHighlight != null);
+  compared.vsHighlight = { b: compared.runs, c: compared.runs, p: 1 };
+  const oversizedResult = runValidator(oversized, SHOWCASE, MATRIX);
+  assert.equal(oversizedResult.status, 1);
+  assert.match(oversizedResult.stderr, /vsHighlight exceeds runs/);
+
+  const malformed = structuredClone(DATA);
+  malformed.benchmark.contenders.find((entry) => entry.vsHighlight != null).vsHighlight = { b: 'one', c: 0, p: 1 };
+  const malformedResult = runValidator(malformed, SHOWCASE, MATRIX);
+  assert.equal(malformedResult.status, 1);
+  assert.match(malformedResult.stderr, /vsHighlight invalid/);
+});
+
+test('the data validator refuses a scenario matrix that drifted from the benchmark block', () => {
+  const cellDrift = structuredClone(MATRIX);
+  cellDrift.cells[0][0][1] += 1;
+  const cellResult = runValidator(DATA, SHOWCASE, cellDrift);
+  assert.equal(cellResult.status, 1);
+  assert.match(cellResult.stderr, /benchmark-matrix does not match the benchmark block/);
+
+  const shortScenarios = structuredClone(MATRIX);
+  shortScenarios.scenarios = shortScenarios.scenarios.slice(1);
+  shortScenarios.cells = shortScenarios.cells.slice(1);
+  const shortResult = runValidator(DATA, SHOWCASE, shortScenarios);
+  assert.equal(shortResult.status, 1);
+  assert.match(shortResult.stderr, /benchmark-matrix does not match the benchmark block/);
+});
+
+test('the matrix schema refuses an unknown focus and a malformed cell', () => {
+  const badFocus = structuredClone(MATRIX);
+  badFocus.scenarios[0].focus = 'speed';
+  const focusResult = runValidator(DATA, SHOWCASE, badFocus);
+  assert.equal(focusResult.status, 1);
+  assert.match(focusResult.stderr, /scenarios\.0\.focus invalid/);
+
+  const badCell = structuredClone(MATRIX);
+  badCell.cells[0][0] = [1];
+  const cellResult = runValidator(DATA, SHOWCASE, badCell);
+  assert.equal(cellResult.status, 1);
+  assert.match(cellResult.stderr, /cells\.0\.0 invalid/);
+
+  const badIndex = structuredClone(MATRIX);
+  badIndex.cells[0][0] = [['x'], 9];
+  const indexResult = runValidator(DATA, SHOWCASE, badIndex);
+  assert.equal(indexResult.status, 1);
+  assert.match(indexResult.stderr, /cells\.0\.0\.0\.0 invalid/);
+
+  const noModels = structuredClone(MATRIX);
+  delete noModels.models;
+  const modelsResult = runValidator(DATA, SHOWCASE, noModels);
+  assert.equal(modelsResult.status, 1);
+  assert.match(modelsResult.stderr, /missing models/);
+});
+
+test('the data validator accepts a manifest without a benchmark block', () => {
+  const data = structuredClone(DATA);
+  delete data.benchmark;
+  delete data.benchmarkHistory;
+  const result = runValidator(data, SHOWCASE);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('the site validator refuses a missing markdown link and a drifted agent manifest', () => {
+  const noAlternate = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('  <link rel="alternate" type="text/markdown" href="index.md">\n', ''));
+  });
+  assert.equal(noAlternate.status, 1);
+  assert.match(noAlternate.stderr, /missing the rel=alternate link to index\.md/);
+
+  const noIndex = runSiteValidator((dir) => {
+    rmSync(join(dir, 'index.md'));
+  });
+  assert.equal(noIndex.status, 1);
+  assert.match(noIndex.stderr, /index\.md unreadable/);
+
+  const strayArtifact = runSiteValidator((dir) => {
+    const path = join(dir, 'agent-readability.json');
+    const manifest = JSON.parse(readFileSync(path, 'utf8'));
+    manifest.artifacts.markdown = 'https://yugimob.github.io/ghost.md';
+    writeFileSync(path, JSON.stringify(manifest, null, 2));
+  });
+  assert.equal(strayArtifact.status, 1);
+  assert.match(strayArtifact.stderr, /agent-readability\.json: .*ghost\.md does not exist/);
+
+  const missingArtifact = runSiteValidator((dir) => {
+    const path = join(dir, 'agent-readability.json');
+    const manifest = JSON.parse(readFileSync(path, 'utf8'));
+    delete manifest.artifacts.sitemap;
+    writeFileSync(path, JSON.stringify(manifest, null, 2));
+  });
+  assert.equal(missingArtifact.status, 1);
+  assert.match(missingArtifact.stderr, /agent-readability\.json: does not list sitemap\.xml/);
+
+  const noReadabilityLink = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('  <link rel="describedby" href="agent-readability.json" type="application/json">\n', ''));
+  });
+  assert.equal(noReadabilityLink.status, 1);
+  assert.match(noReadabilityLink.stderr, /missing the rel=describedby link to agent-readability\.json/);
+
+  const manifestDrift = runSiteValidator((dir) => {
+    const path = join(dir, 'agent-readability.json');
+    const manifest = JSON.parse(readFileSync(path, 'utf8'));
+    manifest.repository = 'https://github.com/attacker/evil';
+    writeFileSync(path, JSON.stringify(manifest, null, 2));
+  });
+  assert.equal(manifestDrift.status, 1);
+  assert.match(manifestDrift.stderr, /repository is not the site repository/);
 });

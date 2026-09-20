@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { anchorGrep, createSession, insert, readRows, replace, undo, externalEdit } from '../assets/js/hashline.js';
+import { anchorGrep, createSession, insert, isStale, readRows, replace, undo, externalEdit } from '../assets/js/hashline.js';
 import { seededRandom } from './helpers.mjs';
 
 const SOURCE = ['alpha', 'beta', 'gamma', 'delta'];
@@ -302,4 +302,48 @@ test('a refused insert re-serves the anchor range', () => {
   const result = insert(current, { anchor, direction: 'middle', lines: ['x'] });
   assert.equal(result.code, 'E_BAD_SHAPE');
   assert.ok(result.rows.some((row) => row.kind === 'context' && row.anchor === anchor && row.text === 'beta'));
+});
+
+function assertSessionInvariants(current) {
+  const anchors = current.lines.map((line) => line.anchor);
+  assert.equal(new Set(anchors).size, anchors.length);
+  for (const anchor of anchors) assert.match(anchor, /^[A-Za-z]{4}$/);
+  assert.deepEqual([...current.anchors].sort(), [...new Set(anchors)].sort());
+  for (const key of current.served.keys()) assert.ok(current.anchors.has(key));
+  for (const line of current.lines) {
+    if (!isStale(current, line)) assert.equal(current.served.get(line.anchor), line.text);
+  }
+}
+
+test('random edit sequences keep the session invariants', () => {
+  const random = seededRandom(20260920);
+  const between = (low, high) => low + Math.floor(random() * (high - low + 1));
+  const words = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta'];
+  const fresh = () => words[between(0, words.length - 1)];
+  for (let round = 0; round < 80; round += 1) {
+    const current = createSession(SOURCE, random);
+    for (let step = 0; step < 12; step += 1) {
+      const op = between(0, 5);
+      const index = between(0, current.lines.length - 1);
+      if (op === 0) {
+        const from = current.lines[index].anchor;
+        const to = current.lines[between(index, current.lines.length - 1)].anchor;
+        replace(current, { remove_from: from, remove_to: to, replacement_lines: [fresh(), fresh()] });
+      } else if (op === 1) {
+        insert(current, { anchor: current.lines[index].anchor, direction: index % 2 === 0 ? 'after' : 'before', lines: [fresh()] });
+      } else if (op === 2) {
+        anchorGrep(current, { pattern: 'a', context: 1, limit: 5 });
+      } else if (op === 3) {
+        undo(current);
+      } else if (op === 4) {
+        externalEdit(current, current.lines[index].anchor, `${current.lines[index].text} changed`);
+      } else {
+        const before = current.lines.map((line) => ({ anchor: line.anchor, text: line.text }));
+        const refused = replace(current, { remove_from: 'zzzz', replacement_lines: ['x'] });
+        assert.equal(refused.ok, false);
+        assert.deepEqual(current.lines.map((line) => ({ anchor: line.anchor, text: line.text })), before);
+      }
+      assertSessionInvariants(current);
+    }
+  }
 });

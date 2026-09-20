@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isValidSiteData, isValidBenchmark, isValidShowcase, fallbackShowcase, countWord, formatWindow } from '../assets/js/site-data.js';
+import { isValidSiteData, isValidBenchmark, isValidBenchmarkMatrix, isValidShowcase, fallbackShowcase, countWord, formatWindow } from '../assets/js/site-data.js';
 
 const VALID = {
   identity: {
@@ -87,4 +87,17 @@ test('isValidShowcase accepts a curated document and rejects shapeless ones', ()
   assert.equal(isValidShowcase({ intro: { headline: 'A headline.' }, problems }), false);
   assert.equal(isValidShowcase({ intro, problems: [{ name: 'tool' }] }), false);
   assert.equal(isValidShowcase({ intro, problems: [{ name: 'tool', headline: 'A problem.', highlights: [] }] }), false);
+});
+
+test('isValidBenchmarkMatrix accepts a shaped matrix and rejects unusable ones', () => {
+  const matrix = { models: ['m'], scenarios: [{ id: 'a', focus: 'core' }], contenders: ['t'], cells: [[[[0], 1]]] };
+  assert.equal(isValidBenchmarkMatrix(matrix), true);
+  assert.equal(isValidBenchmarkMatrix(null), false);
+  assert.equal(isValidBenchmarkMatrix([]), false);
+  assert.equal(isValidBenchmarkMatrix({}), false);
+  assert.equal(isValidBenchmarkMatrix({ ...matrix, models: [] }), false);
+  assert.equal(isValidBenchmarkMatrix({ ...matrix, scenarios: [] }), false);
+  assert.equal(isValidBenchmarkMatrix({ ...matrix, contenders: [] }), false);
+  assert.equal(isValidBenchmarkMatrix({ ...matrix, cells: [] }), false);
+  assert.equal(isValidBenchmarkMatrix({ ...matrix, cells: [[[[0], 1]], [[[0], 1]]] }), false);
 });

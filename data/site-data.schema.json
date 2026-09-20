@@ -114,7 +114,7 @@
           "minItems": 1,
           "items": {
             "type": "object",
-            "required": ["id", "label", "version", "highlight", "overall", "safety", "served", "low", "high", "runs", "passed", "errors", "outcomes", "traceUrl"],
+            "required": ["id", "label", "version", "highlight", "overall", "safety", "served", "low", "high", "runs", "passed", "errors", "outcomes", "traceUrl", "vsHighlight"],
             "additionalProperties": false,
             "properties": {
               "id": { "type": "string", "minLength": 1 },
@@ -133,7 +133,18 @@
                 "type": "object",
                 "additionalProperties": { "type": "integer", "minimum": 1 }
               },
-              "traceUrl": { "type": "string", "format": "uri" }
+              "traceUrl": { "type": "string", "format": "uri" },
+              "vsHighlight": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "required": ["b", "c", "p", "pAdjusted"],
+                "properties": {
+                  "b": { "type": "integer", "minimum": 0 },
+                  "c": { "type": "integer", "minimum": 0 },
+                  "p": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "pAdjusted": { "type": "number", "minimum": 0, "maximum": 1 }
+                }
+              }
             }
           }
         }

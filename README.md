@@ -40,6 +40,8 @@ flagship loses.
 index.html                      page shell, meta tags, JSON-LD
 404.html                        not-found page
 llms.txt                        generated site map for language models
+index.md                        generated markdown mirror of the page
+agent-readability.json          generated machine-readable surface index
 favicon.ico                     legacy favicon
 sitemap.xml                     single-URL sitemap, lastmod refreshed with the data
 robots.txt                      crawl policy and sitemap reference
@@ -68,11 +70,13 @@ data/site-data.json             machine-refreshed data
 data/site-data.schema.json      schema for the above
 data/showcase.json              curated narrative and demo wiring
 data/showcase.schema.json       schema for the above
+data/benchmark-matrix.json      per-scenario pass counts behind the evidence chart
+data/benchmark-matrix.schema.json  schema for the above
 scripts/refresh-data.mjs        daily GitHub + npm refresh
 scripts/refresh-lib.mjs         pure activity, history, and benchmark helpers
-scripts/build-llms.mjs          regenerate llms.txt from the data files
-scripts/llms-lib.mjs            llms.txt content builder and atomic writer
-scripts/validate-data.mjs       offline validation for both data files
+scripts/build-llms.mjs          regenerate llms.txt, index.md, and the agent manifest
+scripts/llms-lib.mjs            agent-file content builders and atomic writers
+scripts/validate-data.mjs       offline validation for the data files
 scripts/validate-site.mjs       HTML, module, README, and CSS reference checks
 scripts/check-links.mjs         monthly external-link check
 scripts/validate-style.mjs      comment, line ending, and whitespace checks
@@ -144,11 +148,22 @@ It also holds the `benchmark` block behind the evidence chart. The refresh
 pulls the committed run report from pi-edit-benchmark, joins every run to the
 scenario focus that the benchmark's own scenario sources declare, and derives
 the pass rates, the staleness and served-state splits, the outcome counts, and
-a 95% Wilson interval per contender. Each contender keeps a link to a
-committed trace. Nothing in that block is typed by hand, so the chart cannot
+a 95% Wilson interval per contender. Because every contender runs the same model
+× scenario grid, each one is also paired against the highlighted project with
+an exact two-sided McNemar test, and the p-values are Holm-adjusted across the
+comparisons, so the chart can say whether a lead is real or inside noise. Each
+contender keeps a link to a committed
+trace. Nothing in that block is typed by hand, so the chart cannot
 drift from the runs it claims to show. Each refresh also appends one
 `benchmarkHistory` snapshot for the highlighted project, so the evidence panel
 can show whether the tool is improving between reports.
+
+A second machine file, `data/benchmark-matrix.json`, records which models passed
+each scenario × contender cell. The refresh derives it from the same report and
+refuses to write either file unless the matrix totals and the paired comparison
+counts match the benchmark block, so the McNemar figures and their Holm
+adjustment are re-derived from the matrix rather than trusted. The evidence
+panel fetches the matrix lazily and renders it as a grid.
 
 The About panel renders those snapshots as a stars and weekly-installs trend.
 
@@ -185,8 +200,9 @@ file are never touched. Forks and the site repo are skipped. The file is
 written atomically (temp file then rename) with a change summary, and the
 candidate is revalidated before the rename, so a document the schema rejects
 can never reach `data/site-data.json`. A successful write also regenerates
-`llms.txt` from the two data files. If the
-existing file is present but unusable, the refresh exits with an error without
+`llms.txt`, `index.md`, and `agent-readability.json` from the two data files,
+and writes the benchmark matrix. If the existing file is present but unusable,
+the refresh exits with an error without
 writing, so a corrupt file cannot wipe curated content.
 If the file is missing entirely, the refresh exits with an error instead of
 writing an empty skeleton. When nothing changed, the run only prints the
@@ -213,8 +229,10 @@ only touches other machine fields leaves the sitemap alone.
 
 The site refreshes itself daily through
 `.github/workflows/refresh-data.yml` (06:00 UTC), which runs the script,
-validates both data files, and commits `data/site-data.json` and `sitemap.xml`
-only when one of them changed, and fails when the newest history snapshot is
+validates the data files, and commits `data/site-data.json`,
+`data/benchmark-matrix.json`, `sitemap.xml`, `llms.txt`, `index.md`, and
+`agent-readability.json` only when at least one of them changed, and fails
+when the newest history snapshot is
 still more than two days old, so an outage cannot pass silently. It can also be
 triggered manually from the Actions tab.
 
@@ -228,7 +246,7 @@ npm run validate
 any script and enforces LF endings, spaces for indentation, no trailing
 whitespace, and a final newline. Its comment scan reads strings, templates,
 and regexes as text, so a comment inside a template-literal expression is not
-reached. The data validator walks both JSON files
+reached. The data validator walks the JSON files
 against the schema files themselves, so a rule lives in one place, then
 cross-references showcase names with the manifest, verifies every `demo` id,
 and re-derives the benchmark arithmetic (contender counts, `models × scenarios`,
@@ -256,11 +274,14 @@ asset group over its weight budget, an image whose real dimensions differ from
 the declared ones, and a manifest project with no showcase entry. The
 schema walker refuses a keyword or format it does not
 implement, so a rule can never be silently unenforced. The schema files also
-drive editor validation through the `$schema` keys in both data files. The
+drive editor validation through the `$schema` keys in the data files. The
 workflow runs all three on every refresh and on push. `npm run csp` rewrites the
-CSP hash in place after the inline JSON-LD changes. A separate test keeps
-`llms.txt` in step with the two data files, and `npm run build:llms` regenerates
-it by hand.
+CSP hash in place after the inline JSON-LD changes. Separate tests keep
+`llms.txt`, `index.md`, and `agent-readability.json` in step with the two data
+files, and `npm run build:llms` regenerates them by hand. The data validator
+re-derives every McNemar comparison and its Holm adjustment from the matrix,
+and refuses a benchmark matrix whose totals or paired counts disagree with the
+benchmark block.
 
 ## Testing
 

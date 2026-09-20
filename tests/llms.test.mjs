@@ -1,15 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildLlmsTxt, writeLlmsFile } from '../scripts/llms-lib.mjs';
+import { buildAgentReadability, buildIndexMd, buildLlmsTxt, writeAgentFiles, writeLlmsFile } from '../scripts/llms-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.json'), 'utf8'));
 const SHOWCASE = JSON.parse(readFileSync(join(ROOT, 'data', 'showcase.json'), 'utf8'));
 const COMMITTED = readFileSync(join(ROOT, 'llms.txt'), 'utf8');
+const COMMITTED_INDEX = readFileSync(join(ROOT, 'index.md'), 'utf8');
+const COMMITTED_READABILITY = readFileSync(join(ROOT, 'agent-readability.json'), 'utf8');
 
 test('the committed llms.txt matches the generator output', () => {
   assert.equal(buildLlmsTxt(DATA, SHOWCASE), COMMITTED);
@@ -64,6 +66,68 @@ test('writeLlmsFile writes once and reports no change afterwards', () => {
     assert.equal(writeLlmsFile(dir), false);
     assert.equal(readFileSync(join(dir, 'llms.txt'), 'utf8'), text);
     assert.deepEqual(readdirSync(join(dir)).filter((file) => file.endsWith('.tmp')), []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the committed index.md matches the generator output', () => {
+  assert.equal(buildIndexMd(DATA, SHOWCASE), COMMITTED_INDEX);
+});
+
+test('index.md opens with the title and covers every showcased tool', () => {
+  assert.equal(COMMITTED_INDEX.split('\n')[0], '# YuGiMob');
+  for (const problem of SHOWCASE.problems) {
+    assert.ok(COMMITTED_INDEX.includes(problem.headline), `${problem.name} headline is missing`);
+  }
+  assert.match(COMMITTED_INDEX, /## Evidence/);
+  assert.match(COMMITTED_INDEX, /## Principles/);
+  assert.match(COMMITTED_INDEX, /## Data/);
+});
+
+test('the committed agent-readability.json matches the generator output', () => {
+  assert.equal(buildAgentReadability(DATA), COMMITTED_READABILITY);
+  const manifest = JSON.parse(COMMITTED_READABILITY);
+  assert.equal(manifest.name, DATA.identity.displayName);
+  assert.equal(manifest.artifacts.llmsTxt, 'https://yugimob.github.io/llms.txt');
+  assert.equal(manifest.artifacts.markdown, 'https://yugimob.github.io/index.md');
+});
+
+test('buildIndexMd and buildAgentReadability stay deterministic and survive an empty manifest', () => {
+  const minimal = { identity: { displayName: 'Tester', tagline: 'A tagline.' }, projects: [] };
+  assert.equal(buildIndexMd(minimal, { intro: {}, problems: [] }), buildIndexMd(minimal, { intro: {}, problems: [] }));
+  assert.equal(buildAgentReadability(minimal), buildAgentReadability(minimal));
+  assert.ok(!buildIndexMd(minimal, { intro: {}, problems: [] }).includes('## Evidence'));
+});
+
+test('writeAgentFiles writes every agent file once and reports no change afterwards', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'yugimob-agent-'));
+  try {
+    mkdirSync(join(dir, 'data'), { recursive: true });
+    const siteData = { identity: { displayName: 'Tester', tagline: 'A tagline.' }, projects: [] };
+    const showcase = { intro: {}, problems: [] };
+    writeFileSync(join(dir, 'data', 'site-data.json'), JSON.stringify(siteData));
+    writeFileSync(join(dir, 'data', 'showcase.json'), JSON.stringify(showcase));
+    assert.deepEqual(writeAgentFiles(dir), { 'llms.txt': true, 'index.md': true, 'agent-readability.json': true });
+    assert.deepEqual(writeAgentFiles(dir), { 'llms.txt': false, 'index.md': false, 'agent-readability.json': false });
+    assert.equal(readFileSync(join(dir, 'index.md'), 'utf8'), buildIndexMd(siteData, showcase));
+    assert.equal(readFileSync(join(dir, 'agent-readability.json'), 'utf8'), buildAgentReadability(siteData));
+    assert.deepEqual(readdirSync(dir).filter((file) => file.endsWith('.tmp')), []);
+    assert.deepEqual(readdirSync(join(dir, 'data')).filter((file) => file.endsWith('.tmp')), []);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('writeLlmsFile cleans up and rethrows when a write fails', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'yugimob-llms-fail-'));
+  try {
+    mkdirSync(join(dir, 'data'), { recursive: true });
+    writeFileSync(join(dir, 'data', 'site-data.json'), JSON.stringify({ identity: { displayName: 'A', tagline: 'B' }, projects: [] }));
+    writeFileSync(join(dir, 'data', 'showcase.json'), JSON.stringify({ intro: {}, problems: [] }));
+    mkdirSync(join(dir, `llms.txt.${process.pid}.tmp`));
+    assert.throws(() => writeLlmsFile(dir));
+    assert.equal(existsSync(join(dir, 'llms.txt')), false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

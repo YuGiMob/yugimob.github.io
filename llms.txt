@@ -24,6 +24,9 @@ If you run coding agents against real repositories, you have watched at least on
 
 ## Data
 
+- [Markdown mirror](https://yugimob.github.io/index.md): the whole page as markdown, generated from the two data files
 - [Machine data](https://yugimob.github.io/data/site-data.json): stars, downloads, activity, history, and benchmark numbers, refreshed daily
 - [Curated showcase](https://yugimob.github.io/data/showcase.json): the narrative behind every tool, one entry per problem
+- [Scenario matrix](https://yugimob.github.io/data/benchmark-matrix.json): pass counts per scenario and contender behind the benchmark chart
+- [Agent readability](https://yugimob.github.io/agent-readability.json): the machine-readable entry points this site publishes
 - [Sitemap](https://yugimob.github.io/sitemap.xml): the single canonical page

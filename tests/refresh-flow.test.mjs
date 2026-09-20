@@ -49,6 +49,16 @@ test('a fixture refresh writes every machine field and rebuilds the derived file
     assert.equal(data.benchmark.totalRuns, 2);
     assert.equal(data.benchmarkHistory.length, 2);
     assert.deepEqual(data.benchmarkHistory.at(-1), { date: '2026-09-21', overall: 100, safety: null, served: null });
+    const highlighted = data.benchmark.contenders.find((entry) => entry.highlight);
+    const rival = data.benchmark.contenders.find((entry) => !entry.highlight);
+    assert.equal(highlighted.vsHighlight, null);
+    assert.deepEqual(rival.vsHighlight, { b: 0, c: 0, p: 1, pAdjusted: 1 });
+
+    const matrix = JSON.parse(readFileSync(join(repo, 'data', 'benchmark-matrix.json'), 'utf8'));
+    assert.equal(matrix.generatedAt, data.benchmark.generatedAt);
+    assert.deepEqual(matrix.contenders, data.benchmark.contenders.map((entry) => entry.id));
+    assert.deepEqual(matrix.models, ['test-model']);
+    assert.deepEqual(matrix.cells, [[[[0], 1], [[0], 1]]]);
 
     assert.match(readFileSync(join(repo, 'llms.txt'), 'utf8'), /Stars 101/);
     const newest = data.history.at(-1).date;
@@ -65,12 +75,14 @@ test('a second fixture refresh writes nothing', () => {
     assert.equal(first.status, 0, first.stderr);
     const dataBefore = readFileSync(join(repo, DATA_FILE), 'utf8');
     const llmsBefore = readFileSync(join(repo, 'llms.txt'), 'utf8');
+    const matrixBefore = readFileSync(join(repo, 'data', 'benchmark-matrix.json'), 'utf8');
 
     const second = refresh(repo);
     assert.equal(second.status, 0, second.stderr);
     assert.match(second.stdout, /No data changes/);
     assert.equal(readFileSync(join(repo, DATA_FILE), 'utf8'), dataBefore);
     assert.equal(readFileSync(join(repo, 'llms.txt'), 'utf8'), llmsBefore);
+    assert.equal(readFileSync(join(repo, 'data', 'benchmark-matrix.json'), 'utf8'), matrixBefore);
   });
 });
 

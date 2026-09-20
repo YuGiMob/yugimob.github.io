@@ -40,6 +40,15 @@ export function isValidBenchmark(benchmark) {
   return true;
 }
 
+export function isValidBenchmarkMatrix(matrix) {
+  if (!matrix || typeof matrix !== 'object' || Array.isArray(matrix)) return false;
+  if (!Array.isArray(matrix.models) || matrix.models.length === 0) return false;
+  if (!Array.isArray(matrix.scenarios) || matrix.scenarios.length === 0) return false;
+  if (!Array.isArray(matrix.contenders) || matrix.contenders.length === 0) return false;
+  if (!Array.isArray(matrix.cells) || matrix.cells.length !== matrix.scenarios.length) return false;
+  return true;
+}
+
 export function fallbackShowcase(data) {
   const paragraphs = [data.identity.tagline];
   return {

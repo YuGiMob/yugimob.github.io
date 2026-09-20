@@ -1,4 +1,5 @@
 import { el, append, link, svg, formatNumber, extent, createController } from './ui.js';
+import { isValidBenchmarkMatrix } from './site-data.js';
 
 function chartFrame(kicker, title, note) {
   const root = el('article', 'chart');
@@ -106,6 +107,39 @@ function outcomeStrip(contender) {
   return strip;
 }
 
+function pLabel(value) {
+  return value < 0.001 ? '< 0.001' : value.toFixed(3);
+}
+
+function adjustedP(comparison) {
+  return Number.isFinite(comparison?.pAdjusted) ? comparison.pAdjusted : comparison.p;
+}
+
+function highlightOf(bench) {
+  return (bench.contenders ?? []).find((entry) => entry?.highlight === true) ?? null;
+}
+
+function comparisonSentence(contender, bench) {
+  const comparison = contender.vsHighlight;
+  if (comparison == null) return null;
+  const reference = highlightOf(bench);
+  const verdict = adjustedP(comparison) < 0.05 ? 'significantly different from' : 'not significantly different from';
+  return `${verdict} ${reference?.label ?? 'the highlighted tool'} (Holm-adjusted McNemar p = ${pLabel(adjustedP(comparison))})`;
+}
+
+function significanceNote(bench) {
+  const reference = highlightOf(bench);
+  if (!reference) return null;
+  const rival = sortedContenders(bench.contenders).find((entry) => entry !== reference && entry?.vsHighlight != null);
+  if (!rival) return null;
+  const gap = Math.abs(reference.overall - rival.overall).toFixed(1);
+  const verdict = adjustedP(rival.vsHighlight) < 0.05 ? 'a significant paired difference' : 'not a significant paired difference';
+  const p = `(Holm-adjusted McNemar p ${pLabel(adjustedP(rival.vsHighlight))})`;
+  if (gap === '0.0') return `${reference.label} and ${rival.label} are tied on overall pass rate; the paired difference is ${verdict} ${p}.`;
+  const direction = reference.overall > rival.overall ? 'leads' : 'trails';
+  return `${reference.label} ${direction} ${rival.label} by ${gap} points on the same model × scenario pairs — ${verdict} ${p}.`;
+}
+
 function contenderDetail(contender, bench) {
   const parts = [`${contender.overall.toFixed(1)}% overall`];
   const focusCounts = bench.focusCounts ?? {};
@@ -114,6 +148,8 @@ function contenderDetail(contender, bench) {
   const outcomes = contender.outcomes ?? {};
   const split = OUTCOME_ORDER.filter((kind) => outcomes[kind] > 0).map((kind) => `${formatNumber(outcomes[kind])} ${kind}`);
   if (split.length > 0) parts.push(`out of ${formatNumber(contender.runs)} runs: ${split.join(', ')}`);
+  const comparison = comparisonSentence(contender, bench);
+  if (comparison) parts.push(comparison);
   return parts.join('; ');
 }
 
@@ -137,6 +173,11 @@ export function benchmarkChart(bench, benchmarkHistory) {
       label.appendChild(trace);
     }
     if (contender.errors > 0) label.appendChild(el('span', 'bench-errors', `${contender.errors} ${contender.errors === 1 ? 'error' : 'errors'}`));
+    if (contender.vsHighlight != null) {
+      const badge = el('span', 'bench-significance', `p=${pLabel(adjustedP(contender.vsHighlight))}`);
+      badge.title = `Holm-adjusted exact McNemar test against ${highlightOf(bench)?.label ?? 'the highlighted tool'}: ${formatNumber(contender.vsHighlight.b)} pairs it passed and this tool did not, ${formatNumber(contender.vsHighlight.c)} the other way (raw p ${pLabel(contender.vsHighlight.p)})`;
+      label.appendChild(badge);
+    }
     label.appendChild(el('span', 'sr-only', contenderDetail(contender, bench)));
     const bars = el('span', 'bench-bars');
     append(
@@ -164,7 +205,7 @@ export function benchmarkChart(bench, benchmarkHistory) {
   );
   const outcomeLegend = el('p', 'chart-legend');
   for (const kind of present) outcomeLegend.appendChild(legendItem(`outcome-segment is-${kind}`, kind));
-  const method = el('p', 'chart-method', 'Real models drive each contender’s own tools through a tool-calling loop, and every row links to a committed trace. Staleness and served-state scenarios are scored separately, so refusing a stale edit is not counted against the tool.');
+  const method = el('p', 'chart-method', 'Real models drive each contender’s own tools through a tool-calling loop, and every row links to a committed trace. Staleness and served-state scenarios are scored separately, so refusing a stale edit is not counted against the tool. Each rival is paired with the highlighted project on the shared model × scenario grid, and the exact two-sided McNemar p-values are Holm-adjusted across the comparisons.');
   const source = el('p', 'chart-source');
   append(
     source,
@@ -178,7 +219,9 @@ export function benchmarkChart(bench, benchmarkHistory) {
     link('data/site-data.json', 'raw data'),
     ` · generated ${String(bench.generatedAt).slice(0, 10)}`
   );
-  append(body, list, legend, outcomeLegend, method, source);
+  const note = significanceNote(bench);
+  const noteNode = note ? el('p', 'chart-note bench-significance-note', note) : null;
+  append(body, list, legend, outcomeLegend, noteNode, method, source);
   const trend = benchmarkTrend(benchmarkHistory);
   if (trend) body.appendChild(trend);
   const table = dataTable('View the numbers as a table', benchmarkTableRows(bench));
@@ -186,6 +229,63 @@ export function benchmarkChart(bench, benchmarkHistory) {
   return createController(root, (runtime) => {
     runtime.after(() => root.classList.add('is-live'), 120);
   }, () => root.classList.remove('is-live'));
+}
+
+function matrixCellClass(passed, runs) {
+  if (runs === 0) return 'matrix-cell is-empty';
+  if (passed === runs) return 'matrix-cell is-full';
+  if (passed === 0) return 'matrix-cell is-none';
+  return 'matrix-cell is-partial';
+}
+
+export function benchmarkMatrix(bench, matrix) {
+  if (!isValidBenchmarkMatrix(matrix)) return null;
+  const labels = new Map((bench.contenders ?? []).map((entry) => [entry.id, entry.label]));
+  const { root, body } = chartFrame(
+    'Per scenario',
+    'Where each tool loses',
+    `${matrix.scenarios.length} scenarios × ${matrix.contenders.length} contenders; every cell counts the models that passed, out of the runs recorded.`
+  );
+  const scroll = el('div', 'matrix-scroll');
+  const table = el('table', 'matrix-table');
+  const head = el('thead');
+  const headRow = el('tr');
+  const scenarioHeader = el('th', 'matrix-scenario', 'scenario');
+  scenarioHeader.setAttribute('scope', 'col');
+  headRow.appendChild(scenarioHeader);
+  for (const id of matrix.contenders) {
+    const header = el('th', 'matrix-contender', labels.get(id) ?? id);
+    header.setAttribute('scope', 'col');
+    headRow.appendChild(header);
+  }
+  head.appendChild(headRow);
+  const rows = el('tbody');
+  matrix.scenarios.forEach((scenario, rowIndex) => {
+    const row = el('tr');
+    const heading = el('th', 'matrix-scenario');
+    heading.setAttribute('scope', 'row');
+    append(heading, el('span', 'matrix-id', scenario.id), el('span', 'matrix-focus', scenario.focus));
+    row.appendChild(heading);
+    const cells = Array.isArray(matrix.cells[rowIndex]) ? matrix.cells[rowIndex] : [];
+    matrix.contenders.forEach((id, column) => {
+      const cell = Array.isArray(cells[column]) ? cells[column] : [[], 0];
+      const passedModels = Array.isArray(cell[0]) ? cell[0] : [];
+      const runs = Number.isInteger(cell[1]) ? cell[1] : 0;
+      const passed = passedModels.length;
+      const node = el('td', matrixCellClass(passed, runs), runs > 0 ? `${passed}/${runs}` : '—');
+      node.title = `${labels.get(id) ?? id} on ${scenario.id}: ${passed} of ${runs} runs passed`;
+      row.appendChild(node);
+    });
+    rows.appendChild(row);
+  });
+  append(table, head, rows);
+  scroll.appendChild(table);
+  append(
+    body,
+    scroll,
+    el('p', 'chart-note', 'A full cell means every recorded model passed that scenario; an empty row means the scenario never reached the contender. The matrix is the same run set as the chart above.'),
+  );
+  return createController(root, () => {});
 }
 
 export function sparklinePoints(values, width = 120, height = 28) {

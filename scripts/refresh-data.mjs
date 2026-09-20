@@ -8,10 +8,12 @@ import {
   benchmarkCoversFullMatrix,
   benchmarkSnapshot,
   buildActivity,
+  buildScenarioMatrix,
   isTimestamp,
   parseScenarioFocus,
   retryDelayMs,
   sleep,
+  scenarioMatrixMatchesBenchmark,
   summarizeBenchmark,
   upsertHistory,
 } from './refresh-lib.mjs';
@@ -19,12 +21,14 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { writeLlmsFile } from './llms-lib.mjs';
+import { writeAgentFiles } from './llms-lib.mjs';
 import { updateSitemapFile } from './sitemap-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_FILE = join(ROOT, 'data', 'site-data.json');
 const TMP_FILE = `${DATA_FILE}.${process.pid}.tmp`;
+const MATRIX_FILE = join(ROOT, 'data', 'benchmark-matrix.json');
+const MATRIX_TMP_FILE = `${MATRIX_FILE}.${process.pid}.tmp`;
 const SITEMAP_FILE = join(ROOT, 'sitemap.xml');
 const VALIDATOR_FILE = join(ROOT, 'scripts', 'validate-data.mjs');
 
@@ -34,9 +38,11 @@ function safeUnlink(path) {
   } catch {}
 }
 
-function assertCandidateValid(candidateFile, message) {
+function assertCandidateValid(candidateFile, message, matrixCandidate = null) {
   try {
-    execFileSync(process.execPath, [VALIDATOR_FILE, candidateFile], { stdio: 'pipe' });
+    const args = [VALIDATOR_FILE, candidateFile];
+    if (matrixCandidate) args.push(join(ROOT, 'data', 'showcase.json'), matrixCandidate);
+    execFileSync(process.execPath, args, { stdio: 'pipe' });
   } catch (validationError) {
     if (validationError.stderr) console.error(String(validationError.stderr).trim());
     throw new Error(message);
@@ -45,7 +51,7 @@ function assertCandidateValid(candidateFile, message) {
 
 function cleanupStaleTmpFiles() {
   const cutoff = Date.now() - 10 * 60 * 1000;
-  for (const [directory, prefix] of [[join(ROOT, 'data'), 'site-data.json.'], [ROOT, 'llms.txt.']]) {
+  for (const [directory, prefix] of [[join(ROOT, 'data'), 'site-data.json.'], [ROOT, 'llms.txt.'], [ROOT, 'index.md.'], [ROOT, 'agent-readability.json.'], [join(ROOT, 'data'), 'benchmark-matrix.json.']]) {
     try {
       for (const entry of readdirSync(directory)) {
         if (!entry.startsWith(prefix) || !entry.endsWith('.tmp')) continue;
@@ -85,6 +91,18 @@ const UNLISTED_REPOS = new Set(['pi-jina-webtools', 'pi-msg-queue', 'pi-tps-stat
 const DRY_RUN = process.argv.includes('--check');
 let data = null;
 let fileUnusable = false;
+let matrixText = null;
+let existingMatrixText = null;
+let existingMatrix = null;
+if (existsSync(MATRIX_FILE)) {
+  try {
+    existingMatrixText = readFileSync(MATRIX_FILE, 'utf8');
+    existingMatrix = JSON.parse(existingMatrixText);
+  } catch (err) {
+    existingMatrixText = null;
+    console.warn('Could not parse data/benchmark-matrix.json:', err.message);
+  }
+}
 const fileExists = existsSync(DATA_FILE);
 if (fileExists) {
   try {
@@ -342,19 +360,26 @@ if (!benchmarkReport || focusById.size === 0) {
   } else if (!isTimestamp(benchmark.generatedAt)) {
     console.warn('benchmark report has no usable generatedAt; keeping the existing block');
   } else {
-    const previous = existing.benchmark ?? {};
-    report('benchmark.generatedAt', previous.generatedAt, benchmark.generatedAt);
-    report('benchmark.models', previous.models, benchmark.models);
-    report('benchmark.scenarios', previous.scenarios, benchmark.scenarios);
-    report('benchmark.contenderCount', previous.contenderCount, benchmark.contenderCount);
-    report('benchmark.totalRuns', previous.totalRuns, benchmark.totalRuns);
-    reportCount('benchmark.contenders', previous.contenders, benchmark.contenders);
-    report('benchmark.costUsd', previous.costUsd, benchmark.costUsd);
-    data.benchmark = benchmark;
-    const snapshot = benchmarkSnapshot(benchmark);
-    if (snapshot) {
-      data.benchmarkHistory = upsertHistory(Array.isArray(data.benchmarkHistory) ? data.benchmarkHistory : [], snapshot, BENCHMARK_HISTORY_LIMIT);
-      reportCount('benchmarkHistory', existing.benchmarkHistory, data.benchmarkHistory);
+    const matrix = buildScenarioMatrix(benchmarkReport, focusById, benchmark.contenders.map((entry) => entry.id));
+    if (!scenarioMatrixMatchesBenchmark(matrix, benchmark)) {
+      console.warn('benchmark matrix does not match the benchmark summary; keeping the existing block');
+    } else {
+      const previous = existing.benchmark ?? {};
+      report('benchmark.generatedAt', previous.generatedAt, benchmark.generatedAt);
+      report('benchmark.models', previous.models, benchmark.models);
+      report('benchmark.scenarios', previous.scenarios, benchmark.scenarios);
+      report('benchmark.contenderCount', previous.contenderCount, benchmark.contenderCount);
+      report('benchmark.totalRuns', previous.totalRuns, benchmark.totalRuns);
+      reportCount('benchmark.contenders', previous.contenders, benchmark.contenders);
+      report('benchmark.costUsd', previous.costUsd, benchmark.costUsd);
+      data.benchmark = benchmark;
+      const snapshot = benchmarkSnapshot(benchmark);
+      if (snapshot) {
+        data.benchmarkHistory = upsertHistory(Array.isArray(data.benchmarkHistory) ? data.benchmarkHistory : [], snapshot, BENCHMARK_HISTORY_LIMIT);
+        reportCount('benchmarkHistory', existing.benchmarkHistory, data.benchmarkHistory);
+      }
+      reportCount('benchmark matrix scenarios', existingMatrix?.scenarios, matrix.scenarios);
+      matrixText = `${JSON.stringify({ $schema: './benchmark-matrix.schema.json', ...matrix }, null, 2)}\n`;
     }
   }
 }
@@ -377,32 +402,46 @@ if (reposFresh) {
   reportCount('history', existing.history, data.history);
 }
 const dataChanged = JSON.stringify(existing) !== JSON.stringify(data);
-if (dataChanged && !DRY_RUN) {
+const matrixChanged = matrixText !== null && matrixText !== existingMatrixText;
+if ((dataChanged || matrixChanged) && !DRY_RUN) {
   try {
-    writeFileSync(TMP_FILE, `${JSON.stringify(data, null, 2)}\n`);
-    assertCandidateValid(TMP_FILE, 'the refreshed data failed validate-data; the existing file was left untouched');
-    renameSync(TMP_FILE, DATA_FILE);
+    if (dataChanged) writeFileSync(TMP_FILE, `${JSON.stringify(data, null, 2)}\n`);
+    if (matrixChanged) writeFileSync(MATRIX_TMP_FILE, matrixText);
+    assertCandidateValid(dataChanged ? TMP_FILE : DATA_FILE, 'the refreshed data failed validate-data; the existing file was left untouched', matrixChanged ? MATRIX_TMP_FILE : null);
+    if (dataChanged) renameSync(TMP_FILE, DATA_FILE);
+    if (matrixChanged) renameSync(MATRIX_TMP_FILE, MATRIX_FILE);
   } catch (err) {
     safeUnlink(TMP_FILE);
+    safeUnlink(MATRIX_TMP_FILE);
     throw err;
   }
-  if (data.history.at(-1)?.date === today) updateSitemapLastmod(today);
+  if (dataChanged && data.history.at(-1)?.date === today) updateSitemapLastmod(today);
+  if (matrixChanged) summary.push('data/benchmark-matrix.json: rewritten');
 }
-if (DRY_RUN && dataChanged) {
+if (DRY_RUN && (dataChanged || matrixChanged)) {
   const candidate = join(tmpdir(), `yugimob-site-data-${process.pid}.tmp`);
+  const matrixCandidate = matrixChanged ? join(tmpdir(), `yugimob-benchmark-matrix-${process.pid}.tmp`) : null;
   try {
     writeFileSync(candidate, `${JSON.stringify(data, null, 2)}\n`);
-    assertCandidateValid(candidate, 'the dry-run candidate failed validate-data; nothing was written');
+    if (matrixCandidate) writeFileSync(matrixCandidate, matrixText);
+    assertCandidateValid(candidate, 'the dry-run candidate failed validate-data; nothing was written', matrixCandidate);
     summary.push('dry run: the candidate passed validate-data');
   } finally {
     safeUnlink(candidate);
+    if (matrixCandidate) safeUnlink(matrixCandidate);
   }
 }
-if (DRY_RUN) summary.push(dataChanged ? 'dry run: the candidate was not written' : 'dry run: nothing to write');
-else if (writeLlmsFile(ROOT)) summary.push('llms.txt: rewritten');
+if (DRY_RUN) summary.push(dataChanged || matrixChanged ? 'dry run: the candidate was not written' : 'dry run: nothing to write');
+else {
+  const agentFiles = writeAgentFiles(ROOT);
+  const rewritten = Object.entries(agentFiles).filter(([, written]) => written).map(([file]) => file);
+  if (rewritten.length > 0) summary.push(`${rewritten.join(', ')}: rewritten`);
+}
 console.log('Refresh complete. Changes:');
 for (const line of summary) {
   console.log(`  ${line}`);
 }
 if (DRY_RUN) console.log('Dry run complete; no files were written');
-else console.log(dataChanged ? `Data written to ${DATA_FILE}` : `No data changes; ${DATA_FILE} left untouched`);
+else if (dataChanged) console.log(`Data written to ${DATA_FILE}`);
+else if (matrixChanged) console.log(`Matrix written to ${MATRIX_FILE}`);
+else console.log(`No data changes; ${DATA_FILE} left untouched`);

@@ -2,6 +2,8 @@
 
 This repository is a static site. It serves committed HTML, CSS, JavaScript, JSON, fonts, and images from GitHub Pages, with no server, no build step, and no runtime dependencies.
 
+GitHub Pages serves these files without custom response headers, so header-only protections such as `Content-Security-Policy: frame-ancestors` cannot be delivered. The policies that can be expressed in a `<meta>` tag are, and directives that a meta-tag policy would ignore are not used.
+
 ## Reporting a vulnerability
 
 Report privately through GitHub's vulnerability reporting form:

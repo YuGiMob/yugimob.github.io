@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { benchmarkChart, benchmarkTableRows, benchmarkTrend, historyPanel, historyTableRows, sortedContenders, sparklinePoints } from '../assets/js/charts.js';
+import { benchmarkChart, benchmarkMatrix, benchmarkTableRows, benchmarkTrend, historyPanel, historyTableRows, sortedContenders, sparklinePoints } from '../assets/js/charts.js';
 import { findAll, withDom } from './dom.mjs';
 
 const BENCHMARK = {
@@ -228,4 +228,75 @@ test('benchmarkTrend returns null without two usable reports', () => {
   assert.equal(benchmarkTrend([]), null);
   assert.equal(benchmarkTrend([{ date: '2026-09-20', overall: 90 }]), null);
   assert.equal(benchmarkTrend([{ date: '2026-09-19' }, { date: '2026-09-20', overall: 90 }]), null);
+});
+
+test('benchmarkChart marks the paired comparison against the highlighted tool', () => {
+  const bench = {
+    ...BENCHMARK,
+    contenders: [
+      { ...BENCHMARK.contenders[0] },
+      { ...BENCHMARK.contenders[1], vsHighlight: { b: 5, c: 0, p: 0.0625, pAdjusted: 0.3125 } },
+    ],
+  };
+  withDom(() => {
+    const controller = benchmarkChart(bench, []);
+    const badges = classes(controller.node, 'bench-significance');
+    assert.equal(badges.length, 1);
+    assert.equal(badges[0].textContent, 'p=0.313');
+    assert.match(badges[0].title, /Holm-adjusted exact McNemar test against tool-a/);
+    assert.match(badges[0].title, /raw p 0\.063/);
+    assert.match(controller.node.textContent, /not significantly different from tool-a \(Holm-adjusted McNemar p = 0\.313\)/);
+    assert.match(controller.node.textContent, /tool-a leads tool-b by 40\.0 points on the same model × scenario pairs/);
+    assert.match(controller.node.textContent, /not a significant paired difference \(Holm-adjusted McNemar p 0\.313\)/);
+  });
+});
+
+test('benchmarkChart words a tie against the highlighted tool as a tie', () => {
+  const bench = {
+    ...BENCHMARK,
+    contenders: [
+      { ...BENCHMARK.contenders[0], overall: 90 },
+      { ...BENCHMARK.contenders[1], overall: 90, safety: 50, vsHighlight: { b: 4, c: 4, p: 1, pAdjusted: 1 } },
+    ],
+  };
+  withDom(() => {
+    const controller = benchmarkChart(bench, []);
+    assert.match(controller.node.textContent, /tool-a and tool-b are tied on overall pass rate; the paired difference is not a significant paired difference \(Holm-adjusted McNemar p 1\.000\)\./);
+  });
+});
+
+test('benchmarkChart bases the verdict on the adjusted p-value, not the raw one', () => {
+  const bench = {
+    ...BENCHMARK,
+    contenders: [
+      { ...BENCHMARK.contenders[0] },
+      { ...BENCHMARK.contenders[1], vsHighlight: { b: 9, c: 1, p: 0.011, pAdjusted: 0.11 } },
+    ],
+  };
+  withDom(() => {
+    const controller = benchmarkChart(bench, []);
+    assert.equal(classes(controller.node, 'bench-significance')[0].textContent, 'p=0.110');
+    assert.match(controller.node.textContent, /not significantly different from tool-a \(Holm-adjusted McNemar p = 0\.110\)/);
+  });
+});
+
+test('benchmarkMatrix renders a scenario grid of pass counts', () => {
+  const matrix = {
+    models: ['m1', 'm2'],
+    scenarios: [{ id: 'single-line', focus: 'core' }, { id: 'stale-line', focus: 'staleness' }],
+    contenders: ['tool-a', 'tool-b'],
+    cells: [[[[0], 1], [[], 1]], [[[0, 1], 2], [[0], 2]]],
+  };
+  withDom(() => {
+    const controller = benchmarkMatrix(BENCHMARK, matrix);
+    assert.match(controller.node.textContent, /Where each tool loses/);
+    assert.match(controller.node.textContent, /2 scenarios × 2 contenders/);
+    assert.equal(tags(controller.node, 'TR').length, 3);
+    assert.equal(tags(controller.node, 'TH').length, 5);
+    assert.deepEqual(classes(controller.node, 'matrix-cell').map((cell) => cell.textContent), ['1/1', '0/1', '2/2', '1/2']);
+    assert.deepEqual(classes(controller.node, 'matrix-cell').map((cell) => cell.classList.contains('is-full')), [true, false, true, false]);
+    assert.equal(classes(controller.node, 'matrix-cell')[1].title, 'tool-b on single-line: 0 of 1 runs passed');
+    assert.equal(benchmarkMatrix(BENCHMARK, null), null);
+    assert.equal(benchmarkMatrix(BENCHMARK, { models: ['m'], scenarios: [], contenders: [], cells: [] }), null);
+  });
 });

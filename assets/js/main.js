@@ -112,6 +112,9 @@ function setupChrome() {
   if (typeof ResizeObserver === 'function') new ResizeObserver(syncPadding).observe(bar);
   else window.addEventListener('resize', syncPadding, { passive: true });
   window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('beforeprint', () => {
+    for (const details of document.querySelectorAll('details')) details.open = true;
+  });
 }
 
 async function init() {

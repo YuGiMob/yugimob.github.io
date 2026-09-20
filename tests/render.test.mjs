@@ -110,6 +110,18 @@ function runFrames(dom, limit = 40) {
   while (count < limit && dom.runFrame(dom.advance(200))) count += 1;
 }
 
+function flush() {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+function matrixFetch() {
+  return async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ models: ['m'], scenarios: [{ id: 'single-line', focus: 'core' }], contenders: ['tool-a'], cells: [[[[0], 1]]] }),
+  });
+}
+
 test('renderIdentity writes the title, identity text, metadata, and links', () => {
   withDom((dom) => {
     const avatar = register(dom.document, 'avatar');
@@ -253,8 +265,8 @@ test('renderEvidence hides the section when the showcase has no evidence', () =>
   withDom(() => renderEvidence(SHOWCASE, projectMap(), null, []));
 });
 
-test('renderEvidence renders the chart and the trace, mounting them before printing', () => {
-  withDom((dom) => {
+test('renderEvidence renders the chart and the trace, mounting them before printing', async () => {
+  await withDom(async (dom) => {
     register(dom.document, 'evidence');
     const body = register(dom.document, 'evidence-body');
     const kicker = register(dom.document, 'evidence-kicker');
@@ -269,10 +281,30 @@ test('renderEvidence renders the chart and the trace, mounting them before print
     assert.equal(classes(body, 'chart').length, 0);
 
     dom.window.dispatch('beforeprint');
-    assert.equal(classes(body, 'chart').length, 1);
+    await flush();
+    assert.equal(classes(body, 'chart').length, 2);
     assert.match(body.textContent, /Pass rate by editing tool/);
+    assert.match(body.textContent, /Where each tool loses/);
     assert.equal(classes(body, 'demo').length, 1);
-  });
+  }, { fetch: matrixFetch() });
+});
+
+test('renderEvidence notes a scenario matrix that cannot be fetched', async () => {
+  const original = console.warn;
+  console.warn = () => {};
+  try {
+    await withDom(async (dom) => {
+      register(dom.document, 'evidence');
+      const body = register(dom.document, 'evidence-body');
+      renderEvidence(SHOWCASE, projectMap(), BENCHMARK, []);
+      dom.window.dispatch('beforeprint');
+      await flush();
+      assert.equal(classes(body, 'matrix-table').length, 0);
+      assert.match(body.textContent, /This panel could not be loaded from the data\./);
+    }, { fetch: async () => { throw new TypeError('offline'); } });
+  } finally {
+    console.warn = original;
+  }
 });
 
 test('renderEvidence explains a missing benchmark and tolerates a missing project', () => {
@@ -286,17 +318,18 @@ test('renderEvidence explains a missing benchmark and tolerates a missing projec
   });
 });
 
-test('renderEvidence reports a chart that cannot be built', () => {
+test('renderEvidence reports a chart that cannot be built', async () => {
   const original = console.warn;
   console.warn = () => {};
   try {
-    withDom((dom) => {
+    await withDom(async (dom) => {
       register(dom.document, 'evidence');
       const body = register(dom.document, 'evidence-body');
       renderEvidence(SHOWCASE, projectMap(), { ...BENCHMARK, contenders: undefined }, []);
       dom.window.dispatch('beforeprint');
+      await flush();
       assert.match(body.textContent, /This panel could not be loaded from the data\./);
-    });
+    }, { fetch: matrixFetch() });
   } finally {
     console.warn = original;
   }

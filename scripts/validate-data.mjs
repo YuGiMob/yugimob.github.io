@@ -4,7 +4,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEMO_IDS } from '../assets/js/demos.js';
 import { PLAYGROUND_ID } from '../assets/js/playground.js';
-import { BENCHMARK_FOCI, BENCHMARK_HISTORY_LIMIT, HISTORY_LIMIT, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS, benchmarkSnapshot, isTimestamp, wilsonInterval } from './refresh-lib.mjs';
+import { BENCHMARK_FOCI, BENCHMARK_HISTORY_LIMIT, HISTORY_LIMIT, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS, benchmarkSnapshot, holmAdjust, isTimestamp, mcnemarExact, scenarioMatrixMatchesBenchmark, wilsonInterval } from './refresh-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -12,6 +12,8 @@ const dataPath = args[0] ? resolve(args[0]) : join(ROOT, 'data', 'site-data.json
 const showcasePath = args[1] ? resolve(args[1]) : join(ROOT, 'data', 'showcase.json');
 const schemaPath = join(ROOT, 'data', 'site-data.schema.json');
 const showcaseSchemaPath = join(ROOT, 'data', 'showcase.schema.json');
+const matrixPath = args[2] ? resolve(args[2]) : join(ROOT, 'data', 'benchmark-matrix.json');
+const matrixSchemaPath = join(ROOT, 'data', 'benchmark-matrix.schema.json');
 
 class ValidationError extends Error {}
 
@@ -66,7 +68,7 @@ function readJson(path, label) {
 }
 
 const SCHEMA_ANNOTATIONS = new Set(['$schema', '$id', 'title', 'description', 'default', 'examples', 'deprecated', 'readOnly', 'writeOnly']);
-const SCHEMA_KEYWORDS = new Set(['type', 'enum', 'properties', 'required', 'additionalProperties', 'items', 'minItems', 'minLength', 'pattern', 'format', 'minimum', 'maximum']);
+const SCHEMA_KEYWORDS = new Set(['type', 'enum', 'properties', 'required', 'additionalProperties', 'items', 'minItems', 'maxItems', 'minLength', 'pattern', 'format', 'minimum', 'maximum']);
 const SCHEMA_TYPES = new Set(['object', 'array', 'string', 'integer', 'number', 'boolean', 'null']);
 const SCHEMA_FORMATS = new Set(['uri', 'email', 'date-time']);
 
@@ -118,7 +120,8 @@ function checkSchemaDocument(schema, path, rootLabel, report) {
   for (const [key, child] of Object.entries(schema.properties ?? {})) {
     checkSchemaDocument(child, path ? `${path}.${key}` : key, rootLabel, report);
   }
-  if (isPlainObject(schema.items)) checkSchemaDocument(schema.items, path ? `${path}.items` : 'items', rootLabel, report);
+  if (Array.isArray(schema.items)) schema.items.forEach((child, index) => checkSchemaDocument(child, path ? `${path}.items.${index}` : `items.${index}`, rootLabel, report));
+  else if (isPlainObject(schema.items)) checkSchemaDocument(schema.items, path ? `${path}.items` : 'items', rootLabel, report);
   if (isPlainObject(schema.additionalProperties)) {
     checkSchemaDocument(schema.additionalProperties, path ? `${path}.*` : '*', rootLabel, report);
   }
@@ -149,7 +152,12 @@ function validateAgainstSchema(value, schema, path, rootLabel, report = fail) {
   }
   if (Array.isArray(value)) {
     if ('minItems' in schema && value.length < schema.minItems) report(`${label(path, rootLabel)} invalid`);
-    if (schema.items) {
+    if ('maxItems' in schema && value.length > schema.maxItems) report(`${label(path, rootLabel)} invalid`);
+    if (Array.isArray(schema.items)) {
+      schema.items.forEach((child, index) => {
+        if (index < value.length) validateAgainstSchema(value[index], child, `${path}.${index}`, rootLabel, report);
+      });
+    } else if (schema.items) {
       value.forEach((entry, index) => {
         validateAgainstSchema(entry, schema.items, `${path}.${index}`, rootLabel, report);
       });
@@ -233,6 +241,19 @@ function validateContender(contender, labels) {
     const total = Object.values(contender.outcomes).reduce((sum, count) => sum + count, 0);
     if (total !== contender.runs) fail(`${name} outcomes do not sum to runs`);
   }
+  if (contender.vsHighlight != null) {
+    if (contender.highlight === true) fail(`${name} is highlighted and cannot compare itself to the highlight`);
+    const comparison = contender.vsHighlight;
+    if (!isPlainObject(comparison) || !Number.isInteger(comparison.b) || !Number.isInteger(comparison.c)) {
+      fail(`${name} vsHighlight invalid`);
+    } else {
+      if (comparison.b < 0 || comparison.c < 0) fail(`${name} vsHighlight invalid`);
+      if (Number.isInteger(contender.runs) && comparison.b + comparison.c > contender.runs) fail(`${name} vsHighlight exceeds runs`);
+      if (Math.abs(comparison.p - mcnemarExact(comparison.b, comparison.c)) > 0.000001) {
+        fail(`${name} vsHighlight p does not match the exact McNemar test`);
+      }
+    }
+  }
 }
 
 function validateProjects(projects) {
@@ -242,6 +263,17 @@ function validateProjects(projects) {
     if (projectNames.has(project.name)) fail(`project duplicated: ${project.name}`);
     projectNames.add(project.name);
   }
+}
+
+function validateComparisons(benchmark) {
+  const rivals = benchmark.contenders.filter((contender) => isPlainObject(contender) && isPlainObject(contender.vsHighlight));
+  const adjusted = holmAdjust(rivals.map((contender) => contender.vsHighlight.p));
+  rivals.forEach((contender, index) => {
+    const stored = contender.vsHighlight.pAdjusted;
+    if (!Number.isFinite(stored) || Math.abs(stored - adjusted[index]) > 0.000001) {
+      fail(`benchmark contender ${contender.label} vsHighlight pAdjusted does not match the Holm adjustment`);
+    }
+  });
 }
 
 function validateBenchmark(benchmark) {
@@ -267,6 +299,7 @@ function validateBenchmark(benchmark) {
   } else {
     fail('benchmark focusCounts invalid');
   }
+  validateComparisons(benchmark);
 }
 
 function validateBenchmarkHistory(benchmark, history) {
@@ -301,11 +334,20 @@ const data = readJson(dataPath, relative(ROOT, dataPath));
 const showcase = readJson(showcasePath, relative(ROOT, showcasePath));
 const dataSchema = readJson(schemaPath, relative(ROOT, schemaPath));
 const showcaseSchema = readJson(showcaseSchemaPath, relative(ROOT, showcaseSchemaPath));
+const matrix = readJson(matrixPath, relative(ROOT, matrixPath));
+const matrixSchema = readJson(matrixSchemaPath, relative(ROOT, matrixSchemaPath));
 
 if (data !== undefined && dataSchema !== undefined) reportSchema(data, dataSchema, 'site-data');
 if (showcase !== undefined && showcaseSchema !== undefined) reportSchema(showcase, showcaseSchema, 'showcase');
 if (dataSchema !== undefined) checkSchemaDocument(dataSchema, '', 'site-data', (message) => errors.push(message));
 if (showcaseSchema !== undefined) checkSchemaDocument(showcaseSchema, '', 'showcase', (message) => errors.push(message));
+if (matrix !== undefined && matrixSchema !== undefined) reportSchema(matrix, matrixSchema, 'benchmark-matrix');
+if (matrixSchema !== undefined) checkSchemaDocument(matrixSchema, '', 'benchmark-matrix', (message) => errors.push(message));
+if (matrix !== undefined && isPlainObject(data) && isPlainObject(data.benchmark)) {
+  run(() => {
+    if (!scenarioMatrixMatchesBenchmark(matrix, data.benchmark)) fail('benchmark-matrix does not match the benchmark block');
+  });
+}
 
 const declaredNames = isPlainObject(data) && Array.isArray(data.projects) && data.projects.length > 0
   ? new Set(data.projects.filter((project) => isPlainObject(project) && typeof project.name === 'string').map((project) => project.name))
