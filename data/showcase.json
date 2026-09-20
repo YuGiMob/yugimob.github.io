@@ -1,4 +1,5 @@
 {
+  "$schema": "./showcase.schema.json",
   "intro": {
     "headline": "I make coding agents fail loudly.",
     "paragraphs": [
@@ -97,7 +98,7 @@
       "The losses are published too"
     ],
     "demo": "trace",
-    "intro": "The figures come from committed run reports in pi-edit-benchmark, and every bar links back to the project that produced it. The trace beside the chart shows one run being scored, including the refusal that became the point.",
+    "intro": "The figures come from committed run reports in pi-edit-benchmark. The trace beside the chart shows one run being scored, including the refusal that became the point.",
     "benchmark": {
       "source": "https://github.com/YuGiMob/pi-edit-benchmark",
       "generatedAt": "2026-09-04T15:00:39.514Z",

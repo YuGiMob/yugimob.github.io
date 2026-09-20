@@ -12,8 +12,8 @@ function anchorAt(index) {
   return anchor;
 }
 
-function seedMintIndex() {
-  return Math.floor(Math.random() * ANCHOR_SPACE);
+function seedMintIndex(random) {
+  return Math.floor(random() * ANCHOR_SPACE);
 }
 
 function allocateAnchor(session) {
@@ -37,8 +37,8 @@ function snapshot(session) {
   };
 }
 
-export function createSession(sourceLines) {
-  const session = { lines: [], anchors: new Set(), served: new Map(), mintIndex: seedMintIndex(), undo: null };
+export function createSession(sourceLines, random = Math.random) {
+  const session = { lines: [], anchors: new Set(), served: new Map(), mintIndex: seedMintIndex(random), undo: null };
   for (const text of sourceLines) {
     session.lines.push({ anchor: allocateAnchor(session), text });
   }
@@ -101,7 +101,10 @@ export function replace(session, request) {
   }
   session.undo = snapshot(session);
   const removed = session.lines.slice(fromIndex, toIndex + 1);
-  for (const line of removed) session.anchors.delete(line.anchor);
+  for (const line of removed) {
+    session.anchors.delete(line.anchor);
+    session.served.delete(line.anchor);
+  }
   const added = replacements.map((text) => ({ anchor: allocateAnchor(session), text }));
   session.lines.splice(fromIndex, removed.length, ...added);
   const rows = [];
@@ -117,16 +120,15 @@ export function replace(session, request) {
 
 export function undo(session) {
   if (!session.undo) {
-    return { ok: false, code: 'E_NOTHING_TO_UNDO', message: '[E_NOTHING_TO_UNDO] No replace or insert to revert.', rows: [] };
+    return { ok: false, code: 'E_NOTHING_TO_UNDO', message: '[E_NOTHING_TO_UNDO] No replace to revert.', rows: [] };
   }
   const restored = session.undo;
-  const count = session.lines.length;
   session.lines = restored.lines.map((line) => ({ anchor: line.anchor, text: line.text }));
   session.anchors = new Set(restored.anchors);
   session.served = new Map(restored.served);
   session.mintIndex = restored.mintIndex;
   session.undo = null;
-  return { ok: true, code: null, message: `undo_last_change restored ${count} lines`, rows: readRows(session) };
+  return { ok: true, code: null, message: `undo_last_change: restored the state before the last replace`, rows: readRows(session) };
 }
 
 export function externalEdit(session, anchor, text) {

@@ -1,4 +1,5 @@
-import { el, append, createController, createRuntime, typeText, reducedMotion, svg } from './ui.js';
+import { el, append, createController, typeText, reducedMotion, svg, announce } from './ui.js';
+
 function frame(title, badge) {
   const root = el('div', 'demo');
   const bar = el('div', 'demo-bar');
@@ -14,8 +15,6 @@ function press(label, className) {
   button.type = 'button';
   return button;
 }
-
-const controller = createController;
 
 function typeLines(container, lines, runtime, onDone) {
   let index = 0;
@@ -119,7 +118,7 @@ function webToolsDemo() {
   const note = el('p', 'flow-note', 'web_fetch · local files and private addresses allowed by default');
   append(stage, wide.svgRoot, tall.svgRoot, note);
 
-  return controller(root, () => {});
+  return createController(root, () => {});
 }
 
 function torView(config) {
@@ -181,6 +180,7 @@ function torDemo() {
   const views = [wide, tall];
 
   const readout = el('div', 'tor-readout');
+  readout.setAttribute('aria-live', 'polite');
   const toggle = el('div', 'tor-toggle');
   const directButton = press('direct', 'tor-mode is-current');
   const torButton = press('tor', 'tor-mode');
@@ -195,6 +195,8 @@ function torDemo() {
     mode = next;
     directButton.classList.toggle('is-current', next === 'direct');
     torButton.classList.toggle('is-current', next === 'tor');
+    directButton.setAttribute('aria-pressed', String(next === 'direct'));
+    torButton.setAttribute('aria-pressed', String(next === 'tor'));
     for (const view of views) {
       view.directPath.classList.toggle('is-hidden', next !== 'direct');
       view.circuitPath.classList.toggle('is-hidden', next !== 'tor');
@@ -241,7 +243,7 @@ function torDemo() {
   setMode('tor');
   renderTorFrame(0);
 
-  return controller(root, (runtime) => {
+  return createController(root, (runtime) => {
     if (reducedMotion()) {
       setMode(mode);
       renderTorFrame(hopTimes[2]);
@@ -300,6 +302,7 @@ function workflowDemo() {
 
   function run() {
     if (!runtimeRef) return;
+    runtimeRef.reset();
     clear();
     const sequence = [
       { index: 0, status: 'start · msg 1 · read the codebase' },
@@ -317,13 +320,16 @@ function workflowDemo() {
       output.textContent = plan;
       output.classList.add('is-visible');
       status.textContent = 'done · 2 rounds · committed from msg 17';
+      announce('workflow done · 2 rounds · committed from msg 17');
       return;
     }
+    announce('workflow started · 2 rounds');
     sequence.forEach((step, index) => {
       runtimeRef.after(() => {
         if (index > 0) itemNodes[sequence[index - 1].index].classList.replace('is-active', 'is-done');
         itemNodes[step.index].classList.add('is-active');
         status.textContent = step.status;
+        if (step.index === 6) announce('loop 1 of 2 · context reset');
       }, 240 + index * 780);
     });
     runtimeRef.after(() => {
@@ -331,13 +337,14 @@ function workflowDemo() {
       output.textContent = plan;
       output.classList.add('is-visible');
       status.textContent = 'done · 2 rounds · committed from msg 17';
+      announce('workflow done · 2 rounds · committed from msg 17');
     }, 240 + sequence.length * 780);
   }
 
   runButton.addEventListener('click', run);
   resetButton.addEventListener('click', clear);
 
-  return controller(root, (runtime) => {
+  return createController(root, (runtime) => {
     runtimeRef = runtime;
     if (!reducedMotion()) runtime.after(run, 900);
   }, () => {
@@ -377,26 +384,24 @@ function gitDemo() {
     body.scrollTop = body.scrollHeight;
   }
 
-  replay.addEventListener('click', () => {
-    if (typingRuntime) typingRuntime.clear();
-    typingRuntime = createRuntime();
-    body.replaceChildren();
-    typeLines(body, lines, typingRuntime);
-  });
-
   let runtimeRef = null;
-  let typingRuntime = null;
+
+  function play() {
+    if (!runtimeRef) return;
+    runtimeRef.reset();
+    body.replaceChildren();
+    typeLines(body, lines, runtimeRef);
+  }
+
+  replay.addEventListener('click', play);
   renderFinal();
 
-  return controller(root, (runtime) => {
+  return createController(root, (runtime) => {
     runtimeRef = runtime;
     if (reducedMotion()) return;
-    body.replaceChildren();
-    typeLines(body, lines, runtime);
+    play();
   }, () => {
     runtimeRef = null;
-    if (typingRuntime) typingRuntime.clear();
-    typingRuntime = null;
   });
 }
 
@@ -425,29 +430,26 @@ function traceDemo() {
   }
 
   let runtimeRef = null;
-  replay.addEventListener('click', () => {
+
+  function play() {
     if (!runtimeRef) return;
+    runtimeRef.reset();
     reset();
     if (reducedMotion()) {
       for (const item of list.children) item.classList.add('is-in');
       return;
     }
     [...list.children].forEach((item, index) => {
-      runtimeRef.after(() => item.classList.add('is-in'), 200 + index * 520);
+      runtimeRef.after(() => item.classList.add('is-in'), 300 + index * 520);
     });
-  });
+  }
 
+  replay.addEventListener('click', play);
   reset();
 
-  return controller(root, (runtime) => {
+  return createController(root, (runtime) => {
     runtimeRef = runtime;
-    if (reducedMotion()) {
-      for (const item of list.children) item.classList.add('is-in');
-      return;
-    }
-    [...list.children].forEach((item, index) => {
-      runtime.after(() => item.classList.add('is-in'), 300 + index * 520);
-    });
+    play();
   }, () => {
     runtimeRef = null;
   });
@@ -460,6 +462,8 @@ const BUILDERS = {
   git: gitDemo,
   trace: traceDemo,
 };
+
+export const DEMO_IDS = new Set(Object.keys(BUILDERS));
 
 export function buildDemo(id) {
   const builder = BUILDERS[id];

@@ -1,4 +1,5 @@
 {
+  "$schema": "./site-data.schema.json",
   "identity": {
     "displayName": "YuGiMob",
     "classTitle": "Coding-agent extensions that fail loudly",

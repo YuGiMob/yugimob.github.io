@@ -2,6 +2,8 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DEMO_IDS } from '../assets/js/demos.js';
+import { PLAYGROUND_ID } from '../assets/js/playground.js';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dataPath = join(ROOT, 'data', 'site-data.json');
 const schemaPath = join(ROOT, 'data', 'site-data.schema.json');
@@ -67,7 +69,7 @@ try {
 } catch (err) {
   fail(`data/site-data.schema.json unparsable: ${err.message}`);
 }
-const topAllowed = ['identity', 'about', 'projects', 'stats', 'activity', 'sections', 'history'];
+const topAllowed = ['$schema', 'identity', 'about', 'projects', 'stats', 'activity', 'sections', 'history'];
 const topRequired = ['identity', 'about', 'projects', 'stats', 'activity', 'sections'];
 hasOnly(data, topAllowed);
 for (const key of topRequired) if (!(key in data)) fail(`missing ${key}`);
@@ -87,10 +89,13 @@ if (!Array.isArray(data.about.paragraphs) || data.about.paragraphs.length === 0)
 for (const p of data.about.paragraphs) needString(p, 'about paragraph');
 if (!Array.isArray(data.projects) || data.projects.length === 0) fail('projects invalid');
 const projectAllowed = ['name', 'description', 'language', 'stars', 'forks', 'url', 'npm', 'license', 'npmWeeklyDownloads', 'pushedAt'];
+const seenProjectNames = new Set();
 for (const proj of data.projects) {
   needObject(proj, 'project');
   hasOnly(proj, projectAllowed);
   for (const k of ['name', 'url', 'pushedAt']) needString(proj[k], `project ${proj.name || '?'} ${k}`);
+  if (seenProjectNames.has(proj.name)) fail(`project duplicated: ${proj.name}`);
+  seenProjectNames.add(proj.name);
   needUri(proj.url, `project ${proj.name} url`);
   checkIntegers(proj, ['stars', 'forks'], `project ${proj.name} `);
   needStringOrNull(proj.description, `project ${proj.name} description`);
@@ -126,11 +131,14 @@ hasOnly(data.sections, ['showBackground', 'showArtifacts', 'showAbilityScores', 
 checkBooleans(data.sections, ['showBackground', 'showArtifacts', 'showAbilityScores', 'showCampfire'], 'sections.');
 if ('history' in data) {
   if (!Array.isArray(data.history)) fail('history invalid');
+  let previousHistoryDate = null;
   for (const entry of data.history) {
     needObject(entry, 'history entry');
     hasOnly(entry, ['date', 'totalStars', 'totalDownloads', 'pushes']);
     needString(entry.date, 'history date');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) fail('history date invalid');
+    if (previousHistoryDate !== null && entry.date <= previousHistoryDate) fail(`history dates must be unique and sorted: ${entry.date}`);
+    previousHistoryDate = entry.date;
     checkIntegers(entry, ['totalStars', 'totalDownloads', 'pushes'], 'history ');
   }
 }
@@ -145,10 +153,11 @@ try {
 } catch (err) {
   fail(`data/showcase.schema.json unparsable: ${err.message}`);
 }
-const showcaseKeys = ['intro', 'problems', 'evidence', 'principles', 'colophon'];
-hasOnly(showcase, showcaseKeys);
-for (const key of showcaseKeys) if (!(key in showcase)) fail(`showcase missing ${key}`);
+const showcaseRequired = ['intro', 'problems', 'evidence', 'principles', 'colophon'];
+hasOnly(showcase, ['$schema', ...showcaseRequired]);
+for (const key of showcaseRequired) if (!(key in showcase)) fail(`showcase missing ${key}`);
 const projectNames = new Set(data.projects.map((project) => project.name));
+const demoIds = new Set([...DEMO_IDS, PLAYGROUND_ID]);
 const usedNames = new Set();
 needObject(showcase.intro, 'showcase.intro');
 hasOnly(showcase.intro, ['headline', 'paragraphs']);
@@ -166,6 +175,7 @@ for (const item of showcase.problems) {
   needStringArray(item.highlights, `showcase problem ${item.name} highlights`);
   if (item.size !== 'hero' && item.size !== 'default') fail(`showcase problem ${item.name} size invalid`);
   if ('demo' in item) needString(item.demo, `showcase problem ${item.name} demo`);
+  if ('demo' in item && !demoIds.has(item.demo)) fail(`showcase problem ${item.name} demo unknown: ${item.demo}`);
 }
 const evidence = showcase.evidence;
 needObject(evidence, 'showcase.evidence');
@@ -176,6 +186,7 @@ if (usedNames.has(evidence.name)) fail(`showcase evidence duplicated: ${evidence
 usedNames.add(evidence.name);
 needStringArray(evidence.highlights, 'showcase.evidence.highlights');
 if ('demo' in evidence) needString(evidence.demo, 'showcase.evidence.demo');
+if ('demo' in evidence && !demoIds.has(evidence.demo)) fail(`showcase evidence demo unknown: ${evidence.demo}`);
 if ('intro' in evidence) needString(evidence.intro, 'showcase.evidence.intro');
 const bench = evidence.benchmark;
 needObject(bench, 'showcase.evidence.benchmark');
@@ -184,10 +195,13 @@ needUri(bench.source, 'showcase.evidence.benchmark.source');
 needString(bench.generatedAt, 'showcase.evidence.benchmark.generatedAt');
 checkIntegers(bench, ['models', 'scenarios', 'contenderCount', 'runsPerContender'], 'showcase.evidence.benchmark.');
 if (!Array.isArray(bench.contenders) || bench.contenders.length === 0) fail('showcase.evidence.benchmark.contenders invalid');
+const contenderLabels = new Set();
 for (const contender of bench.contenders) {
   needObject(contender, 'benchmark contender');
   hasOnly(contender, ['label', 'overall', 'safety', 'errors', 'highlight']);
   needString(contender.label, 'benchmark contender label');
+  if (contenderLabels.has(contender.label)) fail(`benchmark contender duplicated: ${contender.label}`);
+  contenderLabels.add(contender.label);
   needNumber(contender.overall, `benchmark contender ${contender.label} overall`);
   needNumber(contender.safety, `benchmark contender ${contender.label} safety`);
   needInteger(contender.errors, `benchmark contender ${contender.label} errors`);

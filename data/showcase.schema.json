@@ -5,6 +5,7 @@
   "required": ["intro", "problems", "evidence", "principles", "colophon"],
   "additionalProperties": false,
   "properties": {
+    "$schema": { "type": "string" },
     "intro": {
       "type": "object",
       "required": ["headline", "paragraphs"],

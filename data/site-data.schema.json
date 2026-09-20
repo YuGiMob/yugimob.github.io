@@ -5,6 +5,7 @@
   "required": ["identity", "about", "projects", "stats", "activity", "sections"],
   "additionalProperties": false,
   "properties": {
+    "$schema": { "type": "string" },
     "identity": {
       "type": "object",
       "required": ["displayName", "classTitle", "tagline", "avatarUrl", "links"],

@@ -20,20 +20,26 @@
   <meta name="twitter:description" content="Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, guarded commits, and a benchmark that publishes the traces.">
   <meta name="twitter:image" content="https://yugimob.github.io/assets/og.jpg">
   <meta name="theme-color" content="#f6f1e7">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='14' fill='%23f6f1e7'/%3E%3Crect x='4' y='4' width='92' height='92' rx='11' fill='none' stroke='%231b1814' stroke-width='4'/%3E%3Ctext x='50' y='56' font-family='Georgia, serif' font-size='62' font-weight='700' text-anchor='middle' dominant-baseline='central' fill='%231b1814'%3EY%3C/text%3E%3Crect x='24' y='82' width='52' height='7' fill='%23c8451e'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='14' fill='%23f6f1e7'/%3E%3Crect x='4' y='4' width='92' height='92' rx='11' fill='none' stroke='%231b1814' stroke-width='4'/%3E%3Ctext x='50' y='56' font-family='Georgia, serif' font-size='62' font-weight='700' text-anchor='middle' dominant-baseline='central' fill='%231b1814'%3EY%3C/text%3E%3Crect x='24' y='82' width='52' height='7' fill='%23b03d19'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://avatars.githubusercontent.com" crossorigin>
   <link rel="preload" as="image" href="https://avatars.githubusercontent.com/u/110136195?s=216&v=4" imagesrcset="https://avatars.githubusercontent.com/u/110136195?s=108&v=4 1x, https://avatars.githubusercontent.com/u/110136195?s=216&v=4 2x" imagesizes="72px" fetchpriority="high">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500&display=swap">
   <link rel="stylesheet" href="assets/css/style.css">
-  <script type="module" src="assets/js/main.js" defer></script>
+  <link rel="modulepreload" href="assets/js/ui.js">
+  <link rel="modulepreload" href="assets/js/avatar.js">
+  <link rel="modulepreload" href="assets/js/hashline.js">
+  <link rel="modulepreload" href="assets/js/playground.js">
+  <link rel="modulepreload" href="assets/js/charts.js">
+  <link rel="modulepreload" href="assets/js/demos.js">
+  <script type="module" src="assets/js/main.js"></script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"Person","name":"YuGiMob","description":"Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, guarded commits, and a benchmark that publishes the traces.","url":"https://yugimob.github.io/","image":"https://avatars.githubusercontent.com/u/110136195?s=216&v=4","sameAs":["https://github.com/YuGiMob"]}</script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
   <noscript>
-    <p class="noscript">This page loads its project data with JavaScript. Enable it to see the tools and the benchmark.</p>
+    <p class="noscript">This page loads its project data with JavaScript. Enable it to see the tools and the benchmark, or browse the repositories at <a href="https://github.com/YuGiMob">github.com/YuGiMob</a>.</p>
   </noscript>
   <header id="topbar" class="topbar">
     <nav class="topnav" aria-label="Primary">
@@ -58,11 +64,11 @@
           </div>
           <div class="intro-who">
             <p class="intro-handle" id="display-name">YuGiMob</p>
-            <p class="intro-eyebrow" id="class-title"></p>
+            <p class="intro-eyebrow" id="class-title">Coding-agent extensions that fail loudly</p>
           </div>
         </div>
-        <h1 class="intro-headline"><span class="intro-claim" id="intro-headline"></span></h1>
-        <div class="intro-lede" id="intro-paragraphs"></div>
+        <h1 class="intro-headline"><span class="intro-claim" id="intro-headline">I make coding agents fail loudly.</span></h1>
+        <div id="intro-paragraphs"></div>
         <div class="intro-actions">
           <a class="btn btn-primary" href="#problems">See the problems</a>
           <a class="btn" id="hero-github" href="https://github.com/YuGiMob" target="_blank" rel="noopener noreferrer">GitHub</a>

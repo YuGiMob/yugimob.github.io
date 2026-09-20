@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, renameSync, existsSync, unlinkSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, existsSync, unlinkSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,11 +15,14 @@ function safeUnlink(path) {
 }
 
 function cleanupStaleTmpFiles() {
+  const cutoff = Date.now() - 10 * 60 * 1000;
   try {
     for (const entry of readdirSync(join(ROOT, 'data'))) {
-      if (entry.startsWith('site-data.json.') && entry.endsWith('.tmp')) {
-        safeUnlink(join(ROOT, 'data', entry));
-      }
+      if (!entry.startsWith('site-data.json.') || !entry.endsWith('.tmp')) continue;
+      const path = join(ROOT, 'data', entry);
+      try {
+        if (statSync(path).mtimeMs < cutoff) safeUnlink(path);
+      } catch {}
     }
   } catch {}
 }
@@ -28,10 +31,14 @@ cleanupStaleTmpFiles();
 const GITHUB_HEADERS = {
   Accept: 'application/vnd.github+json',
   'User-Agent': 'yugimob-refresh',
+  'X-GitHub-Api-Version': '2022-11-28',
 };
+if (process.env.GITHUB_TOKEN) GITHUB_HEADERS.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
 
 const HISTORY_LIMIT = 120;
 const MAX_ACTIVITY_DAYS = 120;
+const EVENT_PAGES = 3;
+const REPO_PAGES = 5;
 const MAX_HIGHLIGHTS = 5;
 const FETCH_TIMEOUT_MS = 15000;
 const UNLISTED_REPOS = new Set(['pi-jina-webtools', 'pi-msg-queue', 'pi-tps-status', 'mypi']);
@@ -73,6 +80,12 @@ if (fileUnusable) {
   console.warn('data/site-data.json is unusable; write skipped to preserve the existing file');
   process.exit(0);
 }
+
+if (!fileExists) {
+  console.error('data/site-data.json is missing; create it with the curated identity and projects first');
+  process.exit(1);
+}
+
 if (!Array.isArray(data.history)) data.history = [];
 if (!Array.isArray(data.activity.daily)) data.activity.daily = [];
 
@@ -142,51 +155,32 @@ async function getJson(url, headers, warnPrefix) {
   }
   return null;
 }
-async function fetchStarredCount() {
-  let page = 1;
-  let total = 0;
-  let retries429 = 0;
-  while (true) {
-    const url = `https://api.github.com/users/YuGiMob/starred?per_page=100&page=${page}`;
-    let response;
-    try {
-      response = await fetch(url, { headers: GITHUB_HEADERS, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-    } catch (err) {
-      console.warn('GitHub API error for /starred:', err.message);
-      return null;
+async function fetchPages(baseUrl, maxPages, warnPrefix) {
+  const items = [];
+  let received = false;
+  for (let page = 1; page <= maxPages; page += 1) {
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    const batch = await getJson(`${baseUrl}${separator}per_page=100&page=${page}`, GITHUB_HEADERS, `${warnPrefix} page ${page}`);
+    if (!Array.isArray(batch)) {
+      if (received) console.warn(`${warnPrefix}: page ${page} failed, using ${items.length} partial results`);
+      break;
     }
-    if (!response.ok) {
-      if (response.status === 429 && retries429 < 3) {
-        retries429 += 1;
-        await sleep(retryDelayMs(response));
-        continue;
-      }
-      if (response.status === 429) {
-        console.warn('GitHub API error for /starred: 429 retries exhausted');
-        return null;
-      }
-      console.warn('GitHub API error for /starred:', response.status);
-      return null;
-    }
-    retries429 = 0;
-    const arr = await response.json().catch(() => null);
-    if (!Array.isArray(arr)) {
-      console.warn('GitHub API error for /starred: non-array body');
-      return null;
-    }
-    total += arr.length;
-    const link = response.headers.get('link') || '';
-    const hasNext = link.split(',').some((part) => part.split(';').some((segment) => segment.trim() === 'rel="next"'));
-    if (arr.length < 100 || !hasNext) break;
-    page += 1;
+    received = true;
+    items.push(...batch);
+    if (batch.length < 100) break;
     await sleep(50);
   }
-  return total;
+  return received ? items : null;
+}
+
+async function fetchStarredCount() {
+  const items = await fetchPages('https://api.github.com/users/YuGiMob/starred', 50, 'GitHub API error for /starred');
+  return Array.isArray(items) ? items.length : null;
 }
 const [user, reposRaw, events, starsGiven] = await Promise.all([
   getJson('https://api.github.com/users/YuGiMob', GITHUB_HEADERS, 'GitHub API error for /users/YuGiMob'),
-  getJson('https://api.github.com/users/YuGiMob/repos?per_page=100', GITHUB_HEADERS, 'GitHub API error for /repos'),
-  getJson('https://api.github.com/users/YuGiMob/events/public?per_page=100', GITHUB_HEADERS, 'GitHub API error for /events/public'),
+  fetchPages('https://api.github.com/users/YuGiMob/repos', REPO_PAGES, 'GitHub API error for /repos'),
+  fetchPages('https://api.github.com/users/YuGiMob/events/public', EVENT_PAGES, 'GitHub API error for /events/public'),
   fetchStarredCount(),
 ]);
 const repos = Array.isArray(reposRaw) ? reposRaw : [];

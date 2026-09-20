@@ -35,13 +35,15 @@ flagship loses.
 ```
 index.html                      page shell, meta tags, JSON-LD
 404.html                        not-found page
+sitemap.xml                     single-URL sitemap
+robots.txt                      crawl policy and sitemap reference
 assets/css/style.css            the entire stylesheet
 assets/js/main.js               fetch, render, wire everything
 assets/js/ui.js                 DOM, formatting, copy, runtime helpers
 assets/js/hashline.js           anchor allocation + edit session model
 assets/js/playground.js         the flagship interactive demo
 assets/js/demos.js              all five card demos
-assets/js/charts.js             the benchmark chart
+assets/js/charts.js             benchmark and history charts
 assets/js/avatar.js             avatar srcset hydration
 data/site-data.json             machine-refreshed data
 data/site-data.schema.json      schema for the above
@@ -49,7 +51,28 @@ data/showcase.json              curated narrative and demo wiring
 data/showcase.schema.json       schema for the above
 scripts/refresh-data.mjs        daily GitHub + npm refresh
 scripts/validate-data.mjs       offline validation for both data files
+tests/                          node:test unit and integration tests
+package.json                    scripts only, no runtime dependencies
+.github/workflows/refresh-data.yml  daily refresh and commit
+.github/workflows/validate.yml      validation on push and pull request
 ```
+
+## Demos
+
+A showcase entry names a `demo`, and that name must exist in the registry:
+
+| demo | implementation |
+| --- | --- |
+| `hashline` | assets/js/playground.js |
+| `webtools` | assets/js/demos.js |
+| `tor` | assets/js/demos.js |
+| `workflow` | assets/js/demos.js |
+| `git` | assets/js/demos.js |
+| `trace` | assets/js/demos.js |
+
+`size` is `hero` or `default`; the hero entry gets the wider grid. The
+`sections` block in `data/site-data.json` toggles the About, problems,
+evidence, hero stats, and footer blocks.
 
 ## Data model
 
@@ -61,6 +84,8 @@ description), and machine numbers: stars, forks, languages, last push,
 weekly npm downloads, stats, activity (window, pushes, highlights, per-day
 events), and `history`: one snapshot per day with total stars, total weekly
 downloads, and pushes.
+
+The About panel renders those snapshots as a stars and weekly-installs trend.
 
 **`data/showcase.json`** is curated by hand. It holds the introduction, one
 entry per problem/tool pair (kicker, problem headline, problem paragraph,
@@ -79,17 +104,21 @@ node scripts/refresh-data.mjs
 The script fetches the GitHub user, repos, and public events, plus npm weekly
 downloads for every package in the manifest, then updates only the machine
 fields. It requires Node >= 22, needs no install, and makes no authenticated
-requests.
+requests by default; the refresh workflow passes `GITHUB_TOKEN` so scheduled
+runs do not fight over a shared rate limit.
 
 What it preserves: curated prose, descriptions, identity, and the showcase
 file are never touched. Forks and the site repo are skipped. The file is
 written atomically (temp file then rename) with a change summary. If the
 existing file is present but unusable, the refresh warns and exits without
 writing, so a corrupt file cannot wipe curated content.
+If the file is missing entirely, the refresh exits with an error instead of
+writing an empty skeleton.
 
 Each run also appends a `history` snapshot for the day (replacing an existing
 snapshot for the same date, capped at 120 entries) and rebuilds
-`activity.daily` from the last 120 days of public events.
+`activity.daily` from the most recent public events, paginating up to the
+GitHub API's 300-event maximum and capping the window at 120 days.
 
 The site refreshes itself daily through
 `.github/workflows/refresh-data.yml` (06:00 UTC), which runs the script,
@@ -102,9 +131,21 @@ changed. It can also be triggered manually from the Actions tab.
 node scripts/validate-data.mjs
 ```
 
-Checks both JSON files against their schemas and the structural rules,
-cross-references showcase names with the manifest, and prints
-`validate: ok`. The workflow runs it on every refresh.
+Checks both JSON files against the structural rules, cross-references showcase
+names with the manifest, verifies every `demo` id exists, and prints
+`validate: ok`. The schema files drive editor validation through the `$schema`
+keys in both data files. The workflow runs the validator on every refresh and
+on push.
+
+## Testing
+
+```
+npm test
+```
+
+The suite runs on `node --test` with no dependencies: unit tests for the
+anchored-edit session model and the avatar srcset helper, plus an integration
+check that the committed data passes the validator.
 
 ## Serving locally
 

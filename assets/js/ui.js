@@ -56,6 +56,12 @@ export function createRuntime() {
   const timeouts = new Set();
   let frameId = 0;
   let stopped = false;
+  const cancelPending = () => {
+    for (const id of timeouts) clearTimeout(id);
+    timeouts.clear();
+    if (frameId) cancelAnimationFrame(frameId);
+    frameId = 0;
+  };
   return {
     after(callback, delay) {
       const id = setTimeout(() => {
@@ -75,10 +81,11 @@ export function createRuntime() {
     },
     clear() {
       stopped = true;
-      for (const id of timeouts) clearTimeout(id);
-      timeouts.clear();
-      if (frameId) cancelAnimationFrame(frameId);
-      frameId = 0;
+      cancelPending();
+    },
+    reset() {
+      cancelPending();
+      stopped = false;
     },
   };
 }
@@ -95,6 +102,7 @@ export function createController(node, setup, teardown) {
       setup(runtime);
     },
     stop() {
+      if (!active && !runtime) return;
       active = false;
       if (runtime) runtime.clear();
       runtime = null;

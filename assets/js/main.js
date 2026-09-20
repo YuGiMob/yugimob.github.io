@@ -1,8 +1,8 @@
 import { hydrateAvatar } from './avatar.js';
 import { el, append, link, copyButton, formatNumber, animateValue, svg } from './ui.js';
 import { buildDemo } from './demos.js';
-import { buildPlayground } from './playground.js';
-import { benchmarkChart } from './charts.js';
+import { buildPlayground, PLAYGROUND_ID } from './playground.js';
+import { benchmarkChart, historyPanel } from './charts.js';
 
 const DATA_URL = 'data/site-data.json';
 const SHOWCASE_URL = 'data/showcase.json';
@@ -14,18 +14,35 @@ function isValidSiteData(data) {
   }
   if (!data.identity || typeof data.identity !== 'object' || Array.isArray(data.identity)) return false;
   if (!Array.isArray(data.projects) || data.projects.length === 0) return false;
+  for (const project of data.projects) {
+    if (!project || typeof project.name !== 'string' || typeof project.url !== 'string') return false;
+  }
   if (!data.stats || typeof data.stats !== 'object' || Array.isArray(data.stats)) return false;
   if (!data.activity || typeof data.activity !== 'object' || Array.isArray(data.activity)) return false;
   if (!data.sections || typeof data.sections !== 'object' || Array.isArray(data.sections)) return false;
   return true;
 }
 
-async function fetchJson(url) {
-  const options = { cache: 'no-cache' };
-  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') options.signal = AbortSignal.timeout(6000);
-  const response = await fetch(url, options);
-  if (!response.ok) throw new Error(`${url}: ${response.status}`);
-  return response.json();
+async function fetchJson(url, attempts = 2) {
+  let lastError = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    let retryable = true;
+    try {
+      const options = { cache: 'no-cache' };
+      if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') options.signal = AbortSignal.timeout(6000);
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        retryable = response.status === 429 || response.status >= 500;
+        throw new Error(`${url}: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      lastError = error;
+      if (!retryable || attempt + 1 >= attempts) break;
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+  }
+  throw lastError;
 }
 
 function fallbackShowcase(data) {
@@ -69,35 +86,51 @@ function setupNav() {
   const observer = new IntersectionObserver((entries) => {
     for (const entry of entries) {
       if (!entry.isIntersecting) continue;
-      for (const anchor of links) anchor.classList.toggle('is-current', anchor.dataset.nav === entry.target.id);
+      for (const anchor of links) {
+        const current = anchor.dataset.nav === entry.target.id;
+        anchor.classList.toggle('is-current', current);
+        if (current) anchor.setAttribute('aria-current', 'true');
+        else anchor.removeAttribute('aria-current');
+      }
     }
   }, { rootMargin: '-45% 0px -50% 0px' });
   for (const section of sections) observer.observe(section);
 }
 
 function setupAnchorAlignment() {
-  let pending = null;
+  let timerIds = [];
+  let observer = null;
+
   const align = () => {
-    const id = window.location.hash.replace('#', '');
-    if (!id) return;
-    const target = document.getElementById(id);
+    const targetId = window.location.hash.replace('#', '');
+    if (!targetId) return;
+    const target = document.getElementById(targetId);
     if (!target) return;
     const padding = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
     const desired = Math.round(target.getBoundingClientRect().top + window.scrollY - padding);
     if (Math.abs(desired - window.scrollY) < 6) return;
     window.scrollTo({ top: desired });
   };
+
   const cancel = () => {
-    if (pending) clearTimeout(pending);
-    pending = null;
+    for (const timerId of timerIds) clearTimeout(timerId);
+    timerIds = [];
+    if (observer) {
+      observer.disconnect();
+      observer = null;
+    }
   };
+
   const schedule = () => {
     cancel();
-    pending = setTimeout(() => {
-      pending = null;
-      align();
-    }, 1500);
+    timerIds = [200, 800, 1600].map((delay) => setTimeout(align, delay));
+    timerIds.push(setTimeout(cancel, 2600));
+    if (typeof ResizeObserver === 'function') {
+      observer = new ResizeObserver(align);
+      observer.observe(document.body);
+    }
   };
+
   window.addEventListener('hashchange', schedule);
   for (const anchor of document.querySelectorAll('a[href^="#"]')) anchor.addEventListener('click', schedule);
   for (const type of ['wheel', 'touchstart', 'keydown']) window.addEventListener(type, cancel, { passive: true });
@@ -108,7 +141,13 @@ function setupChrome() {
   const bar = document.getElementById('topbar');
   if (!bar) return;
   const update = () => bar.classList.toggle('is-scrolled', window.scrollY > 12);
+  const syncPadding = () => {
+    document.documentElement.style.scrollPaddingTop = `${Math.round(bar.getBoundingClientRect().height) + 20}px`;
+  };
   update();
+  syncPadding();
+  if (typeof ResizeObserver === 'function') new ResizeObserver(syncPadding).observe(bar);
+  else window.addEventListener('resize', syncPadding, { passive: true });
   window.addEventListener('scroll', update, { passive: true });
 }
 
@@ -222,7 +261,7 @@ function problemHead(number, entry) {
 
 function mountDemo(entry, cleanups) {
   const box = el('div', 'problem-demo');
-  const demo = entry.demo === 'hashline' ? buildPlayground() : entry.demo ? buildDemo(entry.demo) : null;
+  const demo = entry.demo === PLAYGROUND_ID ? buildPlayground() : entry.demo ? buildDemo(entry.demo) : null;
   if (!demo) return box;
   append(box, demo.node, demo.caption);
   const observer = observeVisibility(demo.node, () => demo.start(), () => demo.stop());
@@ -247,17 +286,33 @@ function renderProblemIndex(showcase) {
   rows.forEach((row, index) => {
     const anchor = el('a', 'index-link');
     anchor.href = row.href;
+    const arrow = el('span', 'index-arrow', '→');
+    arrow.setAttribute('aria-hidden', 'true');
     append(
       anchor,
       el('span', 'index-number', String(index + 1).padStart(2, '0')),
       el('span', 'index-headline', row.headline),
       el('span', 'index-tool', row.tool),
-      el('span', 'index-arrow', '→'),
+      arrow,
     );
     const item = el('li', 'index-row');
     item.appendChild(anchor);
     list.appendChild(item);
   });
+}
+
+const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+
+function countWord(value) {
+  return NUMBER_WORDS[value] ?? String(value);
+}
+
+function renderProblemsHeading(showcase) {
+  const heading = document.getElementById('problems-heading');
+  if (!heading) return;
+  const total = showcase.problems.length + (showcase.evidence ? 1 : 0);
+  const word = countWord(total);
+  heading.textContent = `${word.charAt(0).toUpperCase()}${word.slice(1)} things that kept going wrong`;
 }
 
 function renderProblems(showcase, projects) {
@@ -301,10 +356,9 @@ function renderEvidence(showcase, projects) {
   const grid = el('div', 'problem-grid');
   const copy = el('div', 'problem-copy');
   if (project) copy.appendChild(answerBlock(evidence, project));
-  const demoBox = el('div', 'problem-demo is-wide');
+  const demoBox = el('div', 'problem-demo');
   if (evidence.benchmark) {
     const chart = benchmarkChart(evidence.benchmark);
-    chart.node.classList.add('is-wide');
     demoBox.appendChild(chart.node);
     const observer = observeVisibility(chart.node, () => chart.start(), () => chart.stop());
     cleanups.push(() => {
@@ -389,8 +443,16 @@ function renderActivity(data) {
   append(line, `${formatNumber(activity.pushes ?? 0)} pushes to public repositories, `, el('span', 'activity-window', formatWindow(activity.window)), '.');
   panel.appendChild(line);
   const daily = Array.isArray(activity.daily) ? activity.daily : [];
-  if (daily.length > 0) panel.appendChild(activityChart(daily));
+  if (daily.length > 0) {
+    panel.appendChild(activityChart(daily));
+    const values = daily.map((entry) => entry.pushes);
+    const total = values.reduce((sum, value) => sum + value, 0);
+    panel.appendChild(el('p', 'sr-only', `${values.length} days recorded, ${formatNumber(total)} pushes total, between ${formatNumber(Math.min(...values))} and ${formatNumber(Math.max(...values))} per day.`));
+  }
   if (activity.fetchedAt) panel.appendChild(el('p', 'activity-note', `GitHub public events, fetched ${activity.fetchedAt}.`));
+  const history = Array.isArray(data.history) ? data.history : [];
+  const growth = history.length > 0 ? historyPanel(history) : null;
+  if (growth) panel.appendChild(growth);
 }
 
 function renderFooter(identity) {
@@ -426,26 +488,13 @@ function renderStructuredData(data, showcase) {
         url: project.url,
       },
     }));
-  const graph = {
+  const list = {
     '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'Person',
-        name: data.identity.displayName,
-        description: data.identity.tagline,
-        url: 'https://yugimob.github.io/',
-        image: data.identity.avatarUrl,
-        sameAs: [data.identity.links?.github].filter(Boolean),
-        knowsAbout: showcase.principles ?? [],
-      },
-      {
-        '@type': 'ItemList',
-        name: `${data.identity.displayName} artifacts`,
-        itemListElement: items,
-      },
-    ],
+    '@type': 'ItemList',
+    name: `${data.identity.displayName} artifacts`,
+    itemListElement: items,
   };
-  target.textContent = JSON.stringify(graph);
+  target.textContent = JSON.stringify(list);
 }
 
 function applyVisibility(sections, showcase) {
@@ -465,7 +514,7 @@ function applyVisibility(sections, showcase) {
 async function init() {
   const [data, showcaseRaw] = await Promise.all([
     fetchJson(DATA_URL),
-    fetchJson(SHOWCASE_URL).catch(() => null),
+    fetchJson(SHOWCASE_URL, 1).catch(() => null),
   ]);
   if (!isValidSiteData(data)) throw new Error('invalid site data');
   const showcase = showcaseRaw || fallbackShowcase(data);
@@ -476,6 +525,7 @@ async function init() {
   renderHeroStats(data);
   renderProblemIndex(showcase);
   renderProblems(showcase, projects);
+  renderProblemsHeading(showcase);
   renderEvidence(showcase, projects);
   renderColophon(showcase);
   renderActivity(data);
@@ -489,8 +539,30 @@ async function init() {
 
 init().catch((error) => {
   console.warn('YuGiMob:', error);
+  renderError();
+});
+
+function renderError() {
   setText('intro-headline', 'This page could not load its data.');
   setText('display-name', 'YuGiMob');
+  for (const id of ['problems', 'evidence', 'colophon']) {
+    const section = document.getElementById(id);
+    if (section) section.hidden = true;
+  }
+  const navLinks = document.querySelector('.nav-links');
+  if (navLinks) navLinks.hidden = true;
+  const stats = document.getElementById('hero-stats');
+  if (stats) stats.hidden = true;
   const paragraphs = document.getElementById('intro-paragraphs');
-  if (paragraphs) paragraphs.appendChild(el('p', 'intro-paragraph', 'Check data/site-data.json and data/showcase.json.'));
-});
+  if (paragraphs) {
+    paragraphs.replaceChildren();
+    paragraphs.appendChild(el('p', 'intro-paragraph', 'The page could not fetch its data files. Check data/site-data.json and data/showcase.json.'));
+  }
+  const actions = document.querySelector('.intro-actions');
+  if (actions) {
+    const retry = el('button', 'btn btn-primary', 'Try again');
+    retry.type = 'button';
+    retry.addEventListener('click', () => window.location.reload());
+    actions.replaceChildren(retry);
+  }
+}

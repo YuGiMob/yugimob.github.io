@@ -18,6 +18,8 @@ const SOURCE = [
   '}',
 ];
 
+export const PLAYGROUND_ID = 'hashline';
+
 const TARGET = 5;
 const REPLACEMENT = "  if (from < 0 || to < 0) return stale(lines, 'range')";
 const DRIFT = '  if (from < 0 || to < 0) return staleRange(lines)';
@@ -71,7 +73,7 @@ export function buildPlayground() {
   append(body, codePane, side);
   append(root, head, claim, body);
 
-  const caption = el('p', 'pg-caption', 'This panel runs the real session model in your browser. Press the button to walk through six steps of one edit.');
+  const caption = el('p', 'pg-caption', 'This panel runs the same anchor, staleness, and undo rules as the tool, reduced to one file. Press the button to walk through six steps of one edit.');
 
   function buildRequest() {
     return {
@@ -111,7 +113,9 @@ export function buildPlayground() {
     const item = el('li', 'pg-diff-row');
     const prefix = row.kind === 'added' ? '+' : row.kind === 'removed' ? '-' : ' ';
     item.classList.add(row.kind === 'added' ? 'is-add' : row.kind === 'removed' ? 'is-del' : 'is-ctx');
-    append(item, el('span', 'pg-diff-prefix', prefix), el('span', 'pg-anchor', row.anchor), el('code', 'pg-text', row.text || '\u00a0'));
+    const prefixNode = el('span', 'pg-diff-prefix', prefix);
+    prefixNode.setAttribute('aria-hidden', 'true');
+    append(item, prefixNode, el('span', 'pg-anchor', row.anchor), el('code', 'pg-text', row.text || '\u00a0'));
     return item;
   }
 
@@ -202,8 +206,8 @@ export function buildPlayground() {
       },
     },
     {
-      title: 'Undo is byte-exact',
-      text: 'The last replace reverts with the original bytes, BOM and line endings included, and the history survives a session restart.',
+      title: 'Undo restores the session',
+      text: 'The last replace reverts to the exact text this session served before it, and the session record comes back with it.',
       action: 'Undo',
       run() {
         doUndo();
