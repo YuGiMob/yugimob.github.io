@@ -1,24 +1,20 @@
 import { hydrateAvatar } from './avatar.js';
 import { el, append, link, copyButton, formatNumber, extent, animateValue, svg, setText, setMeta, observeVisibility } from './ui.js';
-import { buildDemo } from './demos.js';
-import { buildPlayground, PLAYGROUND_ID } from './playground.js';
-import { benchmarkChart, benchmarkMatrix, historyPanel } from './charts.js';
+import { lazyMount } from './lazy.js';
+import { loadDemo } from './demo-registry.js';
 import { fetchJson } from './fetch-json.js';
 import {
   activityLine,
   heroStatRows,
   problemEntries,
   problemIndexRows,
+  problemId,
   problemsHeading,
   projectChipRows,
   repositoryFacts,
   stalenessNotice,
   structuredData,
 } from './view-model.js';
-
-function problemId(name) {
-  return `problem-${name}`;
-}
 
 export function renderIdentity(data) {
   const identity = data.identity;
@@ -49,6 +45,7 @@ export function renderIntro(showcase) {
 export function renderHeroStats(data) {
   const list = document.getElementById('hero-stats');
   if (!list) return;
+  list.replaceChildren();
   for (const stat of heroStatRows(data)) {
     const item = el('div', 'stat');
     const dd = el('dd', 'stat-value', '0');
@@ -108,97 +105,10 @@ function problemHead(number, entry) {
   return head;
 }
 
-function lazyMount(container, build) {
-  let mounted = null;
-  let settled = false;
-  let observer = null;
-  const mount = () => {
-    if (settled) return mounted;
-    settled = true;
-    window.removeEventListener('beforeprint', mount);
-    if (observer) observer.disconnect();
-    container.classList.remove('is-loading');
-    try {
-      mounted = build();
-    } catch (error) {
-      console.warn('YuGiMob:', error);
-      mounted = null;
-    }
-    if (!mounted) {
-      container.appendChild(el('p', 'chart-note', 'This panel could not be loaded from the data.'));
-      return null;
-    }
-    append(container, mounted.node, mounted.caption);
-    observeVisibility(mounted.node, () => mounted.start(), () => mounted.stop());
-    return mounted;
-  };
-  container.classList.add('is-loading');
-  if (typeof IntersectionObserver !== 'function') {
-    mount();
-    return;
-  }
-  window.addEventListener('beforeprint', mount);
-  observer = new IntersectionObserver((entries, self) => {
-    if (!entries.some((entry) => entry.isIntersecting)) return;
-    self.disconnect();
-    mount();
-  }, { rootMargin: '200px 0px' });
-  observer.observe(container);
-}
-
-function lazyFetchMount(container, url, build) {
-  let mounted = null;
-  let settled = false;
-  let observer = null;
-  const showFailure = () => {
-    container.classList.remove('is-loading');
-    if (!container.querySelector('.chart-note')) {
-      container.appendChild(el('p', 'chart-note', 'This panel could not be loaded from the data.'));
-    }
-  };
-  const useData = (data) => {
-    container.classList.remove('is-loading');
-    try {
-      mounted = build(data);
-    } catch (error) {
-      console.warn('YuGiMob:', error);
-      mounted = null;
-    }
-    if (!mounted) {
-      showFailure();
-      return;
-    }
-    append(container, mounted.node, mounted.caption);
-    observeVisibility(mounted.node, () => mounted.start(), () => mounted.stop());
-  };
-  const mount = () => {
-    if (settled) return;
-    settled = true;
-    window.removeEventListener('beforeprint', mount);
-    if (observer) observer.disconnect();
-    fetchJson(url, 1).then(useData).catch((error) => {
-      console.warn('YuGiMob:', error);
-      showFailure();
-    });
-  };
-  container.classList.add('is-loading');
-  if (typeof IntersectionObserver !== 'function') {
-    mount();
-    return;
-  }
-  window.addEventListener('beforeprint', mount);
-  observer = new IntersectionObserver((entries, self) => {
-    if (!entries.some((entry) => entry.isIntersecting)) return;
-    self.disconnect();
-    mount();
-  }, { rootMargin: '200px 0px' });
-  observer.observe(container);
-}
-
 function mountDemo(entry) {
   const box = el('div', 'problem-demo');
   if (entry.demo) {
-    lazyMount(box, () => (entry.demo === PLAYGROUND_ID ? buildPlayground() : buildDemo(entry.demo)));
+    lazyMount(box, () => loadDemo(entry.demo));
   }
   return box;
 }
@@ -268,7 +178,7 @@ export function renderEvidence(showcase, projects, benchmark, benchmarkHistory) 
   if (project) copy.appendChild(answerBlock(evidence, project));
   const demoBox = el('div', 'problem-demo');
   if (benchmark) {
-    lazyMount(demoBox, () => benchmarkChart(benchmark, benchmarkHistory));
+    lazyMount(demoBox, () => import('./charts.js').then((module) => module.benchmarkChart(benchmark, benchmarkHistory)));
   } else {
     demoBox.appendChild(el('p', 'chart-note', 'The benchmark block is missing from the data, so the run rates cannot be shown.'));
   }
@@ -276,12 +186,12 @@ export function renderEvidence(showcase, projects, benchmark, benchmarkHistory) 
   article.appendChild(grid);
   if (benchmark) {
     const matrixBox = el('div', 'evidence-matrix');
-    lazyFetchMount(matrixBox, 'data/benchmark-matrix.json', (data) => benchmarkMatrix(benchmark, data));
+    lazyMount(matrixBox, () => fetchJson('data/benchmark-matrix.json', 1).then((data) => import('./charts.js').then((module) => module.benchmarkMatrix(benchmark, data))));
     article.appendChild(matrixBox);
   }
   if (evidence.demo) {
     const box = el('div', 'evidence-trace');
-    lazyMount(box, () => buildDemo(evidence.demo));
+    lazyMount(box, () => loadDemo(evidence.demo));
     article.appendChild(box);
   }
   body.appendChild(article);
@@ -336,7 +246,7 @@ function activityChart(daily) {
   return chart;
 }
 
-export function renderActivity(data) {
+export async function renderActivity(data) {
   const panel = document.getElementById('activity-panel');
   const activity = data.activity;
   if (!panel || !activity) return;
@@ -368,8 +278,11 @@ export function renderActivity(data) {
   }
   if (activity.fetchedAt) panel.appendChild(el('p', 'activity-note', `GitHub public events, fetched ${activity.fetchedAt}.`));
   const history = Array.isArray(data.history) ? data.history : [];
-  const growth = history.length > 0 ? historyPanel(history) : null;
-  if (growth) panel.appendChild(growth);
+  if (history.length > 0) {
+    const charts = await import('./charts.js').catch(() => null);
+    const growth = charts ? charts.historyPanel(history) : null;
+    if (growth) panel.appendChild(growth);
+  }
 }
 
 export function renderFooter(data) {

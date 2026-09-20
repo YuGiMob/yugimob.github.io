@@ -19,6 +19,7 @@ class ValidationError extends Error {}
 
 const errors = [];
 const projectNames = new Set();
+const npmNames = new Set();
 const usedShowcaseNames = new Set();
 
 function isPlainObject(value) {
@@ -262,6 +263,9 @@ function validateProjects(projects) {
     if (!isPlainObject(project) || typeof project.name !== 'string') continue;
     if (projectNames.has(project.name)) fail(`project duplicated: ${project.name}`);
     projectNames.add(project.name);
+    if (typeof project.npm !== 'string' || project.npm.length === 0) continue;
+    if (npmNames.has(project.npm)) fail(`npm package duplicated: ${project.npm}`);
+    npmNames.add(project.npm);
   }
 }
 

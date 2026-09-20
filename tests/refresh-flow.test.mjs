@@ -98,6 +98,22 @@ test('a stale llms.txt is rebuilt even when the data is unchanged', () => {
   });
 });
 
+test('a stale hero stat block is rewritten even when the data is unchanged', () => {
+  withRepo((repo) => {
+    const first = refresh(repo);
+    assert.equal(first.status, 0, first.stderr);
+    const path = join(repo, 'index.html');
+    const committed = readFileSync(path, 'utf8');
+    const drifted = committed.replace(/(<dd class="stat-value">)[^<]*<\/dd>/, (unused, open) => `${open}0</dd>`);
+    assert.notEqual(drifted, committed);
+    writeFileSync(path, drifted);
+    const second = refresh(repo);
+    assert.equal(second.status, 0, second.stderr);
+    assert.match(second.stdout, /index\.html hero stats: rewritten/);
+    assert.equal(readFileSync(path, 'utf8'), committed);
+  });
+});
+
 test('a partial benchmark report keeps the existing block and still refreshes the rest', () => {
   withRepo((repo) => {
     const before = readData(repo);

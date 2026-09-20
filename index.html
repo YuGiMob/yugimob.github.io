@@ -17,6 +17,7 @@
   <link rel="canonical" href="https://yugimob.github.io/">
   <link rel="describedby" href="llms.txt" type="text/plain">
   <link rel="describedby" href="agent-readability.json" type="application/json">
+  <link rel="describedby" href="data/benchmark-matrix.json" type="application/json">
   <link rel="alternate" type="text/markdown" href="index.md">
   <meta property="og:image" content="https://yugimob.github.io/assets/og.jpg">
   <meta property="og:image:type" content="image/jpeg">
@@ -44,6 +45,8 @@
   <link rel="modulepreload" href="assets/js/playground.js">
   <link rel="modulepreload" href="assets/js/charts.js">
   <link rel="modulepreload" href="assets/js/demos.js">
+  <link rel="modulepreload" href="assets/js/lazy.js">
+  <link rel="modulepreload" href="assets/js/demo-registry.js">
   <link rel="modulepreload" href="assets/js/render.js">
   <link rel="modulepreload" href="assets/js/site-data.js">
   <link rel="modulepreload" href="assets/js/view-model.js">
@@ -56,14 +59,15 @@
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
   <noscript>
-    <p class="noscript">This page loads its project data with JavaScript. Enable it to see the tools and the benchmark, or browse the repositories directly:</p>
+    <p class="noscript">This page loads its project data with JavaScript. Enable it to see the tools and the benchmark, or install them directly:</p>
     <ul class="noscript-list">
-      <li><a href="https://github.com/YuGiMob/pi-hashline-edit-pro">pi-hashline-edit-pro</a></li>
-      <li><a href="https://github.com/YuGiMob/pi-unsloth-webtools">pi-unsloth-webtools</a></li>
-      <li><a href="https://github.com/YuGiMob/pi-tor-proxy">pi-tor-proxy</a></li>
-      <li><a href="https://github.com/YuGiMob/pi-msg-workflow">pi-msg-workflow</a></li>
-      <li><a href="https://github.com/YuGiMob/pi-git-commit">pi-git-commit</a></li>
+      <li><a href="https://github.com/YuGiMob/pi-hashline-edit-pro">pi-hashline-edit-pro</a> <code>npm i pi-hashline-edit-pro</code></li>
+      <li><a href="https://github.com/YuGiMob/pi-unsloth-webtools">pi-unsloth-webtools</a> <code>npm i pi-unsloth-webtools</code></li>
+      <li><a href="https://github.com/YuGiMob/pi-tor-proxy">pi-tor-proxy</a> <code>npm i pi-tor-proxy</code></li>
+      <li><a href="https://github.com/YuGiMob/pi-msg-workflow">pi-msg-workflow</a> <code>npm i pi-msg-workflow</code></li>
+      <li><a href="https://github.com/YuGiMob/pi-git-commit">pi-git-commit</a> <code>npm i pi-git-commit</code></li>
       <li><a href="https://github.com/YuGiMob/pi-edit-benchmark">pi-edit-benchmark</a></li>
+      <li>Read the page as <a href="index.md">Markdown</a> or as <a href="llms.txt">llms.txt</a>.</li>
     </ul>
   </noscript>
   <header id="topbar" class="topbar">
@@ -99,7 +103,20 @@
           <a class="btn btn-primary" href="#problems">See the problems</a>
           <a class="btn" id="hero-github" href="https://github.com/YuGiMob" target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
-        <dl class="intro-stats" id="hero-stats"></dl>
+        <dl class="intro-stats" id="hero-stats">
+          <div class="stat">
+            <dt class="stat-label">GitHub stars</dt>
+            <dd class="stat-value">97</dd>
+          </div>
+          <div class="stat">
+            <dt class="stat-label">packages on npm</dt>
+            <dd class="stat-value">5</dd>
+          </div>
+          <div class="stat">
+            <dt class="stat-label">npm installs / week</dt>
+            <dd class="stat-value">5,403</dd>
+          </div>
+        </dl>
       </div>
     </section>
     <section id="problems" class="section" aria-labelledby="problems-heading">

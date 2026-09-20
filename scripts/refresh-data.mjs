@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { writeAgentFiles } from './llms-lib.mjs';
+import { updateHeroStatsFile } from './site-html-lib.mjs';
 import { updateSitemapFile } from './sitemap-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,6 +31,7 @@ const TMP_FILE = `${DATA_FILE}.${process.pid}.tmp`;
 const MATRIX_FILE = join(ROOT, 'data', 'benchmark-matrix.json');
 const MATRIX_TMP_FILE = `${MATRIX_FILE}.${process.pid}.tmp`;
 const SITEMAP_FILE = join(ROOT, 'sitemap.xml');
+const INDEX_FILE = join(ROOT, 'index.html');
 const VALIDATOR_FILE = join(ROOT, 'scripts', 'validate-data.mjs');
 
 function safeUnlink(path) {
@@ -51,7 +53,7 @@ function assertCandidateValid(candidateFile, message, matrixCandidate = null) {
 
 function cleanupStaleTmpFiles() {
   const cutoff = Date.now() - 10 * 60 * 1000;
-  for (const [directory, prefix] of [[join(ROOT, 'data'), 'site-data.json.'], [ROOT, 'llms.txt.'], [ROOT, 'index.md.'], [ROOT, 'agent-readability.json.'], [join(ROOT, 'data'), 'benchmark-matrix.json.']]) {
+  for (const [directory, prefix] of [[join(ROOT, 'data'), 'site-data.json.'], [ROOT, 'llms.txt.'], [ROOT, 'index.md.'], [ROOT, 'agent-readability.json.'], [join(ROOT, 'data'), 'benchmark-matrix.json.'], [ROOT, 'index.html.']]) {
     try {
       for (const entry of readdirSync(directory)) {
         if (!entry.startsWith(prefix) || !entry.endsWith('.tmp')) continue;
@@ -218,14 +220,14 @@ async function fetchPages(baseUrl, maxPages, warnPrefix) {
   let received = false;
   for (let page = 1; page <= maxPages; page += 1) {
     const separator = baseUrl.includes('?') ? '&' : '?';
-    const batch = await getJson(`${baseUrl}${separator}per_page=100&page=${page}`, GITHUB_HEADERS, `${warnPrefix} page ${page}`);
+    const batch = await getJson(`${baseUrl}${separator}per_page=${PAGE_SIZE}&page=${page}`, GITHUB_HEADERS, `${warnPrefix} page ${page}`);
     if (!Array.isArray(batch)) {
       if (received) console.warn(`${warnPrefix}: page ${page} failed, using ${items.length} partial results`);
       break;
     }
     received = true;
     items.push(...batch);
-    if (batch.length < 100) break;
+    if (batch.length < PAGE_SIZE) break;
     await sleep(50);
   }
   return received ? items : null;
@@ -322,7 +324,11 @@ const npmResults = await Promise.all(
 npmPackages.forEach((pkg, index) => {
   const json = npmResults[index];
   const project = projectByNpm.get(pkg);
-  if (!project || !json || typeof json.downloads !== 'number') return;
+  if (!project) return;
+  if (!json || typeof json.downloads !== 'number') {
+    summary.push(`projects.${project.name}.npmWeeklyDownloads: unchanged (fetch failed)`);
+    return;
+  }
   const prev = existingByName.get(project.name);
   report(`projects.${project.name}.npmWeeklyDownloads`, prev?.npmWeeklyDownloads, json.downloads);
   project.npmWeeklyDownloads = json.downloads;
@@ -433,6 +439,9 @@ if (DRY_RUN && (dataChanged || matrixChanged)) {
 }
 if (DRY_RUN) summary.push(dataChanged || matrixChanged ? 'dry run: the candidate was not written' : 'dry run: nothing to write');
 else {
+  const heroBlock = updateHeroStatsFile(INDEX_FILE, data);
+  if (!heroBlock.ok) console.warn('index.html hero stats: skipped', heroBlock.reason);
+  else if (heroBlock.changed) summary.push('index.html hero stats: rewritten');
   const agentFiles = writeAgentFiles(ROOT);
   const rewritten = Object.entries(agentFiles).filter(([, written]) => written).map(([file]) => file);
   if (rewritten.length > 0) summary.push(`${rewritten.join(', ')}: rewritten`);

@@ -89,6 +89,7 @@ Editing-tool READMEs ship with a demo GIF and a claim, and almost none of them p
 - The losses are published too
 
 11 contenders over 9 models × 35 scenarios, 315 runs each (3,465 total).
+hashline-edit-pro: 97.8% overall, 98.9% staleness, 92.1% served state across 315 runs
 
 - [Run report](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/llm-report.json): the committed JSON every figure comes from
 - [Committed traces](https://github.com/YuGiMob/pi-edit-benchmark/tree/main/results/traces): one trace per scored run

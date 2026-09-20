@@ -33,11 +33,35 @@ export function isValidShowcase(showcase) {
   return true;
 }
 
+function isFiniteNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isNullableNumber(value) {
+  return value == null || isFiniteNumber(value);
+}
+
+function isChartableContender(contender) {
+  if (!contender || typeof contender !== 'object' || Array.isArray(contender)) return false;
+  if (typeof contender.label !== 'string') return false;
+  for (const key of ['overall', 'low', 'high', 'runs', 'passed', 'errors']) {
+    if (!isFiniteNumber(contender[key])) return false;
+  }
+  if (!isNullableNumber(contender.safety) || !isNullableNumber(contender.served)) return false;
+  if (contender.vsHighlight == null) return true;
+  if (typeof contender.vsHighlight !== 'object' || Array.isArray(contender.vsHighlight)) return false;
+  return isFiniteNumber(contender.vsHighlight.p);
+}
+
 export function isValidBenchmark(benchmark) {
   if (!benchmark || typeof benchmark !== 'object' || Array.isArray(benchmark)) return false;
   if (!Array.isArray(benchmark.contenders)) return false;
   if (!benchmark.focusCounts || typeof benchmark.focusCounts !== 'object' || Array.isArray(benchmark.focusCounts)) return false;
-  return true;
+  if (typeof benchmark.generatedAt !== 'string') return false;
+  for (const key of ['models', 'scenarios', 'contenderCount', 'runsPerContender', 'totalRuns']) {
+    if (!isFiniteNumber(benchmark[key])) return false;
+  }
+  return benchmark.contenders.every(isChartableContender);
 }
 
 export function isValidBenchmarkMatrix(matrix) {

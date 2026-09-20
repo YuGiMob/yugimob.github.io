@@ -5,6 +5,7 @@ import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { problemsHeading } from '../assets/js/view-model.js';
 import { contrastRatio, paletteFrom, rootPaletteSource } from './contrast-lib.mjs';
+import { buildHeroStatsBlock, readHeroStatsBlock } from './site-html-lib.mjs';
 import { scriptSrcHash } from './csp-lib.mjs';
 import { SITE_REPOSITORY, SITE_URL } from './llms-lib.mjs';
 
@@ -26,6 +27,15 @@ function scriptSink(source) {
 
 function fail(message) {
   errors.push(message);
+}
+
+function listFiles(directory, suffix) {
+  try {
+    return readdirSync(join(ROOT, directory)).filter((file) => file.endsWith(suffix));
+  } catch (err) {
+    fail(`${directory} unreadable: ${err.message}`);
+    return [];
+  }
 }
 
 function readText(relativePath) {
@@ -114,8 +124,7 @@ const indexSource = html.get('index.html') || '';
 const indexIds = new Set([...indexSource.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]));
 const referencedIds = new Set();
 
-for (const file of readdirSync(join(ROOT, 'assets', 'js'))) {
-  if (!file.endsWith('.js')) continue;
+for (const file of listFiles('assets/js', '.js')) {
   const source = readText(`assets/js/${file}`);
   for (const match of source.matchAll(/(?:getElementById|setText|setHidden)\('([^']+)'/g)) referencedIds.add(match[1]);
   for (const match of source.matchAll(/querySelector\('#([^']+)'\)/g)) referencedIds.add(match[1]);
@@ -141,6 +150,7 @@ function importTargets(source) {
   const targets = [];
   for (const match of source.matchAll(/^\s*(?:import|export)\b[^;]*?\bfrom\s+'(\.[^']+)'/gm)) targets.push(match[1]);
   for (const match of source.matchAll(/^\s*import\s+'(\.[^']+)'/gm)) targets.push(match[1]);
+  for (const match of source.matchAll(/\bimport\s*\(\s*'(\.[^']+)'\s*\)/g)) targets.push(match[1]);
   return targets;
 }
 
@@ -160,6 +170,10 @@ for (const file of preloaded) {
   if (!existsSync(join(ROOT, file))) fail(`index.html: preloaded file ${file} is missing`);
 }
 
+for (const file of listFiles('assets/js', '.js')) {
+  if (!seen.has(`assets/js/${file}`)) fail(`assets/js/${file}: no module imports this file`);
+}
+
 const fetched = new Set([...indexSource.matchAll(/<link rel="preload" as="fetch" href="([^"]+)"/g)].map((match) => match[1]));
 for (const file of ['data/site-data.json', 'data/showcase.json']) {
   if (!fetched.has(file)) fail(`index.html: ${file} is fetched at runtime but not preloaded`);
@@ -177,8 +191,12 @@ if (existsSync(siteDataPath)) {
     const projectNames = new Set(siteData.projects.map((project) => project.name));
     const list = indexSource.match(/<ul class="noscript-list">([\s\S]*?)<\/ul>/);
     if (list) {
-      for (const match of list[1].matchAll(/github\.com\/[^/"']+\/([^"']+)"/g)) {
-        if (!projectNames.has(match[1])) fail(`index.html: noscript link ${match[1]} is not in site-data.json`);
+      const listed = new Set([...list[1].matchAll(/github\.com\/[^/"']+\/([^"']+)"/g)].map((match) => match[1]));
+      for (const name of listed) {
+        if (!projectNames.has(name)) fail(`index.html: noscript link ${name} is not in site-data.json`);
+      }
+      for (const name of projectNames) {
+        if (!listed.has(name)) fail(`index.html: the noscript list is missing ${name}`);
       }
     }
     const avatarUrl = siteData.identity && siteData.identity.avatarUrl;
@@ -205,10 +223,14 @@ const filesBlock = readme.match(/## Files\s+```\n([\s\S]*?)```/);
 if (!filesBlock) {
   fail('README.md: missing the Files listing');
 } else {
-  for (const line of filesBlock[1].split('\n')) {
-    const listed = line.trim().split(/\s+/)[0];
-    if (!listed) continue;
-    if (!existsSync(join(ROOT, listed))) fail(`README.md: listed path ${listed} does not exist`);
+  const listed = new Set(filesBlock[1].split('\n').map((line) => line.trim().split(/\s+/)[0]).filter(Boolean));
+  for (const path of listed) {
+    if (!existsSync(join(ROOT, path))) fail(`README.md: listed path ${path} does not exist`);
+  }
+  for (const [directory, suffix] of [['assets/js', '.js'], ['scripts', '.mjs'], ['.github/workflows', '.yml'], ['data', '.json']]) {
+    for (const file of listFiles(directory, suffix)) {
+      if (!listed.has(`${directory}/${file}`)) fail(`README.md: ${directory}/${file} is not listed in the Files block`);
+    }
   }
 }
 
@@ -230,6 +252,21 @@ const CONTRAST_PAIRS = [
   ['ink', 'card'],
   ['accent', 'paper'],
   ['answer', 'paper'],
+  ['accent-strong', 'paper'],
+  ['evidence', 'paper'],
+  ['evidence', 'card'],
+  ['green', 'paper'],
+  ['red', 'paper'],
+  ['ink-2', 'card'],
+  ['ink-3', 'card'],
+  ['accent', 'card'],
+  ['answer', 'card'],
+  ['term-text', 'term-bg'],
+  ['term-2', 'term-bg'],
+  ['term-3', 'term-bg'],
+  ['term-accent', 'term-bg'],
+  ['term-green', 'term-bg'],
+  ['term-red', 'term-bg'],
 ];
 for (const [scheme, palette] of [['light', lightPalette], ['dark', darkPalette]]) {
   for (const [foreground, background] of CONTRAST_PAIRS) {
@@ -277,7 +314,12 @@ for (const project of siteData?.projects ?? []) {
   if (!markdown.includes(project.name)) fail(`index.md: missing project ${project.name}`);
 }
 
-for (const [rel, target] of [['describedby', 'llms.txt'], ['describedby', 'agent-readability.json'], ['alternate', 'index.md']]) {
+if (siteData) {
+  const heroBlock = readHeroStatsBlock(indexSource) ?? '';
+  if (heroBlock !== buildHeroStatsBlock(siteData)) fail('index.html: the hero stat block does not match the machine data');
+}
+
+for (const [rel, target] of [['describedby', 'llms.txt'], ['describedby', 'agent-readability.json'], ['describedby', 'data/benchmark-matrix.json'], ['alternate', 'index.md']]) {
   const pattern = new RegExp(`<link[^>]*rel="${rel}"[^>]*href="${target.replace('.', '\\.')}"`);
   if (!pattern.test(indexSource)) fail(`index.html: missing the rel=${rel} link to ${target}`);
 }
@@ -294,6 +336,9 @@ if (readability) {
   if (readability.repository !== SITE_REPOSITORY) fail('agent-readability.json: repository is not the site repository');
   if (readability.name !== siteData?.identity?.displayName) fail('agent-readability.json: name does not match the display name');
   if (readability.description !== siteData?.identity?.tagline) fail('agent-readability.json: description does not match the tagline');
+  if (readability.language !== 'en') fail('agent-readability.json: language is not en');
+  if (readability.license !== 'MIT') fail('agent-readability.json: license is not MIT');
+  if (readability.updated !== (siteData?.activity?.fetchedAt ?? null)) fail('agent-readability.json: updated does not match the activity date');
   const artifacts = readability.artifacts && typeof readability.artifacts === 'object' ? Object.values(readability.artifacts) : [];
   for (const file of ['llms.txt', 'index.md', 'data/site-data.json', 'data/showcase.json', 'data/benchmark-matrix.json', 'sitemap.xml']) {
     if (!artifacts.some((url) => typeof url === 'string' && url.endsWith(`/${file}`))) {
@@ -399,8 +444,8 @@ function fileSize(relativePath) {
   }
 }
 
-const scriptFiles = readdirSync(join(ROOT, 'assets', 'js')).filter((file) => file.endsWith('.js')).map((file) => `assets/js/${file}`);
-const fontFiles = readdirSync(join(ROOT, 'assets', 'fonts')).filter((file) => file.endsWith('.woff2')).map((file) => `assets/fonts/${file}`);
+const scriptFiles = listFiles('assets/js', '.js').map((file) => `assets/js/${file}`);
+const fontFiles = listFiles('assets/fonts', '.woff2').map((file) => `assets/fonts/${file}`);
 const budgets = [
   { label: 'scripts and styles', limit: 160 * 1024, files: [...scriptFiles, 'assets/css/style.css'] },
   { label: 'fonts', limit: 400 * 1024, files: fontFiles },

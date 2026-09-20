@@ -1,4 +1,5 @@
-import { el, append, announce, copyText, createController } from './ui.js';
+import { el, append, announce, copyWithFeedback, createController } from './ui.js';
+import { PLAYGROUND_ID } from './demo-registry.js';
 import { createSession, replace, insert, anchorGrep, undo, externalEdit, isStale } from './hashline.js';
 
 const SOURCE = [
@@ -18,7 +19,7 @@ const SOURCE = [
   '}',
 ];
 
-export const PLAYGROUND_ID = 'hashline';
+export { PLAYGROUND_ID };
 
 const TARGET_LINE = '  if (from < 0 || to < 0) return stale(lines)';
 const TARGET = SOURCE.indexOf(TARGET_LINE);
@@ -161,11 +162,13 @@ export function buildPlayground() {
   function renderRow(row) {
     const item = el('li', 'pg-diff-row');
     const prefix = row.kind === 'added' ? '+' : row.kind === 'removed' ? '-' : row.kind === 'match' ? '›' : ' ';
+    const kindName = row.kind === 'added' ? 'added' : row.kind === 'removed' ? 'removed' : row.kind === 'match' ? 'match' : 'context';
     item.classList.add(row.kind === 'added' ? 'is-add' : row.kind === 'removed' ? 'is-del' : row.kind === 'match' ? 'is-match' : 'is-ctx');
+    const kindNode = el('span', 'sr-only', `${kindName}: `);
     const prefixNode = el('span', 'pg-diff-prefix', prefix);
     prefixNode.setAttribute('aria-hidden', 'true');
     const lineNumber = Number.isInteger(row.line) ? el('span', 'pg-line-number', String(row.line)) : null;
-    append(item, prefixNode, lineNumber, el('span', 'pg-anchor', row.anchor), el('code', 'pg-text', row.text || '\u00a0'));
+    append(item, kindNode, prefixNode, lineNumber, el('span', 'pg-anchor', row.anchor), el('code', 'pg-text', row.text || '\u00a0'));
     return item;
   }
 
@@ -260,7 +263,7 @@ export function buildPlayground() {
     },
     {
       title: 'Insert beside an anchor',
-      text: 'insert(…) adds lines before or after an anchor and removes nothing. The anchor line survives with its own anchor, and insert never runs the boundary de-duplication that replace uses.',
+      text: 'insert(…) adds lines before or after an anchor and removes nothing. The anchor line survives with its own anchor.',
       action: 'Insert a line',
       preview: insertRequest,
       call: () => `insert('${targetAnchor}', 'after')`,
@@ -431,35 +434,21 @@ export function buildPlayground() {
     node.focus();
   });
 
-  copyRequest.addEventListener('click', async () => {
-    try {
-      await copyText(requestBody.textContent);
-      copyRequest.textContent = 'copied';
-      announce('copied the request');
-    } catch {
-      copyRequest.textContent = 'copy failed';
-      announce('copy failed for the request');
-    }
-    setTimeout(() => {
-      copyRequest.textContent = 'copy';
-    }, 1500);
+  copyWithFeedback(copyRequest, () => requestBody.textContent, {
+    label: 'copy',
+    announceDone: 'copied the request',
+    announceFailed: 'copy failed for the request',
   });
 
   runButton.addEventListener('click', runStep);
   resetButton.addEventListener('click', reset);
-  linkButton.addEventListener('click', async () => {
+  copyWithFeedback(linkButton, () => {
     updateUrl();
-    try {
-      await copyText(window.location.href);
-      linkButton.textContent = 'copied';
-      announce('copied the link to this step');
-    } catch {
-      linkButton.textContent = 'copy failed';
-      announce('copy failed for the link');
-    }
-    setTimeout(() => {
-      linkButton.textContent = 'copy link';
-    }, 1500);
+    return window.location.href;
+  }, {
+    label: 'copy link',
+    announceDone: 'copied the link to this step',
+    announceFailed: 'copy failed for the link',
   });
 
   replayTo(Math.min(requestedStep(), steps.length));

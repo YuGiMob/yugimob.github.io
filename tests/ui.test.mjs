@@ -6,6 +6,7 @@ import {
   append,
   copyButton,
   copyText,
+  copyWithFeedback,
   createController,
   createRuntime,
   el,
@@ -250,6 +251,23 @@ test('copyButton reports the outcome and resets the label', async (t) => {
     assert.equal(button.classList.contains('is-failed'), true);
     t.mock.timers.tick(1500);
     assert.equal(button.textContent, 'copy');
+  });
+});
+
+test('copyWithFeedback reports a failure when the value producer throws', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  await withDom(async (dom) => {
+    register(dom.document, 'live-region', el('div'));
+    const button = el('button');
+    button.textContent = 'copy link';
+    copyWithFeedback(button, () => {
+      throw new Error('no value');
+    }, { label: 'copy link', announceFailed: 'copy failed for the link' });
+    await button.dispatch('click')[0];
+    assert.equal(button.textContent, 'copy failed');
+    assert.equal(button.classList.contains('is-failed'), true);
+    t.mock.timers.tick(1500);
+    assert.equal(button.textContent, 'copy link');
   });
 });
 

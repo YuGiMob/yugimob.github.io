@@ -15,7 +15,8 @@ flagship loses.
 ## Page sections
 
 - **Intro** (`#intro`): who I am, what the page is, and why the failure modes
-  matter. Live counters for stars, packages, and weekly installs.
+  matter. Counters for stars, packages, and weekly installs, pre-rendered in the
+  HTML for a no-JS read and animated once the data lands.
 - **The problems** (`#problems`): an index of the failures, then one entry per
   tool. Each entry leads with the problem, then the answer: the project,
   install command, source link, and a working demo.
@@ -34,6 +35,34 @@ flagship loses.
   a pushes-per-day chart built from public GitHub events.
 - Footer (`#campfire`): the GitHub link and the daily-refresh note.
 
+## How the pieces fit
+
+```
+GitHub + npm + benchmark report
+        |
+        v
+scripts/refresh-data.mjs ---> scripts/refresh-lib.mjs (pure aggregation)
+        |
+        |  validate-data.mjs re-derives the numbers, then temp-file + rename
+        v
+data/site-data.json      machine numbers          data/showcase.json  curated prose
+        |                                                   |
+        +----------------------+----------------------------+
+                               v
+                     assets/js/main.js (fetch + guards)
+                               |
+                     assets/js/view-model.js (pure derivations)
+                               |
+                     assets/js/render.js + lazy.js
+                               |
+             demos.js · playground.js · charts.js (dynamic imports)
+```
+
+The same refresh rewrites the hero stat block in `index.html` and regenerates
+`llms.txt`, `index.md`, and `agent-readability.json`, so the page, the machine
+files, and the agent index cannot drift apart. Validators re-derive every rule
+they can, and the test suite runs them against a temporary copy of the tree.
+
 ## Files
 
 ```
@@ -47,6 +76,7 @@ sitemap.xml                     single-URL sitemap, lastmod refreshed with the d
 robots.txt                      crawl policy and sitemap reference
 LICENSE                         MIT license for this repository
 SECURITY.md                     vulnerability reporting policy
+CONTRIBUTING.md                 contributor rules, module map, and check list
 .well-known/security.txt        RFC 9116 contact
 assets/apple-touch-icon.png     iOS home-screen icon
 assets/avatar.png               self-hosted avatar, no third-party origin
@@ -57,6 +87,8 @@ assets/css/style.css            the entire stylesheet, fonts and both color sche
 assets/fonts/                   self-hosted Inter, Newsreader, IBM Plex Mono
 assets/js/main.js               boot, fetch, navigation, error state
 assets/js/render.js             all DOM rendering
+assets/js/lazy.js               lazy mounting behind IntersectionObserver
+assets/js/demo-registry.js      demo id to dynamic loader registry
 assets/js/site-data.js          data guards, fallback model, formatting
 assets/js/view-model.js         pure derivations behind the DOM
 assets/js/fetch-json.js         retrying JSON fetch with a timeout
@@ -85,6 +117,7 @@ scripts/build-csp.mjs           refresh the inline JSON-LD CSP hash
 scripts/csp-lib.mjs             script-src directive and hash helpers
 scripts/sitemap-lib.mjs         sitemap lastmod reader and atomic writer
 scripts/contrast-lib.mjs        WCAG contrast helpers for the palette check
+scripts/site-html-lib.mjs        hero stat block builder and atomic writer
 scripts/check-freshness.mjs     fail when the newest history snapshot is too old
 tests/                          node:test unit and integration tests
 package.json                    scripts only, no runtime dependencies
@@ -98,6 +131,9 @@ package.json                    scripts only, no runtime dependencies
 .github/CODEOWNERS                  review ownership
 .github/pull_request_template.md    the pull request checklist
 ```
+
+`.omo/` is local agent scratch for planning and evidence; it is gitignored and
+not part of the published site.
 
 ## Demos
 
@@ -201,7 +237,8 @@ written atomically (temp file then rename) with a change summary, and the
 candidate is revalidated before the rename, so a document the schema rejects
 can never reach `data/site-data.json`. A successful write also regenerates
 `llms.txt`, `index.md`, and `agent-readability.json` from the two data files,
-and writes the benchmark matrix. If the existing file is present but unusable,
+rewrites the hero stat block in `index.html`, and writes the benchmark matrix.
+If the existing file is present but unusable,
 the refresh exits with an error without
 writing, so a corrupt file cannot wipe curated content.
 If the file is missing entirely, the refresh exits with an error instead of
@@ -230,7 +267,7 @@ only touches other machine fields leaves the sitemap alone.
 The site refreshes itself daily through
 `.github/workflows/refresh-data.yml` (06:00 UTC), which runs the script,
 validates the data files, and commits `data/site-data.json`,
-`data/benchmark-matrix.json`, `sitemap.xml`, `llms.txt`, `index.md`, and
+`data/benchmark-matrix.json`, `sitemap.xml`, `index.html`, `llms.txt`, `index.md`, and
 `agent-readability.json` only when at least one of them changed, and fails
 when the newest history snapshot is
 still more than two days old, so an outage cannot pass silently. It can also be
@@ -245,9 +282,10 @@ npm run validate
 `npm run validate` runs three checkers. The style checker refuses comments in
 any script and enforces LF endings, spaces for indentation, no trailing
 whitespace, and a final newline. Its comment scan reads strings, templates,
-and regexes as text, so a comment inside a template-literal expression is not
-reached. The data validator walks the JSON files
-against the schema files themselves, so a rule lives in one place, then
+and regexes as text, reaches comments inside template-literal expressions, and
+scans HTML, CSS, and Markdown for their comment syntax too. The data validator
+walks the JSON files against the schema files themselves, so a rule lives in
+one place, then
 cross-references showcase names with the manifest, verifies every `demo` id,
 and re-derives the benchmark arithmetic (contender counts, `models × scenarios`,
 outcome totals, and recomputes the Wilson interval around each pass rate), and
@@ -255,11 +293,12 @@ refuses histories,
 daily activity, benchmark history, or highlight lists beyond the documented
 caps. It prints
 `validate: ok` and lists every failure it finds in one run. The site validator
-checks internal links, element ids the scripts depend on, module preloads, the
-runtime data preloads, README file paths, local stylesheet references, the
-`Content-Security-Policy` on both pages (including the Trusted Types directive
-and a scan for DOM sinks that would violate it), that the CSP hash still
-matches the
+checks internal links, element ids the scripts depend on, module preloads and
+the full module reachability graph, the runtime data preloads, the README file
+listing in both directions, the noscript list's completeness, local stylesheet
+references, the `Content-Security-Policy` on both pages (including the Trusted
+Types directive and a scan for DOM sinks that would violate it), that the CSP
+hash still matches the
 inline JSON-LD block, that the avatar path exists and its origin is allowed,
 the sitemap `lastmod` against the newest history date, the nav order against
 the section order, title and description lengths, and a set of static
@@ -296,7 +335,9 @@ chart transforms, the visibility rules, the sitemap lastmod writer, and the
 refresh activity, history, and benchmark helpers, plus a parse check for every
 script and integration checks that the committed data and site structure pass
 their validators and that each validator refuses broken input, including
-comments, CRLF, a stale CSP hash, and static copy that drifted from the data.
+comments, CRLF, a comment inside a template expression or a stylesheet, a
+stale hero stat block, a noscript list missing a project, and static copy that
+drifted from the data.
 The refresh pipeline is also driven end to end against committed API fixtures,
 with and without the GitHub API and in dry-run mode, so the fetch, the benchmark
 gate, the atomic write, the sitemap update, and the llms regeneration are all
@@ -306,9 +347,11 @@ exercised.
 adds `--experimental-test-coverage` (Node 22.8 or newer) with thresholds on
 lines, branches, and functions. Test files and the three modules that only wire
 the page together (`main.js`, `demos.js`, and `playground.js`) are excluded from
-the gate; everything else, including the rendering, chart, and UI modules, is
-driven through a small dependency-free DOM double that the suite installs and
-restores. `npm run check` uses the coverage run, so CI fails when the covered
+the gate, though the suite still smokes the boot path, every demo builder, and
+the playground keyboard flow; everything else, including the rendering, chart,
+and UI modules, is driven through a small dependency-free DOM double that the
+suite installs and restores. `npm run check` uses the coverage run, so CI fails
+when the covered
 code slips.
 
 ## Serving locally

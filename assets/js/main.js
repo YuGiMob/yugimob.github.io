@@ -138,7 +138,7 @@ async function init() {
   renderProblems(showcase, projects);
   renderEvidence(showcase, projects, benchmark, data.benchmarkHistory);
   renderColophon(showcase);
-  renderActivity(data);
+  await renderActivity(data);
   renderFooter(data);
   renderStructuredData(data, showcase);
   document.getElementById('main-content')?.removeAttribute('aria-busy');

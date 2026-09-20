@@ -538,7 +538,7 @@ test('the site validator refuses static copy that drifts from the data files', (
 
   const inline = runSiteValidator((dir) => {
     const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('<dl class="intro-stats" id="hero-stats"></dl>', '<dl class="intro-stats" id="hero-stats" style="color:red"></dl>'));
+    writeFileSync(path, readFileSync(path, 'utf8').replace('<dl class="intro-stats" id="hero-stats">', '<dl class="intro-stats" id="hero-stats" style="color:red">'));
   });
   assert.equal(inline.status, 1);
   assert.match(inline.stderr, /uses an inline style/);
@@ -739,4 +739,31 @@ test('the site validator refuses a missing markdown link and a drifted agent man
   });
   assert.equal(manifestDrift.status, 1);
   assert.match(manifestDrift.stderr, /repository is not the site repository/);
+});
+
+test('the site validator refuses a hero stat block that drifted from the data', () => {
+  const result = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('<dd class="stat-value">97</dd>', '<dd class="stat-value">96</dd>'));
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /the hero stat block does not match the machine data/);
+});
+
+test('the site validator refuses a noscript list missing a project', () => {
+  const result = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace(/\s*<li><a href="https:\/\/github\.com\/YuGiMob\/pi-tor-proxy">[\s\S]*?<\/li>/, ''));
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /the noscript list is missing pi-tor-proxy/);
+});
+
+test('the site validator refuses a README that does not list a script', () => {
+  const result = runSiteValidator((dir) => {
+    const path = join(dir, 'README.md');
+    writeFileSync(path, readFileSync(path, 'utf8').replace(/scripts\/site-html-lib\.mjs[^\n]*\n/, ''));
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /scripts\/site-html-lib\.mjs is not listed in the Files block/);
 });

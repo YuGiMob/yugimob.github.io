@@ -64,11 +64,12 @@ export function historyTableRows(history) {
   }));
 }
 
-function dataTable(summary, rows) {
+function dataTable(summary, rows, caption) {
   if (rows.length === 0) return null;
   const details = el('details', 'chart-data');
   details.appendChild(el('summary', null, summary));
   const table = el('table');
+  if (caption) table.appendChild(el('caption', 'sr-only', caption));
   const head = el('thead');
   const headRow = el('tr');
   for (const column of Object.keys(rows[0])) {
@@ -224,7 +225,7 @@ export function benchmarkChart(bench, benchmarkHistory) {
   append(body, list, legend, outcomeLegend, noteNode, method, source);
   const trend = benchmarkTrend(benchmarkHistory);
   if (trend) body.appendChild(trend);
-  const table = dataTable('View the numbers as a table', benchmarkTableRows(bench));
+  const table = dataTable('View the numbers as a table', benchmarkTableRows(bench), 'Pass rate, staleness, served state, interval, and run counts per contender.');
   if (table) body.appendChild(table);
   return createController(root, (runtime) => {
     runtime.after(() => root.classList.add('is-live'), 120);
@@ -248,6 +249,7 @@ export function benchmarkMatrix(bench, matrix) {
   );
   const scroll = el('div', 'matrix-scroll');
   const table = el('table', 'matrix-table');
+  table.appendChild(el('caption', 'sr-only', 'Models that passed per scenario and contender.'));
   const head = el('thead');
   const headRow = el('tr');
   const scenarioHeader = el('th', 'matrix-scenario', 'scenario');
@@ -272,7 +274,9 @@ export function benchmarkMatrix(bench, matrix) {
       const passedModels = Array.isArray(cell[0]) ? cell[0] : [];
       const runs = Number.isInteger(cell[1]) ? cell[1] : 0;
       const passed = passedModels.length;
-      const node = el('td', matrixCellClass(passed, runs), runs > 0 ? `${passed}/${runs}` : '—');
+      const node = el('td', matrixCellClass(passed, runs));
+      append(node, runs > 0 ? `${passed}/${runs}` : '—');
+      if (runs > 0) node.appendChild(el('span', 'sr-only', ` for ${labels.get(id) ?? id}`));
       node.title = `${labels.get(id) ?? id} on ${scenario.id}: ${passed} of ${runs} runs passed`;
       row.appendChild(node);
     });
@@ -280,10 +284,28 @@ export function benchmarkMatrix(bench, matrix) {
   });
   append(table, head, rows);
   scroll.appendChild(table);
+  const highlighted = (bench.contenders ?? []).find((entry) => entry.highlight === true) ?? null;
+  const highlightColumn = highlighted ? matrix.contenders.indexOf(highlighted.id) : -1;
+  const losses = [];
+  if (highlightColumn >= 0) {
+    matrix.scenarios.forEach((scenario, rowIndex) => {
+      const cells = Array.isArray(matrix.cells[rowIndex]) ? matrix.cells[rowIndex] : [];
+      const cell = Array.isArray(cells[highlightColumn]) ? cells[highlightColumn] : [[], 0];
+      const passed = Array.isArray(cell[0]) ? cell[0].length : 0;
+      const runs = Number.isInteger(cell[1]) ? cell[1] : 0;
+      if (runs > 0 && passed < runs) losses.push(`${scenario.id} (${passed}/${runs})`);
+    });
+  }
+  const lossNote = highlighted && highlightColumn >= 0
+    ? losses.length > 0
+      ? `${highlighted.label} does not sweep every scenario: ${losses.join(', ')}.`
+      : `${highlighted.label} passes every recorded run in every scenario.`
+    : null;
   append(
     body,
     scroll,
     el('p', 'chart-note', 'A full cell means every recorded model passed that scenario; an empty row means the scenario never reached the contender. The matrix is the same run set as the chart above.'),
+    lossNote ? el('p', 'chart-note', lossNote) : null,
   );
   return createController(root, () => {});
 }
@@ -363,7 +385,7 @@ export function historyPanel(history) {
   root.appendChild(rows);
   const count = entries.length === 1 ? '1 snapshot' : `${entries.length} snapshots`;
   root.appendChild(el('p', 'chart-note', `${count} since ${first.date}`));
-  const table = dataTable('View the snapshots as a table', historyTableRows(entries));
+  const table = dataTable('View the snapshots as a table', historyTableRows(entries), 'Total stars and weekly installs per snapshot date.');
   if (table) root.appendChild(table);
   return root;
 }

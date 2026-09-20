@@ -28,12 +28,13 @@ function allocateAnchor(session) {
   throw new Error('anchor pool exhausted');
 }
 
-function snapshot(session) {
+function snapshot(session, kind) {
   return {
     lines: session.lines.map((line) => ({ anchor: line.anchor, text: line.text })),
     anchors: new Set(session.anchors),
     served: new Map(session.served),
     mintIndex: session.mintIndex,
+    kind,
   };
 }
 
@@ -103,7 +104,7 @@ export function replace(session, request) {
   if (replacements.some((text) => text.includes('\u0000'))) {
     return refuse(session, 'E_BAD_SHAPE', 'Replacement text contains a NUL byte.', rangeRows(session, fromIndex, toIndex));
   }
-  session.undo = snapshot(session);
+  session.undo = snapshot(session, 'replace');
   const removed = session.lines.slice(fromIndex, toIndex + 1);
   for (const line of removed) {
     session.anchors.delete(line.anchor);
@@ -147,7 +148,7 @@ export function insert(session, request) {
   if (lines.length === 0) {
     return { ok: true, code: null, message: `insert('${anchor}', ${direction}): nothing to insert`, rows: [] };
   }
-  session.undo = snapshot(session);
+  session.undo = snapshot(session, 'insert');
   const added = lines.map((text) => ({ anchor: allocateAnchor(session), text }));
   const following = session.lines[index + 1];
   const at = direction === 'before' ? index : index + 1;
@@ -227,7 +228,7 @@ export function anchorGrep(session, request) {
 
 export function undo(session) {
   if (!session.undo) {
-    return { ok: false, code: 'E_NOTHING_TO_UNDO', message: '[E_NOTHING_TO_UNDO] No replace to revert.', rows: [] };
+    return { ok: false, code: 'E_NOTHING_TO_UNDO', message: '[E_NOTHING_TO_UNDO] No change to revert.', rows: [] };
   }
   const restored = session.undo;
   session.lines = restored.lines.map((line) => ({ anchor: line.anchor, text: line.text }));
@@ -235,7 +236,8 @@ export function undo(session) {
   session.served = new Map(restored.served);
   session.mintIndex = restored.mintIndex;
   session.undo = null;
-  return { ok: true, code: null, message: `undo_last_change: restored the state before the last replace`, rows: readRows(session) };
+  const kind = restored.kind === 'insert' ? 'insert' : 'replace';
+  return { ok: true, code: null, message: `undo_last_change: restored the state before the last ${kind}`, rows: readRows(session) };
 }
 
 export function externalEdit(session, anchor, text) {

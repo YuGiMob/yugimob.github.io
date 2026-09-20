@@ -19,6 +19,7 @@ If you run coding agents against real repositories, you have watched at least on
 ## Evidence
 
 - [pi-edit-benchmark](https://github.com/YuGiMob/pi-edit-benchmark): pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness. 11 contenders over 9 models × 35 scenarios, 315 runs each (3,465 total).
+- hashline-edit-pro: 97.8% overall, 98.9% staleness, 92.1% served state across 315 runs
 - [Run report](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/llm-report.json): the committed JSON every figure comes from
 - [Committed traces](https://github.com/YuGiMob/pi-edit-benchmark/tree/main/results/traces): one trace per scored run
 

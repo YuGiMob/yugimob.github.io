@@ -110,8 +110,10 @@ function runFrames(dom, limit = 40) {
   while (count < limit && dom.runFrame(dom.advance(200))) count += 1;
 }
 
-function flush() {
-  return new Promise((resolve) => setImmediate(resolve));
+async function flush(rounds = 5) {
+  for (let index = 0; index < rounds; index += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
 }
 
 function matrixFetch() {
@@ -201,8 +203,8 @@ test('renderProblemsHeading and renderProblemIndex stay in step with the rendere
   });
 });
 
-test('renderProblems builds one article per showcased project with chips, actions, and demos', () => {
-  withDom((dom) => {
+test('renderProblems builds one article per showcased project with chips, actions, and demos', async () => {
+  await withDom(async (dom) => {
     const container = register(dom.document, 'problem-list');
     renderProblems(SHOWCASE, projectMap());
     const articles = classes(container, 'problem');
@@ -223,6 +225,7 @@ test('renderProblems builds one article per showcased project with chips, action
     assert.equal(boxes.filter((box) => box.classList.contains('is-loading')).length, 3);
 
     dom.window.dispatch('beforeprint');
+    await flush();
     assert.equal(classes(container, 'problem-demo').filter((box) => box.classList.contains('is-loading')).length, 0);
     assert.equal(classes(container, 'pg').length, 1);
     assert.equal(classes(container, 'demo').length, 1);
@@ -231,8 +234,8 @@ test('renderProblems builds one article per showcased project with chips, action
   });
 });
 
-test('lazyMount waits for an intersecting entry before mounting', () => {
-  withDom((dom) => {
+test('lazyMount waits for an intersecting entry before mounting', async () => {
+  await withDom(async (dom) => {
     const container = register(dom.document, 'problem-list');
     renderProblems(SHOWCASE, projectMap());
     const observer = dom.observers[0];
@@ -240,16 +243,18 @@ test('lazyMount waits for an intersecting entry before mounting', () => {
     assert.equal(classes(container, 'pg').length, 0);
     assert.equal(observer.disconnected, false);
     observer.trigger([{ isIntersecting: true }]);
+    await flush();
     assert.equal(observer.disconnected, true);
     assert.equal(classes(container, 'pg').length, 1);
     assert.equal(classes(container, 'problem-demo').filter((box) => box.classList.contains('is-loading')).length, 2);
   });
 });
 
-test('renderProblems mounts its demos immediately without an IntersectionObserver', () => {
-  withDom((dom) => {
+test('renderProblems mounts its demos immediately without an IntersectionObserver', async () => {
+  await withDom(async (dom) => {
     const container = register(dom.document, 'problem-list');
     renderProblems(SHOWCASE, projectMap());
+    await flush();
     assert.equal(classes(container, 'pg').length, 1);
     assert.equal(classes(container, 'problem-demo').filter((box) => box.classList.contains('is-loading')).length, 0);
   }, { IntersectionObserver: undefined });
@@ -346,10 +351,11 @@ test('renderColophon writes the prose and the principles', () => {
   withDom(() => renderColophon({}));
 });
 
-test('renderActivity draws the chart, facts, highlights, and history panel', () => {
-  withDom((dom) => {
+test('renderActivity draws the chart, facts, highlights, and history panel', async () => {
+  await withDom(async (dom) => {
     const panel = register(dom.document, 'activity-panel');
-    renderActivity(DATA);
+    await renderActivity(DATA);
+    await flush();
     assert.match(panel.textContent, /Public activity/);
     assert.match(panel.textContent, /7 pushes to public repositories, 2026-09-03 to 2026-09-17\./);
     assert.equal(classes(panel, 'activity-bar').length, 2);
@@ -360,13 +366,15 @@ test('renderActivity draws the chart, facts, highlights, and history panel', () 
     assert.match(panel.textContent, /fetched 2026-09-18/);
     assert.equal(classes(panel, 'growth').length, 1);
   });
-  withDom(() => renderActivity(DATA));
+  await withDom(async () => {
+    await renderActivity(DATA);
+  });
 });
 
-test('renderActivity skips the chart and highlights for empty data', () => {
-  withDom((dom) => {
+test('renderActivity skips the chart and highlights for empty data', async () => {
+  await withDom(async (dom) => {
     const panel = register(dom.document, 'activity-panel');
-    renderActivity({ ...DATA, activity: { pushes: 0, window: '2026-09-20', fetchedAt: '2026-09-20' }, history: [] });
+    await renderActivity({ ...DATA, activity: { pushes: 0, window: '2026-09-20', fetchedAt: '2026-09-20' }, history: [] });
     assert.equal(classes(panel, 'activity-chart').length, 0);
     assert.equal(classes(panel, 'activity-highlights').length, 0);
     assert.match(panel.textContent, /0 pushes to public repositories\./);

@@ -15,6 +15,15 @@ function dataLine(label, url, detail) {
   return `- [${label}](${url}): ${detail}`;
 }
 
+function highlightSummary(benchmark) {
+  const contender = (benchmark?.contenders ?? []).find((entry) => entry?.highlight === true);
+  if (!contender) return null;
+  const splits = [`${contender.overall.toFixed(1)}% overall`];
+  if (Number.isFinite(contender.safety)) splits.push(`${contender.safety.toFixed(1)}% staleness`);
+  if (Number.isFinite(contender.served)) splits.push(`${contender.served.toFixed(1)}% served state`);
+  return `${contender.label}: ${splits.join(', ')} across ${formatNumber(contender.runs)} runs`;
+}
+
 function numbered(index) {
   return String(index + 1).padStart(2, '0');
 }
@@ -57,6 +66,8 @@ export function buildLlmsTxt(siteData, showcase) {
     lines.push('## Evidence');
     lines.push('');
     lines.push(dataLine(evidence.name, benchmark.source, `${firstSentence(evidence.answer)} ${runs}`));
+    const highlight = highlightSummary(benchmark);
+    if (highlight) lines.push(`- ${highlight}`);
     lines.push(dataLine('Run report', benchmark.reportUrl, 'the committed JSON every figure comes from'));
     lines.push(dataLine('Committed traces', benchmark.tracesUrl, 'one trace per scored run'));
     lines.push('');
@@ -125,6 +136,8 @@ export function buildIndexMd(siteData, showcase) {
     lines.push('');
     if (benchmark) {
       lines.push(`${benchmark.contenderCount} contenders over ${benchmark.models} models × ${benchmark.scenarios} scenarios, ${benchmark.runsPerContender} runs each (${formatNumber(benchmark.totalRuns)} total).`);
+      const highlight = highlightSummary(benchmark);
+      if (highlight) lines.push(highlight);
       lines.push('');
       lines.push(dataLine('Run report', benchmark.reportUrl, 'the committed JSON every figure comes from'));
       lines.push(dataLine('Committed traces', benchmark.tracesUrl, 'one trace per scored run'));
@@ -164,6 +177,9 @@ export function buildAgentReadability(siteData) {
     description: identity.tagline ?? '',
     site: SITE_URL,
     repository: SITE_REPOSITORY,
+    language: 'en',
+    license: 'MIT',
+    updated: siteData.activity?.fetchedAt ?? null,
     artifacts: {
       llmsTxt: `${SITE_URL}/llms.txt`,
       markdown: `${SITE_URL}/index.md`,

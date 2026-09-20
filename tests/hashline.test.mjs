@@ -347,3 +347,8 @@ test('random edit sequences keep the session invariants', () => {
     }
   }
 });
+
+test('the mint stride is coprime with the anchor space', () => {
+  const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
+  assert.equal(gcd(3000017, 52 ** 4), 1);
+});

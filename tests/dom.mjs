@@ -53,6 +53,13 @@ class FakeNode {
   get children() {
     return this.childNodes.filter((node) => node instanceof FakeElement);
   }
+  contains(node) {
+    if (node === this) return true;
+    for (const child of this.childNodes) {
+      if (child === node || (typeof child.contains === 'function' && child.contains(node))) return true;
+    }
+    return false;
+  }
 
   get textContent() {
     return this.childNodes.map((node) => node.textContent).join('');
@@ -89,7 +96,14 @@ class FakeElement extends FakeNode {
         this.values.set(name, String(value));
       },
     };
-    this.dataset = {};
+    this.dataset = new Proxy({}, {
+      set: (target, key, value) => {
+        target[key] = String(value);
+        const attribute = `data-${String(key).replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`;
+        this.attributes.set(attribute, String(value));
+        return true;
+      },
+    });
     this.listeners = new Map();
     this.hidden = false;
     this.tabIndex = 0;
@@ -104,7 +118,7 @@ class FakeElement extends FakeNode {
   }
 
   append(...nodes) {
-    for (const node of nodes) this.appendChild(node);
+    for (const node of nodes) this.appendChild(node instanceof FakeNode ? node : new FakeText(String(node)));
   }
 
   replaceChildren(...nodes) {
@@ -153,20 +167,41 @@ class FakeElement extends FakeNode {
     return (this.listeners.get(type) ?? []).map((handler) => handler(event));
   }
 
-  querySelector() {
-    return null;
+  querySelector(selector) {
+    return querySelectorIn(this, selector, true);
   }
 
-  querySelectorAll() {
-    return [];
+  querySelectorAll(selector) {
+    return querySelectorIn(this, selector, false);
   }
 
-  closest() {
+  matches(selector) {
+    return matchesSelector(this, selector);
+  }
+
+  closest(selector) {
+    let node = this;
+    while (node) {
+      if (typeof node.matches === 'function' && node.matches(selector)) return node;
+      node = node.parentNode;
+    }
     return null;
   }
 
   focus() {
     this.focused = true;
+  }
+
+  getBoundingClientRect() {
+    return { top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0 };
+  }
+
+  getTotalLength() {
+    return 100;
+  }
+
+  getPointAtLength() {
+    return { x: 0, y: 0 };
   }
 
   select() {
@@ -196,11 +231,42 @@ for (const name of REFLECTED) {
   });
 }
 
+function matchesSelector(node, selector) {
+  if (!(node instanceof FakeElement)) return false;
+  const tokens = selector.match(/\[[^\]]+\]|\.[\w-]+|#[\w-]+|[a-zA-Z][\w-]*/g) ?? [];
+  for (const token of tokens) {
+    if (token.startsWith('.')) {
+      if (!node.classList.contains(token.slice(1))) return false;
+    } else if (token.startsWith('#')) {
+      if (node.getAttribute('id') !== token.slice(1)) return false;
+    } else if (token.startsWith('[')) {
+      const match = token.match(/^\[([\w-]+)(?:="([^"]*)")?\]$/);
+      if (!match || !node.hasAttribute(match[1])) return false;
+      if (match[2] !== undefined && node.getAttribute(match[1]) !== match[2]) return false;
+    } else if (node.tagName !== token.toUpperCase()) {
+      return false;
+    }
+  }
+  return tokens.length > 0;
+}
+
+function querySelectorIn(root, selector, first) {
+  const found = [];
+  const walk = (node) => {
+    if (first && found.length > 0) return;
+    if (node !== root && matchesSelector(node, selector)) found.push(node);
+    for (const child of node.childNodes ?? []) walk(child);
+  };
+  walk(root);
+  return first ? found[0] ?? null : found;
+}
+
 class FakeDocument {
   constructor() {
     this.elements = new Map();
     this.queries = new Map();
     this.body = new FakeElement('body');
+    this.documentElement = new FakeElement('html');
     this.title = '';
     this.execCommandResult = true;
     this.execCommandCalls = [];
@@ -267,6 +333,13 @@ export function withDom(run, overrides = {}) {
 
   const window = {
     listeners: new Map(),
+    location: { hash: '', search: '', href: 'http://localhost/' },
+    history: {
+      replaceState() {},
+      pushState() {},
+    },
+    scrollY: 0,
+    scrollTo() {},
     addEventListener(type, handler) {
       const handlers = this.listeners.get(type) ?? [];
       handlers.push(handler);
@@ -288,6 +361,7 @@ export function withDom(run, overrides = {}) {
     Element: FakeElement,
     navigator: {},
     matchMedia: () => ({ matches: false }),
+    getComputedStyle: () => ({ scrollPaddingTop: '0px' }),
     IntersectionObserver: FakeIntersectionObserver,
     requestAnimationFrame: (callback) => {
       nextFrameId += 1;
@@ -323,6 +397,7 @@ export function withDom(run, overrides = {}) {
     requestAnimationFrame: dom.requestAnimationFrame,
     cancelAnimationFrame: dom.cancelAnimationFrame,
     performance: dom.performance,
+    getComputedStyle: dom.getComputedStyle,
     ...overrides,
   };
 

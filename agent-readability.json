@@ -3,6 +3,9 @@
   "description": "Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, guarded commits, and a benchmark that publishes the traces.",
   "site": "https://yugimob.github.io",
   "repository": "https://github.com/YuGiMob/yugimob.github.io",
+  "language": "en",
+  "license": "MIT",
+  "updated": "2026-09-20",
   "artifacts": {
     "llmsTxt": "https://yugimob.github.io/llms.txt",
     "markdown": "https://yugimob.github.io/index.md",

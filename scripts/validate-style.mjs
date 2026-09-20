@@ -10,6 +10,12 @@ const JS_DIRECTORIES = ['assets/js', 'scripts', 'tests'];
 const TEXT_FILES = [
   'index.html',
   '404.html',
+  'README.md',
+  'SECURITY.md',
+  'CONTRIBUTING.md',
+  'LICENSE',
+  '.github/CODEOWNERS',
+  '.github/pull_request_template.md',
   'assets/css/style.css',
   'data/site-data.json',
   'data/showcase.json',
@@ -39,7 +45,14 @@ const CONTROL_WORDS = new Set(['if', 'while', 'for', 'with']);
 
 function scriptFiles(directory) {
   const files = [];
-  for (const entry of readdirSync(join(ROOT, directory), { withFileTypes: true })) {
+  let entries;
+  try {
+    entries = readdirSync(join(ROOT, directory), { withFileTypes: true });
+  } catch (err) {
+    errors.push(`${directory} unreadable: ${err.message}`);
+    return files;
+  }
+  for (const entry of entries) {
     const path = `${directory}/${entry.name}`;
     if (entry.isDirectory()) files.push(...scriptFiles(path));
     else if (entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) files.push(path);
@@ -61,6 +74,61 @@ function skipString(source, index, quote) {
   return cursor;
 }
 
+function templateExpressionEnd(source, index) {
+  const parens = [];
+  let depth = 0;
+  let cursor = index;
+  let previous = '{';
+  let afterControlParen = false;
+  while (cursor < source.length) {
+    const char = source[cursor];
+    if (char === '"' || char === "'") {
+      cursor = skipString(source, cursor, char);
+      previous = char;
+      afterControlParen = false;
+      continue;
+    }
+    if (char === '`') {
+      const nested = skipTemplate(source, cursor);
+      if (typeof nested === 'object') return nested;
+      cursor = nested;
+      previous = char;
+      afterControlParen = false;
+      continue;
+    }
+    if (char === '(') {
+      parens.push(CONTROL_WORDS.has(wordBefore(source, cursor)));
+      previous = char;
+      afterControlParen = false;
+      cursor += 1;
+      continue;
+    }
+    if (char === ')') {
+      afterControlParen = parens.pop() === true;
+      previous = char;
+      cursor += 1;
+      continue;
+    }
+    if (char === '/' && (afterControlParen || REGEX_PREFIX_CHARS.has(previous) || REGEX_PREFIX_WORDS.has(wordBefore(source, cursor)))) {
+      cursor = skipRegex(source, cursor);
+      previous = '/';
+      afterControlParen = false;
+      continue;
+    }
+    if (char === '{') depth += 1;
+    else if (char === '}') {
+      depth -= 1;
+      if (depth === 0) return cursor;
+    }
+    if (!/\s/.test(char)) {
+      previous = char;
+      afterControlParen = false;
+    }
+    cursor += 1;
+  }
+  return cursor;
+}
+
 function skipTemplate(source, index) {
   let cursor = index + 1;
   while (cursor < source.length) {
@@ -70,6 +138,14 @@ function skipTemplate(source, index) {
       continue;
     }
     if (char === '`') return cursor + 1;
+    if (char === '$' && source[cursor + 1] === '{') {
+      const end = templateExpressionEnd(source, cursor + 1);
+      if (typeof end === 'object') return end;
+      const comment = findComment(source.slice(cursor + 2, end));
+      if (comment) return { index: cursor + 2 + comment.index, kind: comment.kind };
+      cursor = end + 1;
+      continue;
+    }
     cursor += 1;
   }
   return cursor;
@@ -122,7 +198,9 @@ function findComment(source) {
       continue;
     }
     if (char === '`') {
-      index = skipTemplate(source, index);
+      const template = skipTemplate(source, index);
+      if (typeof template === 'object') return template;
+      index = template;
       previous = char;
       afterControlParen = false;
       continue;
@@ -167,13 +245,53 @@ function checkScript(source, file) {
   if (comment) errors.push(`${file}:${lineAndColumn(source, comment.index)} has ${comment.kind}; this codebase does not use comments`);
 }
 
+function checkMarkup(source, file) {
+  const index = source.indexOf('<!--');
+  if (index !== -1) errors.push(`${file}:${lineAndColumn(source, index)} has a markup comment; this codebase does not use comments`);
+}
+
+function checkStylesheet(source, file) {
+  let cursor = 0;
+  let quote = '';
+  while (cursor < source.length) {
+    const char = source[cursor];
+    if (quote) {
+      if (char === '\\') {
+        cursor += 2;
+        continue;
+      }
+      if (char === quote || char === '\n') quote = '';
+      cursor += 1;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      cursor += 1;
+      continue;
+    }
+    if (char === '/' && source[cursor + 1] === '*') {
+      errors.push(`${file}:${lineAndColumn(source, cursor)} has a block comment; this codebase does not use comments`);
+      return;
+    }
+    cursor += 1;
+  }
+}
+
+function checkComments(source, file) {
+  if (file.endsWith('.js') || file.endsWith('.mjs')) checkScript(source, file);
+  else if (file.endsWith('.html') || file.endsWith('.md')) checkMarkup(source, file);
+  else if (file.endsWith('.css')) checkStylesheet(source, file);
+}
+
 function checkText(source, file) {
   if (source.includes('\r')) errors.push(`${file}: uses CRLF line endings, expected LF`);
   if (!source.endsWith('\n')) errors.push(`${file}: is missing a final newline`);
   const tab = source.match(/^[ \t]*\t/m);
   if (tab) errors.push(`${file}:${lineAndColumn(source, tab.index)} is indented with a tab, expected spaces`);
-  const trailing = source.match(/[ \t]+\n/);
-  if (trailing) errors.push(`${file}:${lineAndColumn(source, trailing.index)} has trailing whitespace`);
+  if (!file.endsWith('.md')) {
+    const trailing = source.match(/[ \t]+\n/);
+    if (trailing) errors.push(`${file}:${lineAndColumn(source, trailing.index)} has trailing whitespace`);
+  }
 }
 
 const files = [...JS_DIRECTORIES.flatMap(scriptFiles), ...TEXT_FILES];
@@ -186,7 +304,7 @@ for (const file of files) {
     continue;
   }
   checkText(source, file);
-  if (file.endsWith('.js') || file.endsWith('.mjs')) checkScript(source, file);
+  checkComments(source, file);
 }
 
 if (errors.length > 0) {

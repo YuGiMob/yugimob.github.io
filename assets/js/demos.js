@@ -449,20 +449,22 @@ function gitDemo() {
 
   let runtimeRef = null;
 
-  function play() {
+  function play(announceRun) {
     if (!runtimeRef) return;
     runtimeRef.reset();
     body.replaceChildren();
-    typeLines(body, lines, runtimeRef);
+    typeLines(body, lines, runtimeRef, () => {
+      if (announceRun) announce('commit flow finished · guarded commit landed');
+    });
   }
 
-  replay.addEventListener('click', play);
+  replay.addEventListener('click', () => play(true));
   renderFinal();
 
   return createController(root, (runtime) => {
     runtimeRef = runtime;
     if (reducedMotion()) return;
-    play();
+    play(false);
   }, () => {
     runtimeRef = null;
   });

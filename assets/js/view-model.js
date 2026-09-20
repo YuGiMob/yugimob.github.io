@@ -1,6 +1,10 @@
 import { countWord, formatWindow } from './site-data.js';
 import { formatNumber } from './ui.js';
 
+export function problemId(name) {
+  return `problem-${name}`;
+}
+
 function numbered(index) {
   return String(index + 1).padStart(2, '0');
 }
@@ -18,7 +22,7 @@ export function problemEntries(showcase, projects) {
 
 export function problemIndexRows(showcase, projects) {
   const rows = problemEntries(showcase, projects).map(({ entry, number }) => ({
-    href: `#problem-${entry.name}`,
+    href: `#${problemId(entry.name)}`,
     headline: entry.headline,
     tool: entry.name,
     number,

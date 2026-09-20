@@ -199,11 +199,11 @@ export function copyText(value) {
   return copied ? Promise.resolve() : Promise.reject(new Error('copy failed'));
 }
 
-export function copyButton(label, value, announceLabel) {
-  const button = el('button', 'copy-btn');
-  button.type = 'button';
-  button.textContent = label;
-  button.setAttribute('aria-label', announceLabel || label);
+export function copyWithFeedback(button, value, options = {}) {
+  const label = options.label ?? button.textContent;
+  const done = options.done ?? 'copied';
+  const failed = options.failed ?? 'copy failed';
+  const resolve = () => (typeof value === 'function' ? value() : value);
   let resetTimer = null;
   const reset = () => {
     resetTimer = setTimeout(() => {
@@ -213,19 +213,29 @@ export function copyButton(label, value, announceLabel) {
   };
   button.addEventListener('click', async () => {
     if (resetTimer) clearTimeout(resetTimer);
+    let resolved;
     try {
-      await copyText(value);
-      button.textContent = 'copied';
+      resolved = resolve();
+      await copyText(resolved);
+      button.textContent = done;
       button.classList.add('is-copied');
-      announce(`copied ${value}`);
+      announce(options.announceDone ?? `copied ${resolved}`);
     } catch {
-      button.textContent = 'copy failed';
+      button.textContent = failed;
       button.classList.add('is-failed');
-      announce(`copy failed for ${value}`);
+      announce(options.announceFailed ?? `copy failed for ${resolved}`);
     }
     reset();
   });
   return button;
+}
+
+export function copyButton(label, value, announceLabel) {
+  const button = el('button', 'copy-btn');
+  button.type = 'button';
+  button.textContent = label;
+  button.setAttribute('aria-label', announceLabel || label);
+  return copyWithFeedback(button, value, { label });
 }
 
 export function animateValue(node, value, formatter = formatNumber, duration = 900) {

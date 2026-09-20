@@ -293,10 +293,37 @@ test('benchmarkMatrix renders a scenario grid of pass counts', () => {
     assert.match(controller.node.textContent, /2 scenarios × 2 contenders/);
     assert.equal(tags(controller.node, 'TR').length, 3);
     assert.equal(tags(controller.node, 'TH').length, 5);
-    assert.deepEqual(classes(controller.node, 'matrix-cell').map((cell) => cell.textContent), ['1/1', '0/1', '2/2', '1/2']);
+    assert.deepEqual(classes(controller.node, 'matrix-cell').map((cell) => cell.textContent), ['1/1 for tool-a', '0/1 for tool-b', '2/2 for tool-a', '1/2 for tool-b']);
     assert.deepEqual(classes(controller.node, 'matrix-cell').map((cell) => cell.classList.contains('is-full')), [true, false, true, false]);
     assert.equal(classes(controller.node, 'matrix-cell')[1].title, 'tool-b on single-line: 0 of 1 runs passed');
     assert.equal(benchmarkMatrix(BENCHMARK, null), null);
     assert.equal(benchmarkMatrix(BENCHMARK, { models: ['m'], scenarios: [], contenders: [], cells: [] }), null);
+  });
+});
+
+test('benchmarkMatrix omits the sweep note when the highlight is not a column', () => {
+  const matrix = {
+    models: ['m1'],
+    scenarios: [{ id: 'single-line', focus: 'core' }],
+    contenders: ['tool-b'],
+    cells: [[[[0], 1]]],
+  };
+  withDom(() => {
+    const controller = benchmarkMatrix(BENCHMARK, matrix);
+    assert.ok(controller);
+    assert.doesNotMatch(controller.node.textContent, /passes every recorded run/);
+  });
+});
+
+test('benchmarkMatrix names the scenarios the highlighted contender loses', () => {
+  const matrix = {
+    models: ['m1', 'm2'],
+    scenarios: [{ id: 'single-line', focus: 'core' }, { id: 'stale-line', focus: 'staleness' }],
+    contenders: ['tool-a', 'tool-b'],
+    cells: [[[[0], 1], [[], 1]], [[[], 2], [[0], 2]]],
+  };
+  withDom(() => {
+    const controller = benchmarkMatrix(BENCHMARK, matrix);
+    assert.match(controller.node.textContent, /tool-a does not sweep every scenario: stale-line \(0\/2\)\./);
   });
 });

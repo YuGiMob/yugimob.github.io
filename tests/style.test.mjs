@@ -82,3 +82,55 @@ test('the style validator refuses CRLF, tabs, trailing whitespace, and a missing
   });
   assert.match(newline.stderr, /llms\.txt: is missing a final newline/);
 });
+
+test('the style validator refuses comments in markup, stylesheets, and markdown', () => {
+  const markup = runStyleValidator((copy) => {
+    appendFileSync(join(copy, 'index.html'), '\n<!-- leaked -->\n');
+  });
+  assert.equal(markup.status, 1);
+  assert.match(markup.stderr, /index\.html:\d+:\d+ has a markup comment/);
+
+  const stylesheet = runStyleValidator((copy) => {
+    appendFileSync(join(copy, 'assets', 'css', 'style.css'), '\n/* leaked */\n');
+  });
+  assert.equal(stylesheet.status, 1);
+  assert.match(stylesheet.stderr, /style\.css:\d+:\d+ has a block comment/);
+
+  const markdown = runStyleValidator((copy) => {
+    appendFileSync(join(copy, 'CONTRIBUTING.md'), '\n<!-- leaked -->\n');
+  });
+  assert.equal(markdown.status, 1);
+  assert.match(markdown.stderr, /CONTRIBUTING\.md:\d+:\d+ has a markup comment/);
+});
+
+test('the style validator reaches comments inside template expressions', () => {
+  const result = runStyleValidator((copy) => {
+    appendFileSync(join(copy, 'assets', 'js', 'avatar.js'), '\nconst text = `a ${1 // leaked\n} b`;\n');
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /has a line comment/);
+});
+
+test('the style validator keeps scanning after a regex inside a template expression', () => {
+  const result = runStyleValidator((copy) => {
+    appendFileSync(join(copy, 'assets', 'js', 'avatar.js'), '\nconst probe = `a ${/\\}/.test("}")} b`;\nconst ratio = 1 / 2; // leaked comment\n');
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /has a line comment/);
+});
+
+test('the style validator reaches a comment inside a nested template expression', () => {
+  const result = runStyleValidator((copy) => {
+    appendFileSync(join(copy, 'assets', 'js', 'avatar.js'), '\nconst nested = `x ${ `y ${1 // leaked\n} z` } w`;\n');
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /has a line comment/);
+});
+
+test('the style validator keeps scanning past a nested template expression', () => {
+  const result = runStyleValidator((copy) => {
+    appendFileSync(join(copy, 'assets', 'js', 'avatar.js'), '\nconst nested = `x ${ `y ${1\n} z` } w`;\nconst later = 1 / 2; // leaked comment\n');
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /has a line comment/);
+});

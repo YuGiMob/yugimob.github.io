@@ -63,11 +63,27 @@ test('formatWindow expands a same-month range', () => {
   assert.equal(formatWindow('2026-09-17'), '2026-09-17');
 });
 
+const BENCHMARK = {
+  generatedAt: '2026-09-20T12:03:04.357Z',
+  models: 1,
+  scenarios: 1,
+  contenderCount: 1,
+  runsPerContender: 1,
+  totalRuns: 1,
+  focusCounts: { core: 1, staleness: 0, 'served-state': 0 },
+  contenders: [
+    { label: 'tool', overall: 100, low: 20, high: 100, runs: 1, passed: 1, errors: 0, safety: null, served: null, vsHighlight: null },
+  ],
+};
+
 test('isValidBenchmark rejects a malformed block and accepts a complete one', () => {
   assert.equal(isValidBenchmark(null), false);
   assert.equal(isValidBenchmark('none'), false);
   assert.equal(isValidBenchmark({ contenders: [] }), false);
-  assert.equal(isValidBenchmark({ contenders: [], focusCounts: { core: 0, staleness: 0, 'served-state': 0 } }), true);
+  assert.equal(isValidBenchmark(BENCHMARK), true);
+  assert.equal(isValidBenchmark({ ...BENCHMARK, generatedAt: undefined }), false);
+  assert.equal(isValidBenchmark({ ...BENCHMARK, contenders: [{ label: 'tool' }] }), false);
+  assert.equal(isValidBenchmark({ ...BENCHMARK, contenders: [{ ...BENCHMARK.contenders[0], vsHighlight: { b: 1, c: 0, p: 'x' } }] }), false);
 });
 
 test('isValidSiteData tolerates an unusable benchmark block', () => {
