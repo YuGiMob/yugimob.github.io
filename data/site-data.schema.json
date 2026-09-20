@@ -137,12 +137,14 @@
               "vsHighlight": {
                 "type": ["object", "null"],
                 "additionalProperties": false,
-                "required": ["b", "c", "p", "pAdjusted"],
+                "required": ["b", "c", "p", "pAdjusted", "low", "high"],
                 "properties": {
                   "b": { "type": "integer", "minimum": 0 },
                   "c": { "type": "integer", "minimum": 0 },
                   "p": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "pAdjusted": { "type": "number", "minimum": 0, "maximum": 1 }
+                  "pAdjusted": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "low": { "type": "number", "minimum": -100, "maximum": 100 },
+                  "high": { "type": "number", "minimum": -100, "maximum": 100 }
                 }
               }
             }

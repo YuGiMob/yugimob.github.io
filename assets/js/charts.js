@@ -1,4 +1,4 @@
-import { el, append, link, svg, formatNumber, extent, createController } from './ui.js';
+import { el, append, link, svg, formatNumber, extent, createController, timeNode } from './ui.js';
 import { isValidBenchmarkMatrix } from './site-data.js';
 
 function chartFrame(kicker, title, note) {
@@ -44,6 +44,7 @@ export function benchmarkTableRows(bench) {
     safety: contender.safety == null ? '—' : `${contender.safety.toFixed(1)}%`,
     served: contender.served == null ? '—' : `${contender.served.toFixed(1)}%`,
     interval: `${contender.low.toFixed(1)}–${contender.high.toFixed(1)}`,
+    difference: contender.vsHighlight == null ? '—' : pairedInterval(contender.vsHighlight),
     runs: formatNumber(contender.runs),
     passed: formatNumber(contender.passed),
     errors: formatNumber(contender.errors),
@@ -120,12 +121,20 @@ function highlightOf(bench) {
   return (bench.contenders ?? []).find((entry) => entry?.highlight === true) ?? null;
 }
 
+function signedPoints(value) {
+  return `${value > 0 ? '+' : ''}${value.toFixed(1)}`;
+}
+
+function pairedInterval(comparison) {
+  return `${signedPoints(comparison.low)} to ${signedPoints(comparison.high)} points`;
+}
+
 function comparisonSentence(contender, bench) {
   const comparison = contender.vsHighlight;
   if (comparison == null) return null;
   const reference = highlightOf(bench);
-  const verdict = adjustedP(comparison) < 0.05 ? 'significantly different from' : 'not significantly different from';
-  return `${verdict} ${reference?.label ?? 'the highlighted tool'} (Holm-adjusted McNemar p = ${pLabel(adjustedP(comparison))})`;
+  const verdict = adjustedP(comparison) < 0.05 ? 'a significant paired difference from' : 'no significant paired difference from';
+  return `${verdict} ${reference?.label ?? 'the highlighted tool'} (95% interval for the difference ${pairedInterval(comparison)}; Holm-adjusted McNemar p = ${pLabel(adjustedP(comparison))})`;
 }
 
 function significanceNote(bench) {
@@ -134,9 +143,9 @@ function significanceNote(bench) {
   const rival = sortedContenders(bench.contenders).find((entry) => entry !== reference && entry?.vsHighlight != null);
   if (!rival) return null;
   const gap = Math.abs(reference.overall - rival.overall).toFixed(1);
-  const verdict = adjustedP(rival.vsHighlight) < 0.05 ? 'a significant paired difference' : 'not a significant paired difference';
-  const p = `(Holm-adjusted McNemar p ${pLabel(adjustedP(rival.vsHighlight))})`;
-  if (gap === '0.0') return `${reference.label} and ${rival.label} are tied on overall pass rate; the paired difference is ${verdict} ${p}.`;
+  const verdict = adjustedP(rival.vsHighlight) < 0.05 ? 'a significant paired difference' : 'no significant paired difference';
+  const p = `(Holm-adjusted McNemar p ${pLabel(adjustedP(rival.vsHighlight))}; 95% interval for the difference ${pairedInterval(rival.vsHighlight)})`;
+  if (gap === '0.0') return `${reference.label} and ${rival.label} are tied on overall pass rate; ${verdict} ${p}.`;
   const direction = reference.overall > rival.overall ? 'leads' : 'trails';
   return `${reference.label} ${direction} ${rival.label} by ${gap} points on the same model × scenario pairs — ${verdict} ${p}.`;
 }
@@ -176,7 +185,7 @@ export function benchmarkChart(bench, benchmarkHistory) {
     if (contender.errors > 0) label.appendChild(el('span', 'bench-errors', `${contender.errors} ${contender.errors === 1 ? 'error' : 'errors'}`));
     if (contender.vsHighlight != null) {
       const badge = el('span', 'bench-significance', `p=${pLabel(adjustedP(contender.vsHighlight))}`);
-      badge.title = `Holm-adjusted exact McNemar test against ${highlightOf(bench)?.label ?? 'the highlighted tool'}: ${formatNumber(contender.vsHighlight.b)} pairs it passed and this tool did not, ${formatNumber(contender.vsHighlight.c)} the other way (raw p ${pLabel(contender.vsHighlight.p)})`;
+      badge.title = `Holm-adjusted exact McNemar test against ${highlightOf(bench)?.label ?? 'the highlighted tool'}: ${formatNumber(contender.vsHighlight.b)} pairs it passed and this tool did not, ${formatNumber(contender.vsHighlight.c)} the other way (95% interval for the difference ${pairedInterval(contender.vsHighlight)}; raw p ${pLabel(contender.vsHighlight.p)})`;
       label.appendChild(badge);
     }
     label.appendChild(el('span', 'sr-only', contenderDetail(contender, bench)));
@@ -206,7 +215,7 @@ export function benchmarkChart(bench, benchmarkHistory) {
   );
   const outcomeLegend = el('p', 'chart-legend');
   for (const kind of present) outcomeLegend.appendChild(legendItem(`outcome-segment is-${kind}`, kind));
-  const method = el('p', 'chart-method', 'Real models drive each contender’s own tools through a tool-calling loop, and every row links to a committed trace. Staleness and served-state scenarios are scored separately, so refusing a stale edit is not counted against the tool. Each rival is paired with the highlighted project on the shared model × scenario grid, and the exact two-sided McNemar p-values are Holm-adjusted across the comparisons.');
+  const method = el('p', 'chart-method', 'Real models drive each contender’s own tools through a tool-calling loop, and every row links to a committed trace. Staleness and served-state scenarios are scored separately, so refusing a stale edit is not counted against the tool. Each rival is paired with the highlighted project on the shared model × scenario grid, and the exact two-sided McNemar p-values are Holm-adjusted across the comparisons; the interval beside each comparison is unadjusted.');
   const source = el('p', 'chart-source');
   append(
     source,
@@ -218,14 +227,15 @@ export function benchmarkChart(bench, benchmarkHistory) {
     link(bench.tracesUrl, 'traces'),
     ' · ',
     link('data/site-data.json', 'raw data'),
-    ` · generated ${String(bench.generatedAt).slice(0, 10)}`
+    ' · generated ',
+    timeNode(String(bench.generatedAt), String(bench.generatedAt).slice(0, 10)),
   );
   const note = significanceNote(bench);
   const noteNode = note ? el('p', 'chart-note bench-significance-note', note) : null;
   append(body, list, legend, outcomeLegend, noteNode, method, source);
   const trend = benchmarkTrend(benchmarkHistory);
   if (trend) body.appendChild(trend);
-  const table = dataTable('View the numbers as a table', benchmarkTableRows(bench), 'Pass rate, staleness, served state, interval, and run counts per contender.');
+  const table = dataTable('View the numbers as a table', benchmarkTableRows(bench), 'Pass rate, staleness, served state, interval, paired difference against the highlighted tool, and run counts per contender.');
   if (table) body.appendChild(table);
   return createController(root, (runtime) => {
     runtime.after(() => root.classList.add('is-live'), 120);

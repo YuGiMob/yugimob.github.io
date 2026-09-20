@@ -31,3 +31,6 @@ jobs:
 
       - name: Validate and test
         run: npm run check
+
+      - name: Check data freshness
+        run: node scripts/check-freshness.mjs

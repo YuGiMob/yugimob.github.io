@@ -111,13 +111,33 @@ export function contenderLabel(id) {
   return stripped === 'builtin-edit' ? 'built-in edit' : stripped;
 }
 
-export function wilsonInterval(passed, total, z = 1.96) {
-  if (!Number.isFinite(passed) || !Number.isFinite(total) || total <= 0) return { low: 0, high: 0 };
+function roundPercent(value) {
+  const rounded = Math.round(value * 1000) / 10;
+  return rounded === 0 ? 0 : rounded;
+}
+
+function wilsonBounds(passed, total, z = 1.96) {
   const share = Math.min(1, Math.max(0, passed / total));
   const denominator = 1 + (z * z) / total;
   const centre = (share + (z * z) / (2 * total)) / denominator;
   const margin = (z * Math.sqrt((share * (1 - share) + (z * z) / (4 * total)) / total)) / denominator;
-  return { low: Math.round(Math.max(0, centre - margin) * 1000) / 10, high: Math.round(Math.min(1, centre + margin) * 1000) / 10 };
+  return { low: Math.max(0, centre - margin), high: Math.min(1, centre + margin) };
+}
+
+export function wilsonInterval(passed, total, z = 1.96) {
+  if (!Number.isFinite(passed) || !Number.isFinite(total) || total <= 0) return { low: 0, high: 0 };
+  const bounds = wilsonBounds(passed, total, z);
+  return { low: roundPercent(bounds.low), high: roundPercent(bounds.high) };
+}
+
+export function pairedDifferenceInterval(referenceOnly, contenderOnly, total, z = 1.96) {
+  if (!Number.isInteger(referenceOnly) || !Number.isInteger(contenderOnly) || !Number.isInteger(total)) return null;
+  if (referenceOnly < 0 || contenderOnly < 0 || total <= 0 || referenceOnly + contenderOnly > total) return null;
+  const discordant = referenceOnly + contenderOnly;
+  if (discordant === 0) return { low: 0, high: 0 };
+  const bounds = wilsonBounds(contenderOnly, discordant, z);
+  const scale = discordant / total;
+  return { low: roundPercent(scale * (2 * bounds.low - 1)), high: roundPercent(scale * (2 * bounds.high - 1)) };
 }
 
 const LOG_GAMMA_COEFFICIENTS = [
@@ -179,6 +199,13 @@ export function benchmarkTraceUrl(tracePath) {
   const file = segments[segments.length - 1];
   const model = segments[segments.length - 2];
   return `${BENCHMARK_REPOSITORY}/blob/main/results/traces/${encodeURIComponent(model)}/${encodeURIComponent(file)}`;
+}
+
+export function npmPointUrl(packages) {
+  const names = (Array.isArray(packages) ? packages : []).filter((name) => typeof name === 'string' && name.length > 0);
+  if (names.length === 0) return null;
+  if (names.some((name) => name.startsWith('@'))) return null;
+  return `https://api.npmjs.org/downloads/point/last-week/${names.join(',')}`;
 }
 
 function emptyTally() {
@@ -273,7 +300,8 @@ export function summarizeBenchmark(report, focusById = new Map(), highlighted = 
         if (referencePass && !pass) b += 1;
         else if (!referencePass && pass) c += 1;
       }
-      row.vsHighlight = row === highlightedRow ? null : { b, c, p: mcnemarExact(b, c) };
+      const difference = pairedDifferenceInterval(b, c, reference.overall.runs);
+      row.vsHighlight = row === highlightedRow || !difference ? null : { b, c, p: mcnemarExact(b, c), low: difference.low, high: difference.high };
     }
     const rivals = rows.filter((row) => row.vsHighlight != null);
     const adjusted = holmAdjust(rivals.map((row) => row.vsHighlight.p));
@@ -441,6 +469,11 @@ export function scenarioMatrixMatchesBenchmark(matrix, benchmark) {
     if (!comparison) return false;
     if (comparison.b !== b || comparison.c !== c) return false;
     if (typeof comparison.p !== 'number' || comparison.p !== mcnemarExact(b, c)) return false;
+    const referenceEntry = byId.get(matrix.contenders[referenceColumn]);
+    const difference = pairedDifferenceInterval(b, c, referenceEntry.runs);
+    if (!difference) return false;
+    if (!Number.isFinite(comparison.low) || !Number.isFinite(comparison.high)) return false;
+    if (Math.abs(comparison.low - difference.low) > 0.05 || Math.abs(comparison.high - difference.high) > 0.05) return false;
     rivals.push(comparison);
   }
   const adjusted = holmAdjust(rivals.map((comparison) => comparison.p));

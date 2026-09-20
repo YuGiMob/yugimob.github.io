@@ -117,4 +117,5 @@ No framework, no build step, no runtime dependencies. Plain HTML, CSS, and JavaS
 - [Machine data](https://yugimob.github.io/data/site-data.json): stars, downloads, activity, history, and benchmark numbers, refreshed daily
 - [Curated showcase](https://yugimob.github.io/data/showcase.json): the narrative behind every tool, one entry per problem
 - [Agent index](https://yugimob.github.io/llms.txt): the short index of this site for language models
+- [Feed](https://yugimob.github.io/feed.json): a JSON Feed of the daily benchmark and install snapshots
 - [Sitemap](https://yugimob.github.io/sitemap.xml): the single canonical page

@@ -15,7 +15,7 @@ import {
   renderProblemsHeading,
   renderStructuredData,
 } from '../assets/js/render.js';
-import { findAll, register, registerQuery, withDom } from './dom.mjs';
+import { element, findAll, register, registerQuery, withDom } from './dom.mjs';
 
 const PROJECT_A = {
   name: 'tool-a',
@@ -474,4 +474,14 @@ test('renderStructuredData never assigns textContent on the script element', () 
     renderStructuredData(DATA, SHOWCASE);
   });
   assert.match(script.written, /"@type":"ItemList"/);
+});
+
+test('renderStructuredData resolves the canonical URL for the machine-readable copy', () => {
+  withDom((dom) => {
+    const target = register(dom.document, 'structured-data');
+    const canonical = registerQuery(dom.document, 'link[rel="canonical"]', element('link'));
+    canonical.href = 'https://yugimob.github.io/';
+    renderStructuredData(DATA, SHOWCASE);
+    assert.match(target.textContent, /"image":"https:\/\/yugimob\.github\.io\/avatar\.png\?s=108"/);
+  });
 });

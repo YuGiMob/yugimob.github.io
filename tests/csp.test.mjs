@@ -13,7 +13,7 @@ function changeStructuredData(copy) {
   const page = join(copy, 'index.html');
   const source = readFileSync(page, 'utf8');
   const block = source.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[0];
-  writeFileSync(page, source.replace(block, block.replace('YuGiMob', 'YuGiMob2')));
+  writeFileSync(page, source.replace(block, block.replace('{"@context"', '{ "@context"')));
 }
 
 test('build-csp refreshes a stale hash so the site validator accepts the page', () => {

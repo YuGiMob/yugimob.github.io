@@ -17,6 +17,7 @@ import {
   reducedMotion,
   setMeta,
   setText,
+  timeNode,
   svg,
   typeText,
 } from '../assets/js/ui.js';
@@ -136,6 +137,18 @@ test('el, append, and link build nodes with classes, text, and safe link attribu
     assert.equal(anchor.getAttribute('rel'), 'noopener noreferrer');
     assert.equal(anchor.textContent, 'Example');
     assert.equal(anchor.className, 'action-link');
+  });
+});
+
+test('timeNode marks up a machine-readable date', () => {
+  withDom(() => {
+    const node = timeNode('2026-09-20');
+    assert.equal(node.tagName, 'TIME');
+    assert.equal(node.getAttribute('datetime'), '2026-09-20');
+    assert.equal(node.textContent, '2026-09-20');
+    const labelled = timeNode('2026-09-20T12:03:04Z', '20 Sep');
+    assert.equal(labelled.getAttribute('datetime'), '2026-09-20T12:03:04Z');
+    assert.equal(labelled.textContent, '20 Sep');
   });
 });
 

@@ -1,2 +1,4 @@
+.cache/
+.lighthouseci/
 .omo/
 *.tmp

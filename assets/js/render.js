@@ -1,5 +1,5 @@
 import { hydrateAvatar } from './avatar.js';
-import { el, append, link, copyButton, formatNumber, extent, animateValue, svg, setText, setMeta, observeVisibility } from './ui.js';
+import { el, append, link, copyButton, formatNumber, extent, animateValue, svg, setText, setMeta, observeVisibility, timeNode } from './ui.js';
 import { lazyMount } from './lazy.js';
 import { loadDemo } from './demo-registry.js';
 import { fetchJson } from './fetch-json.js';
@@ -276,7 +276,11 @@ export async function renderActivity(data) {
     for (const highlight of highlights) list.appendChild(el('li', 'activity-highlight', highlight));
     panel.appendChild(list);
   }
-  if (activity.fetchedAt) panel.appendChild(el('p', 'activity-note', `GitHub public events, fetched ${activity.fetchedAt}.`));
+  if (activity.fetchedAt) {
+    const note = el('p', 'activity-note');
+    append(note, 'GitHub public events, fetched ', timeNode(activity.fetchedAt), '.');
+    panel.appendChild(note);
+  }
   const history = Array.isArray(data.history) ? data.history : [];
   if (history.length > 0) {
     const charts = await import('./charts.js').catch(() => null);
@@ -304,7 +308,8 @@ export function renderFooter(data) {
 export function renderStructuredData(data, showcase) {
   const target = document.getElementById('structured-data');
   if (!target) return;
-  target.replaceChildren(document.createTextNode(JSON.stringify(structuredData(data, showcase))));
+  const canonical = document.querySelector('link[rel="canonical"]')?.href || document.baseURI;
+  target.replaceChildren(document.createTextNode(JSON.stringify(structuredData(data, showcase, canonical))));
 }
 
 export function applyVisibility(sections, showcase) {

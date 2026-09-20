@@ -13,6 +13,7 @@
     "machineData": "https://yugimob.github.io/data/site-data.json",
     "curatedData": "https://yugimob.github.io/data/showcase.json",
     "scenarioMatrix": "https://yugimob.github.io/data/benchmark-matrix.json",
+    "feed": "https://yugimob.github.io/feed.json",
     "sitemap": "https://yugimob.github.io/sitemap.xml"
   }
 }

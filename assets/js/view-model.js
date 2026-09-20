@@ -104,7 +104,17 @@ export function stalenessNotice(data, today, limit = 3) {
   return `${joined.charAt(0).toUpperCase()}${joined.slice(1)}.`;
 }
 
-export function structuredData(data, showcase) {
+function resolvedUrl(value, baseUrl) {
+  if (typeof value !== 'string' || value.length === 0) return undefined;
+  if (!baseUrl) return value;
+  try {
+    return new URL(value, baseUrl).href;
+  } catch {
+    return value;
+  }
+}
+
+export function structuredData(data, showcase, baseUrl = '') {
   const names = new Set([
     ...(Array.isArray(showcase?.problems) ? showcase.problems.map((problem) => problem.name) : []),
     ...(showcase?.evidence ? [showcase.evidence.name] : []),
@@ -129,9 +139,21 @@ export function structuredData(data, showcase) {
     }));
   return {
     '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: `${data.identity.displayName} projects`,
+    '@type': 'ProfilePage',
     dateModified: data.activity?.fetchedAt || undefined,
-    itemListElement: items,
+    mainEntity: {
+      '@type': 'Person',
+      name: data.identity.displayName,
+      description: data.identity.tagline,
+      url: resolvedUrl(baseUrl),
+      image: resolvedUrl(data.identity.avatarUrl, baseUrl),
+      sameAs: data.identity.links?.github ? [data.identity.links.github] : undefined,
+    },
+    hasPart: {
+      '@type': 'ItemList',
+      name: `${data.identity.displayName} projects`,
+      numberOfItems: items.length,
+      itemListElement: items,
+    },
   };
 }

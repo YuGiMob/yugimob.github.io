@@ -30,12 +30,18 @@ const TEXT_FILES = [
   'sitemap.xml',
   '.well-known/security.txt',
   '.github/dependabot.yml',
+  '.github/zizmor.yml',
   '.github/workflows/codeql.yml',
   '.github/workflows/links.yml',
   '.github/workflows/refresh-data.yml',
   '.github/workflows/scorecard.yml',
   '.github/workflows/validate.yml',
+  '.github/workflows/lighthouse.yml',
+  '.github/workflows/zizmor.yml',
   'package.json',
+  '.lighthouserc.json',
+  'feed.json',
+  'AGENTS.md',
   '.nvmrc',
 ];
 

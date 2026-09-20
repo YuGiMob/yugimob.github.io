@@ -1,0 +1,56 @@
+{
+  "version": "https://jsonfeed.org/version/1.1",
+  "title": "YuGiMob",
+  "home_page_url": "https://yugimob.github.io/",
+  "feed_url": "https://yugimob.github.io/feed.json",
+  "description": "Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, guarded commits, and a benchmark that publishes the traces.",
+  "language": "en",
+  "authors": [
+    {
+      "name": "YuGiMob",
+      "url": "https://github.com/YuGiMob"
+    }
+  ],
+  "items": [
+    {
+      "id": "https://yugimob.github.io/#benchmark-2026-09-20",
+      "url": "https://yugimob.github.io/#evidence",
+      "title": "Benchmark report 2026-09-20: 97.8% overall",
+      "content_text": "hashline-edit-pro scored 97.8% overall, 98.9% on staleness scenarios, 92.1% on served-state scenarios in the 2026-09-20 pi-edit-benchmark report.",
+      "date_published": "2026-09-20T00:00:00Z",
+      "tags": [
+        "benchmark"
+      ]
+    },
+    {
+      "id": "https://yugimob.github.io/#history-2026-09-20",
+      "url": "https://yugimob.github.io/#intro",
+      "title": "Data refresh 2026-09-20: 97 stars, 5,403 weekly installs",
+      "content_text": "97 GitHub stars and 5,403 npm installs per week across the projects on 2026-09-20.",
+      "date_published": "2026-09-20T00:00:00Z",
+      "tags": [
+        "data"
+      ]
+    },
+    {
+      "id": "https://yugimob.github.io/#history-2026-09-18",
+      "url": "https://yugimob.github.io/#intro",
+      "title": "Data refresh 2026-09-18: 94 stars, 7,131 weekly installs",
+      "content_text": "94 GitHub stars and 7,131 npm installs per week across the projects on 2026-09-18.",
+      "date_published": "2026-09-18T00:00:00Z",
+      "tags": [
+        "data"
+      ]
+    },
+    {
+      "id": "https://yugimob.github.io/#history-2026-09-17",
+      "url": "https://yugimob.github.io/#intro",
+      "title": "Data refresh 2026-09-17: 94 stars, 5,296 weekly installs",
+      "content_text": "94 GitHub stars and 5,296 npm installs per week across the projects on 2026-09-17.",
+      "date_published": "2026-09-17T00:00:00Z",
+      "tags": [
+        "data"
+      ]
+    }
+  ]
+}

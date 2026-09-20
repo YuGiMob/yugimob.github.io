@@ -59,9 +59,9 @@ data/site-data.json      machine numbers          data/showcase.json  curated pr
 ```
 
 The same refresh rewrites the hero stat block in `index.html` and regenerates
-`llms.txt`, `index.md`, and `agent-readability.json`, so the page, the machine
-files, and the agent index cannot drift apart. Validators re-derive every rule
-they can, and the test suite runs them against a temporary copy of the tree.
+`llms.txt`, `index.md`, `agent-readability.json`, and `feed.json`, so the page, the
+machine files, and the agent index cannot drift apart. Validators re-derive every
+rule they can, and the test suite runs them against a temporary copy of the tree.
 
 ## Files
 
@@ -71,12 +71,14 @@ index.html                      page shell, meta tags, JSON-LD
 llms.txt                        generated site map for language models
 index.md                        generated markdown mirror of the page
 agent-readability.json          generated machine-readable surface index
+feed.json                       generated JSON Feed of the daily snapshots
 favicon.ico                     legacy favicon
 sitemap.xml                     single-URL sitemap, lastmod refreshed with the data
 robots.txt                      crawl policy and sitemap reference
 LICENSE                         MIT license for this repository
 SECURITY.md                     vulnerability reporting policy
 CONTRIBUTING.md                 contributor rules, module map, and check list
+AGENTS.md                       short orientation for coding agents working in this repo
 .well-known/security.txt        RFC 9116 contact
 assets/apple-touch-icon.png     iOS home-screen icon
 assets/avatar.png               self-hosted avatar, no third-party origin
@@ -97,7 +99,7 @@ assets/js/hashline.js           anchor allocation + edit session model
 assets/js/playground.js         the flagship interactive demo
 assets/js/demos.js              all five card demos
 assets/js/charts.js             benchmark, trend, and history charts
-assets/js/avatar.js             avatar srcset hydration
+assets/js/avatar.js             avatar src and alt hydration
 data/site-data.json             machine-refreshed data
 data/site-data.schema.json      schema for the above
 data/showcase.json              curated narrative and demo wiring
@@ -116,7 +118,7 @@ scripts/link-lib.mjs            link collection, probing, and verdicts
 scripts/build-csp.mjs           refresh the inline JSON-LD CSP hash
 scripts/csp-lib.mjs             script-src directive and hash helpers
 scripts/sitemap-lib.mjs         sitemap lastmod reader and atomic writer
-scripts/contrast-lib.mjs        WCAG contrast helpers for the palette check
+scripts/contrast-lib.mjs        WCAG contrast and dichromacy helpers
 scripts/site-html-lib.mjs        hero stat block builder and atomic writer
 scripts/check-freshness.mjs     fail when the newest history snapshot is too old
 tests/                          node:test unit and integration tests
@@ -125,15 +127,21 @@ package.json                    scripts only, no runtime dependencies
 .github/workflows/refresh-data.yml  daily refresh and commit
 .github/workflows/validate.yml      validation on push and pull request
 .github/workflows/links.yml         monthly external-link check
+.github/workflows/lighthouse.yml    Lighthouse audits on push and pull request
 .github/workflows/codeql.yml        CodeQL analysis on push and pull request
 .github/workflows/scorecard.yml     weekly OpenSSF Scorecard
+.github/workflows/zizmor.yml        Actions security audit on push and pull request
 .github/dependabot.yml              weekly action updates
+.github/zizmor.yml                  ignored zizmor rules for this repository
+.lighthouserc.json                  Lighthouse CI budgets and assertions
 .github/CODEOWNERS                  review ownership
 .github/pull_request_template.md    the pull request checklist
 ```
 
 `.omo/` is local agent scratch for planning and evidence; it is gitignored and
-not part of the published site.
+not part of the published site. `.cache/` holds the GitHub response bodies and
+etags between refresh runs so repeated polls revalidate instead of refetching; it
+is gitignored too.
 
 ## Demos
 
@@ -186,10 +194,10 @@ scenario focus that the benchmark's own scenario sources declare, and derives
 the pass rates, the staleness and served-state splits, the outcome counts, and
 a 95% Wilson interval per contender. Because every contender runs the same model
 × scenario grid, each one is also paired against the highlighted project with
-an exact two-sided McNemar test, and the p-values are Holm-adjusted across the
-comparisons, so the chart can say whether a lead is real or inside noise. Each
-contender keeps a link to a committed
-trace. Nothing in that block is typed by hand, so the chart cannot
+an exact two-sided McNemar test, a conditional score interval for the paired
+difference, and p-values Holm-adjusted across the comparisons, so the chart can
+say whether a lead is real or inside noise. Each contender keeps a link to a
+committed trace. Nothing in that block is typed by hand, so the chart cannot
 drift from the runs it claims to show. Each refresh also appends one
 `benchmarkHistory` snapshot for the highlighted project, so the evidence panel
 can show whether the tool is improving between reports.
@@ -226,7 +234,11 @@ downloads for every package in the manifest, and the committed
 pi-edit-benchmark run report plus its scenario sources, then updates only the
 machine fields. It requires Node >= 22.8, needs no install, and makes no
 authenticated requests by default; the refresh workflow passes `GITHUB_TOKEN`
-so scheduled runs do not fight over a shared rate limit.
+so scheduled runs do not fight over a shared rate limit. The npm requests go out
+as one bulk query for every plain package in the manifest, and the GitHub
+requests are conditional: the response body and its `etag` are kept in
+`.cache/fetch-state.json`, and the next run sends `if-none-match` so an unchanged
+response comes back as a `304` that does not count against the rate limit.
 
 The avatar is not fetched: `assets/avatar.png` is a committed copy of the GitHub
 avatar, so replace that file by hand when the profile picture changes.
@@ -236,8 +248,8 @@ file are never touched. Forks and the site repo are skipped. The file is
 written atomically (temp file then rename) with a change summary, and the
 candidate is revalidated before the rename, so a document the schema rejects
 can never reach `data/site-data.json`. A successful write also regenerates
-`llms.txt`, `index.md`, and `agent-readability.json` from the two data files,
-rewrites the hero stat block in `index.html`, and writes the benchmark matrix.
+`llms.txt`, `index.md`, `agent-readability.json`, and `feed.json` from the two data
+files, rewrites the hero stat block in `index.html`, and writes the benchmark matrix.
 If the existing file is present but unusable,
 the refresh exits with an error without
 writing, so a corrupt file cannot wipe curated content.
@@ -267,10 +279,10 @@ only touches other machine fields leaves the sitemap alone.
 The site refreshes itself daily through
 `.github/workflows/refresh-data.yml` (06:00 UTC), which runs the script,
 validates the data files, and commits `data/site-data.json`,
-`data/benchmark-matrix.json`, `sitemap.xml`, `index.html`, `llms.txt`, `index.md`, and
-`agent-readability.json` only when at least one of them changed, and fails
-when the newest history snapshot is
-still more than two days old, so an outage cannot pass silently. It can also be
+`data/benchmark-matrix.json`, `sitemap.xml`, `index.html`, `llms.txt`, `index.md`,
+`agent-readability.json`, and `feed.json` only when at least one of them changed,
+and fails when the newest history snapshot is still more than two days old, so an
+outage cannot pass silently. It can also be
 triggered manually from the Actions tab.
 
 ## Validating
@@ -288,7 +300,8 @@ walks the JSON files against the schema files themselves, so a rule lives in
 one place, then
 cross-references showcase names with the manifest, verifies every `demo` id,
 and re-derives the benchmark arithmetic (contender counts, `models × scenarios`,
-outcome totals, and recomputes the Wilson interval around each pass rate), and
+outcome totals, recomputes the Wilson interval around each pass rate, and
+re-derives the paired-difference interval for every comparison), and
 refuses histories,
 daily activity, benchmark history, or highlight lists beyond the documented
 caps. It prints
@@ -305,10 +318,14 @@ the section order, title and description lengths, and a set of static
 accessibility rules (`lang`, `img` alt text, `aria` references, `target=_blank`
 rel, heading order, a single `main`), then prints `validate:site: ok`. It also
 refuses static copy that drifts from the data files (`<title>`, meta description,
-social tags, `#display-name`, `#class-title`, `#intro-headline`, and
+social tags, the inline JSON-LD identity, `#display-name`, `#class-title`,
 `#problems-heading`), inline `style` and event-handler attributes the CSP forbids,
 a sitemap or `robots.txt` that disagrees with the canonical URL, a `security.txt`
-that expires within 60 days, a palette pair below the 4.5:1 contrast minimum, an
+that expires within 60 days, a palette pair below the 4.5:1 contrast minimum, two
+chart colors closer than 15 ΔE under normal, protan, or deutan vision, a
+`robots.txt` without content signals, a `feed.json` that is not valid JSON Feed
+1.1, the required `Content-Security-Policy` directives, a chart color that
+cannot be measured, an
 asset group over its weight budget, an image whose real dimensions differ from
 the declared ones, and a manifest project with no showcase entry. The
 schema walker refuses a keyword or format it does not
@@ -316,8 +333,8 @@ implement, so a rule can never be silently unenforced. The schema files also
 drive editor validation through the `$schema` keys in the data files. The
 workflow runs all three on every refresh and on push. `npm run csp` rewrites the
 CSP hash in place after the inline JSON-LD changes. Separate tests keep
-`llms.txt`, `index.md`, and `agent-readability.json` in step with the two data
-files, and `npm run build:llms` regenerates them by hand. The data validator
+`llms.txt`, `index.md`, `agent-readability.json`, and `feed.json` in step with
+the two data files, and `npm run build:llms` regenerates them by hand. The data validator
 re-derives every McNemar comparison and its Holm adjustment from the matrix,
 and refuses a benchmark matrix whose totals or paired counts disagree with the
 benchmark block.
@@ -329,9 +346,10 @@ npm test
 ```
 
 The suite runs on `node --test` with no dependencies: unit tests for the
-anchored-edit session model, the guided playground flow, the avatar srcset
+anchored-edit session model, the guided playground flow, the avatar hydration
 helper, the retrying fetch, the data guards, the view-model derivations, the
-chart transforms, the visibility rules, the sitemap lastmod writer, and the
+chart transforms, the dichromacy simulation and color-distance helpers, the
+visibility rules, the sitemap lastmod writer, and the
 refresh activity, history, and benchmark helpers, plus a parse check for every
 script and integration checks that the committed data and site structure pass
 their validators and that each validator refuses broken input, including
@@ -341,7 +359,11 @@ drifted from the data.
 The refresh pipeline is also driven end to end against committed API fixtures,
 with and without the GitHub API and in dry-run mode, so the fetch, the benchmark
 gate, the atomic write, the sitemap update, and the llms regeneration are all
-exercised.
+exercised, including the revalidation path where a second run gets a `304` and
+reuses the cached body. Two more workflows run in CI on every push and pull
+request: Lighthouse (`.lighthouserc.json`, accessibility and CLS assertions) and
+zizmor against the workflows themselves, and the refresh workflow keeps the
+payload cache alive with `actions/cache`.
 
 `npm run check` runs validation and the tests together. `npm run coverage`
 adds `--experimental-test-coverage` (Node 22.8 or newer) with thresholds on

@@ -42,7 +42,7 @@ assets/js/
   demos.js          the five card demos
   playground.js     the hashline guided run, built on hashline.js
   hashline.js       the anchored-edit session model
-  avatar.js         avatar srcset hydration
+  avatar.js         avatar src and alt hydration
   fetch-json.js     retrying JSON fetch with a timeout
   main.js           boot, fetch, navigation, error state
 ```
@@ -73,7 +73,7 @@ These are derived. Edit the inputs, then regenerate:
 
 | file | regenerate with |
 | --- | --- |
-| `llms.txt`, `index.md`, `agent-readability.json` | `npm run build:llms` |
+| `llms.txt`, `index.md`, `agent-readability.json`, `feed.json` | `npm run build:llms` |
 | the hero stat block in `index.html` | `npm run refresh` (or edit it in step with the data) |
 | the CSP hash in `index.html` | `npm run csp` |
 | `sitemap.xml` lastmod | `npm run refresh` |
@@ -87,5 +87,10 @@ change can be reviewed first.
 site validator, and `node --test` with coverage thresholds. Fix the first
 failure before re-running; each validator prints every problem it found.
 
-CI runs the same command on Node 22 and 24. Keep the README file listing in
-step with the tree, since `validate:site` reads it.
+CI runs the same command on Node 22 and 24, then the freshness check, so a data
+snapshot older than two days fails every push and pull request until the daily
+refresh heals it. Two more workflows gate a change: Lighthouse
+(`.lighthouserc.json`) audits the committed page for accessibility and layout
+stability, and zizmor audits the workflows themselves (`.github/zizmor.yml`).
+Keep the README file listing in step with the tree, since `validate:site` reads
+it.

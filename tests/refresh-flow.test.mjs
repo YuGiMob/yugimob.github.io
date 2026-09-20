@@ -52,7 +52,7 @@ test('a fixture refresh writes every machine field and rebuilds the derived file
     const highlighted = data.benchmark.contenders.find((entry) => entry.highlight);
     const rival = data.benchmark.contenders.find((entry) => !entry.highlight);
     assert.equal(highlighted.vsHighlight, null);
-    assert.deepEqual(rival.vsHighlight, { b: 0, c: 0, p: 1, pAdjusted: 1 });
+    assert.deepEqual(rival.vsHighlight, { b: 0, c: 0, p: 1, low: 0, high: 0, pAdjusted: 1 });
 
     const matrix = JSON.parse(readFileSync(join(repo, 'data', 'benchmark-matrix.json'), 'utf8'));
     assert.equal(matrix.generatedAt, data.benchmark.generatedAt);
@@ -211,5 +211,69 @@ test('a refresh without the GitHub API keeps activity, stats, and history but st
     assert.deepEqual(data.activity, before.activity);
     assert.deepEqual(data.stats, before.stats);
     assert.equal(data.projects.find((project) => project.name === 'pi-hashline-edit-pro').npmWeeklyDownloads, 5123);
+  });
+});
+
+test('a second refresh revalidates the GitHub API with the cached etags', () => {
+  withRepo((repo) => {
+    const first = refresh(repo);
+    assert.equal(first.status, 0, first.stderr);
+    assert.ok(existsSync(join(repo, '.cache', 'fetch-state.json')));
+
+    const log = join(repo, 'fetch.log');
+    const second = refresh(repo, { YUGIMOB_FETCH_LOG: log });
+    assert.equal(second.status, 0, second.stderr);
+    assert.match(second.stdout, /No data changes/);
+
+    const githubLines = readFileSync(log, 'utf8').trim().split('\n').filter((line) => line.includes('api.github.com'));
+    assert.ok(githubLines.length > 0);
+    for (const line of githubLines) {
+      assert.match(line, /^304 conditional /, `unexpected GitHub request: ${line}`);
+    }
+  });
+});
+
+test('a stale cache entry is refetched and replaced', () => {
+  withRepo((repo) => {
+    const first = refresh(repo);
+    assert.equal(first.status, 0, first.stderr);
+    const cachePath = join(repo, '.cache', 'fetch-state.json');
+    const state = JSON.parse(readFileSync(cachePath, 'utf8'));
+    const url = Object.keys(state).find((entry) => entry.includes('/repos'));
+    state[url].etag = '"stale"';
+    writeFileSync(cachePath, JSON.stringify(state, null, 2));
+
+    const log = join(repo, 'fetch.log');
+    const second = refresh(repo, { YUGIMOB_FETCH_LOG: log });
+    assert.equal(second.status, 0, second.stderr);
+    const lines = readFileSync(log, 'utf8');
+    assert.match(lines, new RegExp(`200 conditional ${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+    assert.notEqual(JSON.parse(readFileSync(cachePath, 'utf8'))[url].etag, '"stale"');
+  });
+});
+
+test('a manifest with one npm package reads the single-package download response', () => {
+  withRepo((repo) => {
+    const path = join(repo, DATA_FILE);
+    const data = JSON.parse(readFileSync(path, 'utf8'));
+    for (const project of data.projects) {
+      if (project.name !== 'pi-tor-proxy') project.npm = null;
+    }
+    data.projects.find((project) => project.name === 'pi-tor-proxy').npmWeeklyDownloads = 1;
+    writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+
+    const result = refresh(repo);
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stdout, /fetch failed/);
+    assert.equal(readData(repo).projects.find((project) => project.name === 'pi-tor-proxy').npmWeeklyDownloads, 44);
+  });
+});
+
+test('a failed npm batch query falls back to per-package requests', () => {
+  withRepo((repo) => {
+    const result = refresh(repo, { YUGIMOB_NPM_BULK_FAIL: '1' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, /falling back to per-package requests/);
+    assert.equal(readData(repo).projects.find((project) => project.name === 'pi-hashline-edit-pro').npmWeeklyDownloads, 5123);
   });
 });

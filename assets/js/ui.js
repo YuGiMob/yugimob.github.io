@@ -32,6 +32,12 @@ export function link(href, text, className) {
   return anchor;
 }
 
+export function timeNode(datetime, text) {
+  const node = el('time', null, text ?? datetime);
+  node.setAttribute('datetime', datetime);
+  return node;
+}
+
 export function setText(id, value) {
   const node = document.getElementById(id);
   if (node && value != null) node.textContent = value;

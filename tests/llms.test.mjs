@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildAgentReadability, buildIndexMd, buildLlmsTxt, writeAgentFiles, writeLlmsFile } from '../scripts/llms-lib.mjs';
+import { buildAgentReadability, buildIndexMd, buildJsonFeed, buildLlmsTxt, writeAgentFiles, writeLlmsFile } from '../scripts/llms-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.json'), 'utf8'));
@@ -12,6 +12,7 @@ const SHOWCASE = JSON.parse(readFileSync(join(ROOT, 'data', 'showcase.json'), 'u
 const COMMITTED = readFileSync(join(ROOT, 'llms.txt'), 'utf8');
 const COMMITTED_INDEX = readFileSync(join(ROOT, 'index.md'), 'utf8');
 const COMMITTED_READABILITY = readFileSync(join(ROOT, 'agent-readability.json'), 'utf8');
+const COMMITTED_FEED = readFileSync(join(ROOT, 'feed.json'), 'utf8');
 
 test('the committed llms.txt matches the generator output', () => {
   assert.equal(buildLlmsTxt(DATA, SHOWCASE), COMMITTED);
@@ -93,6 +94,30 @@ test('the committed agent-readability.json matches the generator output', () => 
   assert.equal(manifest.artifacts.markdown, 'https://yugimob.github.io/index.md');
 });
 
+test('the committed feed.json matches the generator output', () => {
+  assert.equal(buildJsonFeed(DATA), COMMITTED_FEED);
+  const feed = JSON.parse(COMMITTED_FEED);
+  assert.equal(feed.version, 'https://jsonfeed.org/version/1.1');
+  assert.equal(feed.feed_url, 'https://yugimob.github.io/feed.json');
+  assert.equal(feed.items.length, DATA.history.length + DATA.benchmarkHistory.length);
+  assert.match(feed.items[0].content_text, /hashline-edit-pro/);
+  assert.equal(new Set(feed.items.map((item) => item.id)).size, feed.items.length);
+});
+
+test('buildJsonFeed caps the item list and survives an empty manifest', () => {
+  const benchmarkHistory = Array.from({ length: 40 }, (unused, index) => ({
+    date: `2026-01-${String(index + 1).padStart(2, '0')}`,
+    overall: 90,
+    safety: null,
+    served: null,
+  }));
+  const long = buildJsonFeed({ identity: { displayName: 'Tester', tagline: 'A tagline.' }, benchmarkHistory, history: [] });
+  assert.equal(JSON.parse(long).items.length, 30);
+  const empty = buildJsonFeed({ identity: { displayName: 'Tester', tagline: 'A tagline.' } });
+  assert.equal(JSON.parse(empty).items.length, 0);
+  assert.equal(empty, buildJsonFeed({ identity: { displayName: 'Tester', tagline: 'A tagline.' } }));
+});
+
 test('buildIndexMd and buildAgentReadability stay deterministic and survive an empty manifest', () => {
   const minimal = { identity: { displayName: 'Tester', tagline: 'A tagline.' }, projects: [] };
   assert.equal(buildIndexMd(minimal, { intro: {}, problems: [] }), buildIndexMd(minimal, { intro: {}, problems: [] }));
@@ -108,10 +133,11 @@ test('writeAgentFiles writes every agent file once and reports no change afterwa
     const showcase = { intro: {}, problems: [] };
     writeFileSync(join(dir, 'data', 'site-data.json'), JSON.stringify(siteData));
     writeFileSync(join(dir, 'data', 'showcase.json'), JSON.stringify(showcase));
-    assert.deepEqual(writeAgentFiles(dir), { 'llms.txt': true, 'index.md': true, 'agent-readability.json': true });
-    assert.deepEqual(writeAgentFiles(dir), { 'llms.txt': false, 'index.md': false, 'agent-readability.json': false });
+    assert.deepEqual(writeAgentFiles(dir), { 'llms.txt': true, 'index.md': true, 'agent-readability.json': true, 'feed.json': true });
+    assert.deepEqual(writeAgentFiles(dir), { 'llms.txt': false, 'index.md': false, 'agent-readability.json': false, 'feed.json': false });
     assert.equal(readFileSync(join(dir, 'index.md'), 'utf8'), buildIndexMd(siteData, showcase));
     assert.equal(readFileSync(join(dir, 'agent-readability.json'), 'utf8'), buildAgentReadability(siteData));
+    assert.equal(readFileSync(join(dir, 'feed.json'), 'utf8'), buildJsonFeed(siteData));
     assert.deepEqual(readdirSync(dir).filter((file) => file.endsWith('.tmp')), []);
     assert.deepEqual(readdirSync(join(dir, 'data')).filter((file) => file.endsWith('.tmp')), []);
   } finally {

@@ -94,8 +94,8 @@ test('benchmarkTableRows formats every contender in rank order', () => {
     ],
   });
   assert.deepEqual(rows, [
-    { tool: 'a', version: '1.2.3', overall: '90.0%', safety: '88.0%', served: '92.0%', interval: '80.0–95.0', runs: '1,000', passed: '900', errors: '2' },
-    { tool: 'b', version: '', overall: '70.0%', safety: '—', served: '80.0%', interval: '60.0–80.0', runs: '10', passed: '7', errors: '0' },
+    { tool: 'a', version: '1.2.3', overall: '90.0%', safety: '88.0%', served: '92.0%', interval: '80.0–95.0', difference: '—', runs: '1,000', passed: '900', errors: '2' },
+    { tool: 'b', version: '', overall: '70.0%', safety: '—', served: '80.0%', interval: '60.0–80.0', difference: '—', runs: '10', passed: '7', errors: '0' },
   ]);
 });
 
@@ -157,7 +157,7 @@ test('benchmarkChart renders rows, meters, outcomes, legends, sources, and a tab
     const table = classes(node, 'chart-data');
     assert.equal(table.length, 1);
     assert.equal(tags(table[0], 'TR').length, 3);
-    assert.equal(tags(table[0], 'TH').length, 9);
+    assert.equal(tags(table[0], 'TH').length, 10);
 
   });
 });
@@ -235,7 +235,7 @@ test('benchmarkChart marks the paired comparison against the highlighted tool', 
     ...BENCHMARK,
     contenders: [
       { ...BENCHMARK.contenders[0] },
-      { ...BENCHMARK.contenders[1], vsHighlight: { b: 5, c: 0, p: 0.0625, pAdjusted: 0.3125 } },
+      { ...BENCHMARK.contenders[1], vsHighlight: { b: 6, c: 0, p: 0.03125, pAdjusted: 0.3125, low: -60, high: -13.2 } },
     ],
   };
   withDom(() => {
@@ -244,10 +244,10 @@ test('benchmarkChart marks the paired comparison against the highlighted tool', 
     assert.equal(badges.length, 1);
     assert.equal(badges[0].textContent, 'p=0.313');
     assert.match(badges[0].title, /Holm-adjusted exact McNemar test against tool-a/);
-    assert.match(badges[0].title, /raw p 0\.063/);
-    assert.match(controller.node.textContent, /not significantly different from tool-a \(Holm-adjusted McNemar p = 0\.313\)/);
+    assert.match(badges[0].title, /raw p 0\.031/);
+    assert.match(controller.node.textContent, /no significant paired difference from tool-a \(95% interval for the difference -60\.0 to -13\.2 points; Holm-adjusted McNemar p = 0\.313\)/);
     assert.match(controller.node.textContent, /tool-a leads tool-b by 40\.0 points on the same model × scenario pairs/);
-    assert.match(controller.node.textContent, /not a significant paired difference \(Holm-adjusted McNemar p 0\.313\)/);
+    assert.match(controller.node.textContent, /no significant paired difference \(Holm-adjusted McNemar p 0\.313; 95% interval for the difference -60\.0 to -13\.2 points\)/);
   });
 });
 
@@ -256,12 +256,12 @@ test('benchmarkChart words a tie against the highlighted tool as a tie', () => {
     ...BENCHMARK,
     contenders: [
       { ...BENCHMARK.contenders[0], overall: 90 },
-      { ...BENCHMARK.contenders[1], overall: 90, safety: 50, vsHighlight: { b: 4, c: 4, p: 1, pAdjusted: 1 } },
+      { ...BENCHMARK.contenders[1], overall: 90, safety: 50, vsHighlight: { b: 4, c: 4, p: 1, pAdjusted: 1, low: -45.6, high: 45.6 } },
     ],
   };
   withDom(() => {
     const controller = benchmarkChart(bench, []);
-    assert.match(controller.node.textContent, /tool-a and tool-b are tied on overall pass rate; the paired difference is not a significant paired difference \(Holm-adjusted McNemar p 1\.000\)\./);
+    assert.match(controller.node.textContent, /tool-a and tool-b are tied on overall pass rate; no significant paired difference \(Holm-adjusted McNemar p 1\.000; 95% interval for the difference -45\.6 to \+45\.6 points\)\./);
   });
 });
 
@@ -270,13 +270,13 @@ test('benchmarkChart bases the verdict on the adjusted p-value, not the raw one'
     ...BENCHMARK,
     contenders: [
       { ...BENCHMARK.contenders[0] },
-      { ...BENCHMARK.contenders[1], vsHighlight: { b: 9, c: 1, p: 0.011, pAdjusted: 0.11 } },
+      { ...BENCHMARK.contenders[1], vsHighlight: { b: 9, c: 1, p: 0.0215, pAdjusted: 0.11, low: -96.4, high: -19.2 } },
     ],
   };
   withDom(() => {
     const controller = benchmarkChart(bench, []);
     assert.equal(classes(controller.node, 'bench-significance')[0].textContent, 'p=0.110');
-    assert.match(controller.node.textContent, /not significantly different from tool-a \(Holm-adjusted McNemar p = 0\.110\)/);
+    assert.match(controller.node.textContent, /no significant paired difference from tool-a \(95% interval for the difference -96\.4 to -19\.2 points; Holm-adjusted McNemar p = 0\.110\)/);
   });
 });
 

@@ -84,6 +84,9 @@ test('isValidBenchmark rejects a malformed block and accepts a complete one', ()
   assert.equal(isValidBenchmark({ ...BENCHMARK, generatedAt: undefined }), false);
   assert.equal(isValidBenchmark({ ...BENCHMARK, contenders: [{ label: 'tool' }] }), false);
   assert.equal(isValidBenchmark({ ...BENCHMARK, contenders: [{ ...BENCHMARK.contenders[0], vsHighlight: { b: 1, c: 0, p: 'x' } }] }), false);
+  assert.equal(isValidBenchmark({ ...BENCHMARK, contenders: [{ ...BENCHMARK.contenders[0], vsHighlight: { b: 1, c: 0, p: 0.5, low: -10, high: 10 } }] }), true);
+  assert.equal(isValidBenchmark({ ...BENCHMARK, contenders: [{ ...BENCHMARK.contenders[0], vsHighlight: { b: 1, c: 0, p: 0.5 } }] }), false);
+  assert.equal(isValidBenchmark({ ...BENCHMARK, contenders: [{ ...BENCHMARK.contenders[0], vsHighlight: { b: 1, c: 0, p: 0.5, low: 'x', high: 10 } }] }), false);
 });
 
 test('isValidSiteData tolerates an unusable benchmark block', () => {

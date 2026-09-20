@@ -4,7 +4,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEMO_IDS } from '../assets/js/demos.js';
 import { PLAYGROUND_ID } from '../assets/js/playground.js';
-import { BENCHMARK_FOCI, BENCHMARK_HISTORY_LIMIT, HISTORY_LIMIT, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS, benchmarkSnapshot, holmAdjust, isTimestamp, mcnemarExact, scenarioMatrixMatchesBenchmark, wilsonInterval } from './refresh-lib.mjs';
+import { BENCHMARK_FOCI, BENCHMARK_HISTORY_LIMIT, HISTORY_LIMIT, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS, benchmarkSnapshot, holmAdjust, isTimestamp, mcnemarExact, pairedDifferenceInterval, scenarioMatrixMatchesBenchmark, wilsonInterval } from './refresh-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -215,7 +215,7 @@ function validateProblem(item, knownNames) {
   checkDemo(item, `showcase problem ${item.name}`);
 }
 
-function validateContender(contender, labels) {
+function validateContender(contender, labels, reference) {
   if (!isPlainObject(contender)) return;
   if (labels.has(contender.label)) fail(`benchmark contender duplicated: ${contender.label}`);
   labels.add(contender.label);
@@ -253,6 +253,14 @@ function validateContender(contender, labels) {
       if (Math.abs(comparison.p - mcnemarExact(comparison.b, comparison.c)) > 0.000001) {
         fail(`${name} vsHighlight p does not match the exact McNemar test`);
       }
+      if (!Number.isFinite(comparison.low) || !Number.isFinite(comparison.high) || comparison.low > comparison.high) {
+        fail(`${name} vsHighlight interval invalid`);
+      } else if (reference && Number.isInteger(reference.runs)) {
+        const expected = pairedDifferenceInterval(comparison.b, comparison.c, reference.runs);
+        if (!expected || Math.abs(comparison.low - expected.low) > 0.05 || Math.abs(comparison.high - expected.high) > 0.05) {
+          fail(`${name} vsHighlight interval does not match the paired-difference interval`);
+        }
+      }
     }
   }
 }
@@ -284,8 +292,9 @@ function validateBenchmark(benchmark) {
   if (!isPlainObject(benchmark) || !Array.isArray(benchmark.contenders)) return;
   const labels = new Set();
   let highlighted = 0;
+  const reference = benchmark.contenders.find((entry) => isPlainObject(entry) && entry.highlight === true) ?? null;
   for (const contender of benchmark.contenders) {
-    run(() => validateContender(contender, labels));
+    run(() => validateContender(contender, labels, reference));
     if (isPlainObject(contender) && contender.highlight === true) highlighted += 1;
   }
   if (highlighted === 0) fail('benchmark has no highlighted contender');

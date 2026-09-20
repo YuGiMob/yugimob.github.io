@@ -8,6 +8,8 @@ import {
   holmAdjust,
   isTimestamp,
   mcnemarExact,
+  pairedDifferenceInterval,
+  npmPointUrl,
   parseScenarioFocus,
   retryDelayMs,
   scenarioMatrixMatchesBenchmark,
@@ -89,6 +91,28 @@ test('wilsonInterval brackets the observed share and stays inside the range', ()
   assert.ok(tight.low > 90 && tight.high <= 100);
   assert.deepEqual(wilsonInterval(0, 0), { low: 0, high: 0 });
   assert.deepEqual(wilsonInterval(10, 10), { low: 72.2, high: 100 });
+});
+
+test('pairedDifferenceInterval brackets the paired difference and refuses bad input', () => {
+  assert.deepEqual(pairedDifferenceInterval(0, 0, 315), { low: 0, high: 0 });
+  assert.deepEqual(pairedDifferenceInterval(3, 3, 315), { low: -1.2, high: 1.2 });
+  assert.deepEqual(pairedDifferenceInterval(18, 7, 315), { low: -5.7, high: -0.4 });
+  assert.deepEqual(pairedDifferenceInterval(7, 18, 315), { low: 0.4, high: 5.7 });
+  assert.deepEqual(pairedDifferenceInterval(2, 1, 4), { low: -65.8, high: 43.9 });
+  assert.deepEqual(pairedDifferenceInterval(4, 4, 10), { low: -45.6, high: 45.6 });
+  assert.equal(pairedDifferenceInterval(5, 1, 4), null);
+  assert.equal(pairedDifferenceInterval(1, 1, 0), null);
+  assert.equal(pairedDifferenceInterval(Number.NaN, 1, 4), null);
+  assert.equal(pairedDifferenceInterval(1.5, 1, 4), null);
+});
+
+test('npmPointUrl batches plain packages and refuses scoped ones', () => {
+  assert.equal(npmPointUrl(['one', 'two']), 'https://api.npmjs.org/downloads/point/last-week/one,two');
+  assert.equal(npmPointUrl(['@scope/one']), null);
+  assert.equal(npmPointUrl(['one', '@scope/two']), null);
+  assert.equal(npmPointUrl([]), null);
+  assert.equal(npmPointUrl(['one', '', null]), 'https://api.npmjs.org/downloads/point/last-week/one');
+  assert.equal(npmPointUrl(undefined), null);
 });
 
 test('benchmarkTraceUrl rebuilds a repository URL from a local trace path', () => {
@@ -246,7 +270,7 @@ test('summarizeBenchmark pairs every contender against the highlighted one', () 
   const alpha = summary.contenders.find((entry) => entry.id === 'alpha');
   const beta = summary.contenders.find((entry) => entry.id === 'beta');
   assert.equal(alpha.vsHighlight, null);
-  assert.deepEqual(beta.vsHighlight, { b: 1, c: 0, p: 1, pAdjusted: 1 });
+  assert.deepEqual(beta.vsHighlight, { b: 1, c: 0, p: 1, low: -50, high: 29.3, pAdjusted: 1 });
 });
 
 test('buildScenarioMatrix counts passes per scenario and contender in focus order', () => {
@@ -324,7 +348,7 @@ test('scenarioMatrixMatchesBenchmark accepts a consistent matrix and rejects dri
     contenderCount: 2,
     contenders: [
       { id: 'alpha', runs: 4, passed: 3, highlight: true, vsHighlight: null },
-      { id: 'beta', runs: 4, passed: 2, highlight: false, vsHighlight: { b: 2, c: 1, p: 1, pAdjusted: 1 } },
+      { id: 'beta', runs: 4, passed: 2, highlight: false, vsHighlight: { b: 2, c: 1, p: 1, low: -65.8, high: 43.9, pAdjusted: 1 } },
     ],
   };
   const matrix = {
@@ -380,6 +404,12 @@ test('scenarioMatrixMatchesBenchmark accepts a consistent matrix and rejects dri
   const adjustedDrift = structuredClone(benchmark);
   adjustedDrift.contenders[1].vsHighlight.pAdjusted = 0.5;
   assert.equal(scenarioMatrixMatchesBenchmark(matrix, adjustedDrift), false);
+  const intervalDrift = structuredClone(benchmark);
+  intervalDrift.contenders[1].vsHighlight.low = -50;
+  assert.equal(scenarioMatrixMatchesBenchmark(matrix, intervalDrift), false);
+  const intervalMissing = structuredClone(benchmark);
+  delete intervalMissing.contenders[1].vsHighlight.high;
+  assert.equal(scenarioMatrixMatchesBenchmark(matrix, intervalMissing), false);
   const washed = structuredClone(benchmark);
   washed.contenders[1].vsHighlight = { b: 2, c: 1, p: 1 };
   assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[[[0], 2], [[0], 2]], [[[0, 1], 2], [[0], 2]]] }, washed), false);

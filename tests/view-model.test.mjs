@@ -39,7 +39,7 @@ const SHOWCASE = {
 };
 
 const DATA = {
-  identity: { displayName: 'Tester', classTitle: 'Testing', tagline: 'A tagline.', links: { github: 'https://github.com/tester' } },
+  identity: { displayName: 'Tester', classTitle: 'Testing', tagline: 'A tagline.', avatarUrl: 'assets/avatar.png', links: { github: 'https://github.com/tester' } },
   projects: PROJECTS,
   stats: { totalStars: 12, npmPackages: 1 },
   activity: { pushes: 7, window: '2026-09-03..17', fetchedAt: '2026-09-18' },
@@ -99,16 +99,29 @@ test('activityLine expands the window range and drops a single date', () => {
   assert.deepEqual(activityLine({ pushes: 0, window: '2026-09-20' }), { pushes: '0 pushes to public repositories', window: '' });
 });
 
-test('structuredData lists the showcase projects in order and drops unknown names', () => {
-  const list = structuredData(DATA, SHOWCASE);
-  assert.equal(list['@type'], 'ItemList');
+test('structuredData builds a profile page around the showcase projects', () => {
+  const page = structuredData(DATA, SHOWCASE);
+  assert.equal(page['@type'], 'ProfilePage');
+  assert.equal(page.dateModified, '2026-09-18');
+  assert.equal(page.mainEntity['@type'], 'Person');
+  assert.equal(page.mainEntity.name, 'Tester');
+  assert.equal(page.mainEntity.description, 'A tagline.');
+  assert.deepEqual(page.mainEntity.sameAs, ['https://github.com/tester']);
+  assert.equal(page.mainEntity.url, undefined);
+  assert.equal(page.mainEntity.image, 'assets/avatar.png');
+  const absolute = structuredData(DATA, SHOWCASE, 'https://yugimob.github.io/');
+  assert.equal(absolute.mainEntity.url, 'https://yugimob.github.io/');
+  assert.equal(absolute.mainEntity.image, 'https://yugimob.github.io/assets/avatar.png');
+  assert.equal(structuredData(DATA, SHOWCASE, 'not a base').mainEntity.image, 'assets/avatar.png');
+  assert.equal(page.hasPart['@type'], 'ItemList');
+  const list = page.hasPart;
   assert.equal(list.name, 'Tester projects');
-  assert.equal(list.dateModified, '2026-09-18');
   assert.deepEqual(list.itemListElement.map((item) => item.item.name), ['tool-a', 'tool-b']);
   assert.equal(list.itemListElement[0].position, 1);
   assert.equal(list.itemListElement[0].item.codeRepository, 'https://github.com/tester/tool-a');
   assert.deepEqual(list.itemListElement[0].item.sameAs, ['https://www.npmjs.com/package/tool-a']);
   assert.equal(list.itemListElement[1].item.license, undefined);
+  assert.equal(list.numberOfItems, 2);
 });
 
 test('repositoryFacts formats the repository totals', () => {

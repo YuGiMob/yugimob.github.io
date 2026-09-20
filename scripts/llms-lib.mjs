@@ -80,7 +80,15 @@ export function buildLlmsTxt(siteData, showcase) {
   lines.push(dataLine('Curated showcase', `${SITE_URL}/data/showcase.json`, 'the narrative behind every tool, one entry per problem'));
   lines.push(dataLine('Scenario matrix', `${SITE_URL}/data/benchmark-matrix.json`, 'pass counts per scenario and contender behind the benchmark chart'));
   lines.push(dataLine('Agent readability', `${SITE_URL}/agent-readability.json`, 'the machine-readable entry points this site publishes'));
+  lines.push(dataLine('Feed', `${SITE_URL}/feed.json`, 'a JSON Feed of the daily benchmark and install snapshots'));
   lines.push(dataLine('Sitemap', `${SITE_URL}/sitemap.xml`, 'the single canonical page'));
+  lines.push('');
+
+  lines.push('## Optional');
+  lines.push('');
+  lines.push(dataLine('Source repository', SITE_REPOSITORY, 'the hand-written page and the refresh pipeline that derives these files'));
+  lines.push(dataLine('Security policy', `${SITE_REPOSITORY}/blob/main/SECURITY.md`, 'how to report a vulnerability'));
+  lines.push(dataLine('Crawl policy', `${SITE_URL}/robots.txt`, 'the crawl rules and content signals this site declares'));
   lines.push('');
 
   return `${lines.join('\n').replace(/\n+$/, '')}\n`;
@@ -164,10 +172,62 @@ export function buildIndexMd(siteData, showcase) {
   lines.push(dataLine('Machine data', `${SITE_URL}/data/site-data.json`, 'stars, downloads, activity, history, and benchmark numbers, refreshed daily'));
   lines.push(dataLine('Curated showcase', `${SITE_URL}/data/showcase.json`, 'the narrative behind every tool, one entry per problem'));
   lines.push(dataLine('Agent index', `${SITE_URL}/llms.txt`, 'the short index of this site for language models'));
+  lines.push(dataLine('Feed', `${SITE_URL}/feed.json`, 'a JSON Feed of the daily benchmark and install snapshots'));
   lines.push(dataLine('Sitemap', `${SITE_URL}/sitemap.xml`, 'the single canonical page'));
   lines.push('');
 
   return `${lines.join('\n').replace(/\n+$/, '')}\n`;
+}
+
+const FEED_ITEM_LIMIT = 30;
+
+function benchmarkFeedItem(entry, label) {
+  const splits = [`${entry.overall.toFixed(1)}% overall`];
+  if (Number.isFinite(entry.safety)) splits.push(`${entry.safety.toFixed(1)}% on staleness scenarios`);
+  if (Number.isFinite(entry.served)) splits.push(`${entry.served.toFixed(1)}% on served-state scenarios`);
+  return {
+    id: `${SITE_URL}/#benchmark-${entry.date}`,
+    url: `${SITE_URL}/#evidence`,
+    title: `Benchmark report ${entry.date}: ${entry.overall.toFixed(1)}% overall`,
+    content_text: `${label} scored ${splits.join(', ')} in the ${entry.date} pi-edit-benchmark report.`,
+    date_published: `${entry.date}T00:00:00Z`,
+    tags: ['benchmark'],
+  };
+}
+
+function historyFeedItem(entry) {
+  return {
+    id: `${SITE_URL}/#history-${entry.date}`,
+    url: `${SITE_URL}/#intro`,
+    title: `Data refresh ${entry.date}: ${formatNumber(entry.totalStars)} stars, ${formatNumber(entry.totalDownloads)} weekly installs`,
+    content_text: `${formatNumber(entry.totalStars)} GitHub stars and ${formatNumber(entry.totalDownloads)} npm installs per week across the projects on ${entry.date}.`,
+    date_published: `${entry.date}T00:00:00Z`,
+    tags: ['data'],
+  };
+}
+
+export function buildJsonFeed(siteData) {
+  const identity = siteData.identity ?? {};
+  const contenders = Array.isArray(siteData.benchmark?.contenders) ? siteData.benchmark.contenders : [];
+  const label = contenders.find((contender) => contender?.highlight === true)?.label ?? 'The highlighted tool';
+  const items = [];
+  for (const entry of Array.isArray(siteData.benchmarkHistory) ? siteData.benchmarkHistory : []) {
+    if (entry && typeof entry.date === 'string' && Number.isFinite(entry.overall)) items.push(benchmarkFeedItem(entry, label));
+  }
+  for (const entry of Array.isArray(siteData.history) ? siteData.history : []) {
+    if (entry && typeof entry.date === 'string' && Number.isFinite(entry.totalStars) && Number.isFinite(entry.totalDownloads)) items.push(historyFeedItem(entry));
+  }
+  items.sort((a, b) => b.date_published.localeCompare(a.date_published) || a.id.localeCompare(b.id));
+  return `${JSON.stringify({
+    version: 'https://jsonfeed.org/version/1.1',
+    title: identity.displayName ?? 'YuGiMob',
+    home_page_url: `${SITE_URL}/`,
+    feed_url: `${SITE_URL}/feed.json`,
+    description: identity.tagline ?? '',
+    language: 'en',
+    authors: [{ name: identity.displayName ?? 'YuGiMob', url: identity.links?.github ?? SITE_REPOSITORY }],
+    items: items.slice(0, FEED_ITEM_LIMIT),
+  }, null, 2)}\n`;
 }
 
 export function buildAgentReadability(siteData) {
@@ -187,6 +247,7 @@ export function buildAgentReadability(siteData) {
       machineData: `${SITE_URL}/data/site-data.json`,
       curatedData: `${SITE_URL}/data/showcase.json`,
       scenarioMatrix: `${SITE_URL}/data/benchmark-matrix.json`,
+      feed: `${SITE_URL}/feed.json`,
       sitemap: `${SITE_URL}/sitemap.xml`,
     },
   }, null, 2)}\n`;
@@ -224,5 +285,6 @@ export function writeAgentFiles(root) {
     'llms.txt': writeIfChanged(join(root, 'llms.txt'), buildLlmsTxt(siteData, showcase)),
     'index.md': writeIfChanged(join(root, 'index.md'), buildIndexMd(siteData, showcase)),
     'agent-readability.json': writeIfChanged(join(root, 'agent-readability.json'), buildAgentReadability(siteData)),
+    'feed.json': writeIfChanged(join(root, 'feed.json'), buildJsonFeed(siteData)),
   };
 }

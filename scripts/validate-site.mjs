@@ -4,7 +4,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { problemsHeading } from '../assets/js/view-model.js';
-import { contrastRatio, paletteFrom, rootPaletteSource } from './contrast-lib.mjs';
+import { colorDistance, contrastRatio, paletteFrom, rootPaletteSource, simulateDichromacy } from './contrast-lib.mjs';
 import { buildHeroStatsBlock, readHeroStatsBlock } from './site-html-lib.mjs';
 import { scriptSrcHash } from './csp-lib.mjs';
 import { SITE_REPOSITORY, SITE_URL } from './llms-lib.mjs';
@@ -95,9 +95,11 @@ for (const [page, source] of html) {
   }
   const policy = source.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/);
   if (!policy) fail(`${page}: missing the Content-Security-Policy meta tag`);
-  else if (!policy[1].includes("default-src 'self'")) fail(`${page}: CSP does not default to 'self'`);
-  else if (!policy[1].includes("require-trusted-types-for 'script'")) fail(`${page}: CSP does not require Trusted Types for scripts`);
-  else if (!policy[1].includes("trusted-types 'none'")) fail(`${page}: CSP does not forbid Trusted Types policies`);
+  else {
+    for (const directive of ["default-src 'self'", "base-uri 'none'", "form-action 'none'", "object-src 'none'", "frame-src 'none'", "worker-src 'none'", "manifest-src 'none'", "media-src 'none'", "require-trusted-types-for 'script'", "trusted-types 'none'"]) {
+      if (!policy[1].includes(directive)) fail(`${page}: CSP is missing ${directive}`);
+    }
+  }
   if (!/<html[^>]*\slang="[^"]+"/.test(source)) fail(`${page}: <html> is missing a lang attribute`);
   for (const match of source.matchAll(/<img\b[^>]*>/g)) {
     if (!/\salt="[^"]*"/.test(match[0])) fail(`${page}: <img> is missing an alt attribute`);
@@ -276,6 +278,26 @@ for (const [scheme, palette] of [['light', lightPalette], ['dark', darkPalette]]
   }
 }
 
+const CATEGORY_COLORS = ['answer', 'evidence', 'accent', 'red', 'green', 'term-accent', 'rule-strong'];
+const MIN_CATEGORY_DISTANCE = 15;
+const DICHROMACY_KINDS = ['protanopia', 'deuteranopia'];
+for (const [scheme, palette] of [['light', lightPalette], ['dark', darkPalette]]) {
+  for (const kind of [null, ...DICHROMACY_KINDS]) {
+    for (let first = 0; first < CATEGORY_COLORS.length; first += 1) {
+      for (let second = first + 1; second < CATEGORY_COLORS.length; second += 1) {
+        const one = palette.get(CATEGORY_COLORS[first]);
+        const two = palette.get(CATEGORY_COLORS[second]);
+        const seen = kind === null ? one : simulateDichromacy(one, kind);
+        const other = kind === null ? two : simulateDichromacy(two, kind);
+        const distance = colorDistance(seen, other);
+        const label = kind === null ? 'normal vision' : kind;
+        if (distance === null) fail(`assets/css/style.css: cannot measure the ${scheme} ${CATEGORY_COLORS[first]} and ${CATEGORY_COLORS[second]} chart colors under ${label}`);
+        else if (distance < MIN_CATEGORY_DISTANCE) fail(`assets/css/style.css: the ${scheme} ${CATEGORY_COLORS[first]} and ${CATEGORY_COLORS[second]} chart colors are ${distance.toFixed(1)} apart under ${label}; the minimum is ${MIN_CATEGORY_DISTANCE}`);
+      }
+    }
+  }
+}
+
 for (const [page, source] of html) {
   const titleLength = (source.match(/<title>([^<]*)<\/title>/)?.[1] ?? '').length;
   if (titleLength < 5 || titleLength > 70) fail(`${page}: the title length ${titleLength} is outside 5-70`);
@@ -319,7 +341,7 @@ if (siteData) {
   if (heroBlock !== buildHeroStatsBlock(siteData)) fail('index.html: the hero stat block does not match the machine data');
 }
 
-for (const [rel, target] of [['describedby', 'llms.txt'], ['describedby', 'agent-readability.json'], ['describedby', 'data/benchmark-matrix.json'], ['alternate', 'index.md']]) {
+for (const [rel, target] of [['describedby', 'llms.txt'], ['describedby', 'agent-readability.json'], ['describedby', 'data/benchmark-matrix.json'], ['alternate', 'index.md'], ['alternate', 'feed.json']]) {
   const pattern = new RegExp(`<link[^>]*rel="${rel}"[^>]*href="${target.replace('.', '\\.')}"`);
   if (!pattern.test(indexSource)) fail(`index.html: missing the rel=${rel} link to ${target}`);
 }
@@ -340,7 +362,7 @@ if (readability) {
   if (readability.license !== 'MIT') fail('agent-readability.json: license is not MIT');
   if (readability.updated !== (siteData?.activity?.fetchedAt ?? null)) fail('agent-readability.json: updated does not match the activity date');
   const artifacts = readability.artifacts && typeof readability.artifacts === 'object' ? Object.values(readability.artifacts) : [];
-  for (const file of ['llms.txt', 'index.md', 'data/site-data.json', 'data/showcase.json', 'data/benchmark-matrix.json', 'sitemap.xml']) {
+  for (const file of ['llms.txt', 'index.md', 'feed.json', 'data/site-data.json', 'data/showcase.json', 'data/benchmark-matrix.json', 'sitemap.xml']) {
     if (!artifacts.some((url) => typeof url === 'string' && url.endsWith(`/${file}`))) {
       fail(`agent-readability.json: does not list ${file}`);
     }
@@ -351,6 +373,33 @@ if (readability) {
       continue;
     }
     if (!existsSync(join(ROOT, url.slice(SITE_URL.length + 1)))) fail(`agent-readability.json: ${url} does not exist`);
+  }
+}
+
+const feedText = readText('feed.json');
+let feed = null;
+try {
+  feed = JSON.parse(feedText);
+} catch (err) {
+  fail(`feed.json unusable: ${err.message}`);
+}
+if (feed) {
+  if (feed.version !== 'https://jsonfeed.org/version/1.1') fail('feed.json: version is not JSON Feed 1.1');
+  if (feed.home_page_url !== `${SITE_URL}/`) fail('feed.json: home_page_url is not the canonical site');
+  if (feed.feed_url !== `${SITE_URL}/feed.json`) fail('feed.json: feed_url is not the canonical feed');
+  if (feed.title !== siteData?.identity?.displayName) fail('feed.json: title does not match the display name');
+  if (feed.description !== siteData?.identity?.tagline) fail('feed.json: description does not match the tagline');
+  if (!Array.isArray(feed.items) || feed.items.length === 0) fail('feed.json: has no items');
+  else {
+    const ids = new Set();
+    for (const item of feed.items) {
+      if (!item || typeof item.id !== 'string' || typeof item.url !== 'string' || typeof item.content_text !== 'string') {
+        fail('feed.json: an item is missing id, url, or content_text');
+        continue;
+      }
+      if (ids.has(item.id)) fail(`feed.json: duplicated item id ${item.id}`);
+      ids.add(item.id);
+    }
   }
 }
 
@@ -408,11 +457,45 @@ if (siteData) {
       if (!showcased.has(project.name)) fail(`data/showcase.json: no entry for the manifest project ${project.name}`);
     }
   }
+  if (!structuredData) {
+    fail('index.html: missing the inline JSON-LD block');
+  } else {
+    let jsonLd = null;
+    try {
+      jsonLd = JSON.parse(structuredData[1]);
+    } catch (err) {
+      fail(`index.html: the inline JSON-LD is unparsable: ${err.message}`);
+    }
+    const person = jsonLd && typeof jsonLd === 'object' ? jsonLd.mainEntity : null;
+    if (jsonLd && (jsonLd['@type'] !== 'ProfilePage' || !person || person['@type'] !== 'Person')) {
+      fail('index.html: the inline JSON-LD is not a ProfilePage with a Person main entity');
+    } else if (person) {
+      const canonicalUrl = indexSource.match(/<link rel="canonical" href="([^"]+)"/)?.[1] ?? `${SITE_URL}/`;
+      let avatarUrl = null;
+      try {
+        avatarUrl = new URL(identity.avatarUrl, canonicalUrl).href;
+      } catch {}
+      if (person.name !== identity.displayName) fail('index.html: the JSON-LD name does not match identity.displayName');
+      if (person.description !== tagline) fail('index.html: the JSON-LD description does not match identity.tagline');
+      if (person.url !== canonicalUrl) fail('index.html: the JSON-LD url does not match the canonical URL');
+      if (avatarUrl && person.image !== avatarUrl) fail('index.html: the JSON-LD image does not match identity.avatarUrl');
+      if (identity.links?.github && !(Array.isArray(person.sameAs) && person.sameAs.includes(identity.links.github))) {
+        fail('index.html: the JSON-LD sameAs does not include identity.links.github');
+      }
+    }
+  }
 }
 
 const robots = readText('robots.txt');
 if (!/^User-agent: \S+/m.test(robots)) fail('robots.txt: missing a User-agent line');
 if (!/^Sitemap: \S+$/m.test(robots)) fail('robots.txt: missing a Sitemap line');
+const contentSignal = robots.match(/^Content-Signal: (.+)$/m)?.[1] ?? '';
+if (!contentSignal) fail('robots.txt: missing a Content-Signal line');
+else {
+  for (const signal of ['search=', 'ai-input=', 'ai-train=']) {
+    if (!contentSignal.includes(signal)) fail(`robots.txt: the Content-Signal line is missing ${signal}`);
+  }
+}
 const sitemapLoc = sitemap.match(/<loc>([^<]+)<\/loc>/)?.[1];
 const canonical = indexSource.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
 if (!sitemapLoc) fail('sitemap.xml: missing a loc entry');

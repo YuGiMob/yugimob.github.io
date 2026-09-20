@@ -50,7 +50,7 @@ function isChartableContender(contender) {
   if (!isNullableNumber(contender.safety) || !isNullableNumber(contender.served)) return false;
   if (contender.vsHighlight == null) return true;
   if (typeof contender.vsHighlight !== 'object' || Array.isArray(contender.vsHighlight)) return false;
-  return isFiniteNumber(contender.vsHighlight.p);
+  return isFiniteNumber(contender.vsHighlight.p) && isFiniteNumber(contender.vsHighlight.low) && isFiniteNumber(contender.vsHighlight.high);
 }
 
 export function isValidBenchmark(benchmark) {

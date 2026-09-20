@@ -1,31 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { avatarSrcSet, hydrateAvatar } from '../assets/js/avatar.js';
+import { hydrateAvatar } from '../assets/js/avatar.js';
 import { register, withDom } from './dom.mjs';
 
-test('avatarSrcSet produces 1x and 2x sizes for an absolute avatar URL', () => {
-  const url = 'https://avatars.githubusercontent.com/u/110136195?s=216&v=4';
-  assert.equal(
-    avatarSrcSet(url),
-    'https://avatars.githubusercontent.com/u/110136195?s=108&v=4 1x, https://avatars.githubusercontent.com/u/110136195?s=216&v=4 2x',
-  );
-});
-
-test('avatarSrcSet handles relative URLs and missing sizes', () => {
-  assert.equal(avatarSrcSet('avatar.png?s=108'), 'avatar.png?s=108 1x, avatar.png?s=216 2x');
-  assert.equal(avatarSrcSet('avatar.png'), null);
-});
-
-test('hydrateAvatar fills src, srcset, and alt and drops a stale srcset', () => {
+test('hydrateAvatar fills src and alt', () => {
   withDom((dom) => {
     const avatar = register(dom.document, 'avatar');
-    hydrateAvatar(avatar, 'avatar.png?s=108', 'Tester');
-    assert.equal(avatar.getAttribute('src'), 'avatar.png?s=108');
-    assert.equal(avatar.getAttribute('srcset'), 'avatar.png?s=108 1x, avatar.png?s=216 2x');
+    hydrateAvatar(avatar, 'assets/avatar.png', 'Tester');
+    assert.equal(avatar.getAttribute('src'), 'assets/avatar.png');
     assert.equal(avatar.getAttribute('alt'), 'Tester');
-
-    hydrateAvatar(avatar, 'avatar.png', 'Tester');
-    assert.equal(avatar.hasAttribute('srcset'), false);
   });
 });
 

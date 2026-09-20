@@ -354,7 +354,7 @@ test('the site validator refuses a jumped heading order and a broken aria refere
 test('the site validator refuses a target=_blank link without rel and a missing lang', () => {
   const blank = runSiteValidator((dir) => {
     const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('target="_blank" rel="noopener noreferrer" aria-label="YuGiMob on GitHub"', 'target="_blank" aria-label="YuGiMob on GitHub"'));
+    writeFileSync(path, readFileSync(path, 'utf8').replace('target="_blank" rel="me noopener noreferrer" aria-label="YuGiMob on GitHub"', 'target="_blank" aria-label="YuGiMob on GitHub"'));
   });
   assert.equal(blank.status, 1);
   assert.match(blank.stderr, /target="_blank" link has no rel=noopener/);
@@ -373,14 +373,21 @@ test('the site validator refuses a CSP without Trusted Types and a DOM sink', ()
     writeFileSync(path, readFileSync(path, 'utf8').replace("; require-trusted-types-for 'script'", ''));
   });
   assert.equal(noTrustedTypes.status, 1);
-  assert.match(noTrustedTypes.stderr, /CSP does not require Trusted Types/);
+  assert.match(noTrustedTypes.stderr, /CSP is missing require-trusted-types-for 'script'/);
 
   const noPolicyBan = runSiteValidator((dir) => {
     const path = join(dir, 'index.html');
     writeFileSync(path, readFileSync(path, 'utf8').replace("; trusted-types 'none'", ''));
   });
   assert.equal(noPolicyBan.status, 1);
-  assert.match(noPolicyBan.stderr, /CSP does not forbid Trusted Types policies/);
+  assert.match(noPolicyBan.stderr, /CSP is missing trusted-types 'none'/);
+
+  const noFrames = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace("frame-src 'none'; ", ''));
+  });
+  assert.equal(noFrames.status, 1);
+  assert.match(noFrames.stderr, /CSP is missing frame-src 'none'/);
 
   const sink = runSiteValidator((dir) => {
     const path = join(dir, 'assets', 'js', 'ui.js');
@@ -406,8 +413,8 @@ test('the site validator refuses a CSP without Trusted Types and a DOM sink', ()
   const scriptText = runSiteValidator((dir) => {
     const path = join(dir, 'assets', 'js', 'render.js');
     writeFileSync(path, readFileSync(path, 'utf8').replace(
-      'target.replaceChildren(document.createTextNode(JSON.stringify(structuredData(data, showcase))));',
-      'target.textContent = JSON.stringify(structuredData(data, showcase));',
+      'target.replaceChildren(document.createTextNode(JSON.stringify(structuredData(data, showcase, canonical))));',
+      'target.textContent = JSON.stringify(structuredData(data, showcase, canonical));',
     ));
   });
   assert.equal(scriptText.status, 1);
@@ -464,6 +471,22 @@ test('the site validator refuses a drifted sitemap lastmod and a missing avatar 
   });
   assert.equal(avatar.status, 1);
   assert.match(avatar.stderr, /points at a missing file/);
+});
+
+test('the site validator refuses a robots.txt without content signals', () => {
+  const missing = runSiteValidator((dir) => {
+    const path = join(dir, 'robots.txt');
+    writeFileSync(path, readFileSync(path, 'utf8').replace(/^Content-Signal: .*$/m, ''));
+  });
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /robots.txt: missing a Content-Signal line/);
+
+  const partial = runSiteValidator((dir) => {
+    const path = join(dir, 'robots.txt');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('ai-train=yes', 'ai-train'));
+  });
+  assert.equal(partial.status, 1);
+  assert.match(partial.stderr, /the Content-Signal line is missing ai-train=/);
 });
 
 test('the site validator refuses a nav order that does not match the section order', () => {
@@ -591,6 +614,24 @@ test('the contrast check measures the base dark palette, not the nested prefers-
   assert.match(result.stderr, /dark ink-3 on paper is \d+\.\d+:1, below 4\.5:1/);
 });
 
+test('the validator refuses two chart colors that collapse under a dichromacy', () => {
+  const result = runSiteValidator((dir) => {
+    const path = join(dir, 'assets', 'css', 'style.css');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('--red: #8b1a1a;', '--red: #b03d19;'));
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /light accent and red chart colors are \d+\.\d+ apart under normal vision; the minimum is 15/);
+});
+
+test('the validator refuses a chart color that cannot be measured', () => {
+  const result = runSiteValidator((dir) => {
+    const path = join(dir, 'assets', 'css', 'style.css');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('  --red: #8b1a1a;\n', ''));
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /cannot measure the light accent and red chart colors under normal vision/);
+});
+
 test('the runtime guard rejects a document missing any schema-required key', () => {
   const schema = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.schema.json'), 'utf8'));
   const data = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.json'), 'utf8'));
@@ -622,22 +663,37 @@ test('the data validator re-derives the Holm adjustment across the rivals', () =
   assert.match(result.stderr, /vsHighlight pAdjusted does not match the Holm adjustment/);
 });
 
+test('the data validator re-derives the paired-difference interval', () => {
+  const drifted = structuredClone(DATA);
+  const compared = drifted.benchmark.contenders.find((entry) => entry.vsHighlight != null);
+  compared.vsHighlight.low = 0;
+  const result = runValidator(drifted, SHOWCASE, MATRIX);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /vsHighlight interval does not match the paired-difference interval/);
+
+  const missing = structuredClone(DATA);
+  delete missing.benchmark.contenders.find((entry) => entry.vsHighlight != null).vsHighlight.high;
+  const missingResult = runValidator(missing, SHOWCASE, MATRIX);
+  assert.equal(missingResult.status, 1);
+  assert.match(missingResult.stderr, /vsHighlight missing high/);
+});
+
 test('the data validator refuses a pair that contradicts the highlight and the run count', () => {
   const highlighted = structuredClone(DATA);
-  highlighted.benchmark.contenders.find((entry) => entry.highlight).vsHighlight = { b: 1, c: 1, p: 1 };
+  highlighted.benchmark.contenders.find((entry) => entry.highlight).vsHighlight = { b: 1, c: 1, p: 1, low: -1, high: 1 };
   const highlightResult = runValidator(highlighted, SHOWCASE, MATRIX);
   assert.equal(highlightResult.status, 1);
   assert.match(highlightResult.stderr, /is highlighted and cannot compare itself to the highlight/);
 
   const oversized = structuredClone(DATA);
   const compared = oversized.benchmark.contenders.find((entry) => entry.vsHighlight != null);
-  compared.vsHighlight = { b: compared.runs, c: compared.runs, p: 1 };
+  compared.vsHighlight = { b: compared.runs, c: compared.runs, p: 1, low: -1, high: 1 };
   const oversizedResult = runValidator(oversized, SHOWCASE, MATRIX);
   assert.equal(oversizedResult.status, 1);
   assert.match(oversizedResult.stderr, /vsHighlight exceeds runs/);
 
   const malformed = structuredClone(DATA);
-  malformed.benchmark.contenders.find((entry) => entry.vsHighlight != null).vsHighlight = { b: 'one', c: 0, p: 1 };
+  malformed.benchmark.contenders.find((entry) => entry.vsHighlight != null).vsHighlight = { b: 'one', c: 0, p: 1, low: -1, high: 1 };
   const malformedResult = runValidator(malformed, SHOWCASE, MATRIX);
   assert.equal(malformedResult.status, 1);
   assert.match(malformedResult.stderr, /vsHighlight invalid/);
@@ -766,4 +822,44 @@ test('the site validator refuses a README that does not list a script', () => {
   });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /scripts\/site-html-lib\.mjs is not listed in the Files block/);
+});
+
+test('the validator refuses a chart color that collapses with green', () => {
+  const result = runSiteValidator((dir) => {
+    const path = join(dir, 'assets', 'css', 'style.css');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('--green: #92e8a3;', '--green: #e5836a;'));
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /dark accent and green chart colors are [\d.]+ apart/);
+});
+
+test('the validator refuses a feed that is not a current JSON feed', () => {
+  const version = runSiteValidator((dir) => {
+    const path = join(dir, 'feed.json');
+    const feed = JSON.parse(readFileSync(path, 'utf8'));
+    feed.version = 'https://jsonfeed.org/version/1';
+    writeFileSync(path, JSON.stringify(feed, null, 2));
+  });
+  assert.equal(version.status, 1);
+  assert.match(version.stderr, /feed\.json: version is not JSON Feed 1\.1/);
+
+  const broken = runSiteValidator((dir) => {
+    const path = join(dir, 'feed.json');
+    const feed = JSON.parse(readFileSync(path, 'utf8'));
+    delete feed.items[1].content_text;
+    feed.items.push(structuredClone(feed.items[0]));
+    writeFileSync(path, JSON.stringify(feed, null, 2));
+  });
+  assert.equal(broken.status, 1);
+  assert.match(broken.stderr, /feed\.json: an item is missing id, url, or content_text/);
+  assert.match(broken.stderr, /feed\.json: duplicated item id/);
+});
+
+test('the validator refuses inline JSON-LD that drifted from the data', () => {
+  const result = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('"name":"YuGiMob"', '"name":"Someone Else"'));
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /the JSON-LD name does not match identity\.displayName/);
 });

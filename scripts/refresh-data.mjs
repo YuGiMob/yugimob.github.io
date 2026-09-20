@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, renameSync, existsSync, unlinkSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, existsSync, unlinkSync, readdirSync, statSync, mkdirSync } from 'node:fs';
 import {
   BENCHMARK_HISTORY_LIMIT,
   BENCHMARK_REPORT_RAW,
@@ -10,6 +10,7 @@ import {
   buildActivity,
   buildScenarioMatrix,
   isTimestamp,
+  npmPointUrl,
   parseScenarioFocus,
   retryDelayMs,
   sleep,
@@ -33,11 +34,33 @@ const MATRIX_TMP_FILE = `${MATRIX_FILE}.${process.pid}.tmp`;
 const SITEMAP_FILE = join(ROOT, 'sitemap.xml');
 const INDEX_FILE = join(ROOT, 'index.html');
 const VALIDATOR_FILE = join(ROOT, 'scripts', 'validate-data.mjs');
+const CACHE_DIR = join(ROOT, '.cache');
+const CACHE_FILE = join(CACHE_DIR, 'fetch-state.json');
 
 function safeUnlink(path) {
   try {
     unlinkSync(path);
   } catch {}
+}
+
+function loadFetchState() {
+  try {
+    const parsed = JSON.parse(readFileSync(CACHE_FILE, 'utf8'));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveFetchState(state) {
+  const urls = Object.keys(state);
+  if (urls.length === 0) return;
+  try {
+    mkdirSync(CACHE_DIR, { recursive: true });
+    writeFileSync(CACHE_FILE, `${JSON.stringify(state, null, 2)}\n`);
+  } catch (err) {
+    console.warn('Could not write the fetch cache:', err.message);
+  }
 }
 
 function assertCandidateValid(candidateFile, message, matrixCandidate = null) {
@@ -53,7 +76,7 @@ function assertCandidateValid(candidateFile, message, matrixCandidate = null) {
 
 function cleanupStaleTmpFiles() {
   const cutoff = Date.now() - 10 * 60 * 1000;
-  for (const [directory, prefix] of [[join(ROOT, 'data'), 'site-data.json.'], [ROOT, 'llms.txt.'], [ROOT, 'index.md.'], [ROOT, 'agent-readability.json.'], [join(ROOT, 'data'), 'benchmark-matrix.json.'], [ROOT, 'index.html.']]) {
+  for (const [directory, prefix] of [[join(ROOT, 'data'), 'site-data.json.'], [ROOT, 'llms.txt.'], [ROOT, 'index.md.'], [ROOT, 'agent-readability.json.'], [ROOT, 'feed.json.'], [join(ROOT, 'data'), 'benchmark-matrix.json.'], [ROOT, 'index.html.']]) {
     try {
       for (const entry of readdirSync(directory)) {
         if (!entry.startsWith(prefix) || !entry.endsWith('.tmp')) continue;
@@ -168,17 +191,24 @@ const reportCount = (path, oldArray, newArray) => {
   summary.push(before === after ? `${path}: ${after} entries (unchanged)` : `${path}: ${before} -> ${after} entries`);
 };
 
-async function request(url, headers, warnPrefix, read) {
+async function request(url, headers, warnPrefix, read, cache = null) {
+  const saved = cache && cache[url] && typeof cache[url] === 'object' ? cache[url] : null;
+  const requestHeaders = saved && typeof saved.etag === 'string' ? { ...headers, 'if-none-match': saved.etag } : headers;
   for (let attempt = 1; attempt <= 2; attempt++) {
     let response;
     try {
-      response = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+      response = await fetch(url, { headers: requestHeaders, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     } catch (err) {
       if (attempt < 2) {
         await sleep(300);
         continue;
       }
       console.warn(`${warnPrefix}:`, err.message);
+      return null;
+    }
+    if (response.status === 304) {
+      if (saved && saved.body !== undefined) return saved.body;
+      console.warn(`${warnPrefix}: 304 without a cached body`);
       return null;
     }
     if (!response.ok) {
@@ -194,7 +224,13 @@ async function request(url, headers, warnPrefix, read) {
       return null;
     }
     try {
-      return await read(response);
+      const body = await read(response);
+      if (cache) {
+        const etag = response.headers && typeof response.headers.get === 'function' ? response.headers.get('etag') : null;
+        if (typeof etag === 'string' && etag.length > 0) cache[url] = { etag, body };
+        else delete cache[url];
+      }
+      return body;
     } catch (err) {
       if (attempt < 2) {
         await sleep(300);
@@ -207,20 +243,20 @@ async function request(url, headers, warnPrefix, read) {
   return null;
 }
 
-function getJson(url, headers, warnPrefix) {
-  return request(url, headers, warnPrefix, (response) => response.json());
+function getJson(url, headers, warnPrefix, cache = null) {
+  return request(url, headers, warnPrefix, (response) => response.json(), cache);
 }
 
-function getText(url, headers, warnPrefix) {
-  return request(url, headers, warnPrefix, (response) => response.text());
+function getText(url, headers, warnPrefix, cache = null) {
+  return request(url, headers, warnPrefix, (response) => response.text(), cache);
 }
 
-async function fetchPages(baseUrl, maxPages, warnPrefix) {
+async function fetchPages(baseUrl, maxPages, warnPrefix, cache = null) {
   const items = [];
   let received = false;
   for (let page = 1; page <= maxPages; page += 1) {
     const separator = baseUrl.includes('?') ? '&' : '?';
-    const batch = await getJson(`${baseUrl}${separator}per_page=${PAGE_SIZE}&page=${page}`, GITHUB_HEADERS, `${warnPrefix} page ${page}`);
+    const batch = await getJson(`${baseUrl}${separator}per_page=${PAGE_SIZE}&page=${page}`, GITHUB_HEADERS, `${warnPrefix} page ${page}`, cache);
     if (!Array.isArray(batch)) {
       if (received) console.warn(`${warnPrefix}: page ${page} failed, using ${items.length} partial results`);
       break;
@@ -233,10 +269,41 @@ async function fetchPages(baseUrl, maxPages, warnPrefix) {
   return received ? items : null;
 }
 
+function npmDownloadCount(response, pkg) {
+  if (!response || typeof response !== 'object' || Array.isArray(response)) return null;
+  const entry = response[pkg] && typeof response[pkg] === 'object' ? response[pkg] : response;
+  return typeof entry.downloads === 'number' ? entry.downloads : null;
+}
+
+async function fetchNpmDownloads(packages) {
+  const downloads = new Map();
+  if (packages.length === 0) return downloads;
+  const bulkUrl = npmPointUrl(packages);
+  if (bulkUrl) {
+    const bulk = await getJson(bulkUrl, { Accept: 'application/json' }, 'npm API error for the batch download query');
+    let usable = 0;
+    for (const pkg of packages) {
+      const count = npmDownloadCount(bulk, pkg);
+      if (count != null) usable += 1;
+      downloads.set(pkg, count);
+    }
+    if (usable > 0) return downloads;
+    console.warn('npm batch query returned no usable counts; falling back to per-package requests');
+  }
+  const results = await Promise.all(
+    packages.map((pkg) => getJson(`https://api.npmjs.org/downloads/point/last-week/${pkg}`, { Accept: 'application/json' }, `npm API error for ${pkg}`)),
+  );
+  packages.forEach((pkg, index) => {
+    downloads.set(pkg, npmDownloadCount(results[index], pkg));
+  });
+  return downloads;
+}
+
+const fetchState = loadFetchState();
 const [user, reposRaw, events] = await Promise.all([
-  getJson('https://api.github.com/users/YuGiMob', GITHUB_HEADERS, 'GitHub API error for /users/YuGiMob'),
-  fetchPages('https://api.github.com/users/YuGiMob/repos', REPO_PAGES, 'GitHub API error for /repos'),
-  fetchPages('https://api.github.com/users/YuGiMob/events/public', EVENT_PAGES, 'GitHub API error for /events/public'),
+  getJson('https://api.github.com/users/YuGiMob', GITHUB_HEADERS, 'GitHub API error for /users/YuGiMob', fetchState),
+  fetchPages('https://api.github.com/users/YuGiMob/repos', REPO_PAGES, 'GitHub API error for /repos', fetchState),
+  fetchPages('https://api.github.com/users/YuGiMob/events/public', EVENT_PAGES, 'GitHub API error for /events/public', fetchState),
 ]);
 const repos = Array.isArray(reposRaw) ? reposRaw : [];
 
@@ -312,26 +379,18 @@ if (Array.isArray(events)) {
   if (activity.daily.length > 0) data.activity.daily = activity.daily;
   reportCount('activity.daily', existing.activity.daily, data.activity.daily);
 }
-const npmResults = await Promise.all(
-  npmPackages.map((pkg) =>
-    getJson(
-      `https://api.npmjs.org/downloads/point/last-week/${pkg}`,
-      { Accept: 'application/json' },
-      `npm API error for ${pkg}`,
-    ),
-  ),
-);
-npmPackages.forEach((pkg, index) => {
-  const json = npmResults[index];
+const npmDownloads = await fetchNpmDownloads(npmPackages);
+npmPackages.forEach((pkg) => {
   const project = projectByNpm.get(pkg);
   if (!project) return;
-  if (!json || typeof json.downloads !== 'number') {
+  const downloads = npmDownloads.get(pkg);
+  if (downloads == null) {
     summary.push(`projects.${project.name}.npmWeeklyDownloads: unchanged (fetch failed)`);
     return;
   }
   const prev = existingByName.get(project.name);
-  report(`projects.${project.name}.npmWeeklyDownloads`, prev?.npmWeeklyDownloads, json.downloads);
-  project.npmWeeklyDownloads = json.downloads;
+  report(`projects.${project.name}.npmWeeklyDownloads`, prev?.npmWeeklyDownloads, downloads);
+  project.npmWeeklyDownloads = downloads;
 });
 
 const scenarioSources = await Promise.all(
@@ -445,6 +504,7 @@ else {
   const agentFiles = writeAgentFiles(ROOT);
   const rewritten = Object.entries(agentFiles).filter(([, written]) => written).map(([file]) => file);
   if (rewritten.length > 0) summary.push(`${rewritten.join(', ')}: rewritten`);
+  saveFetchState(fetchState);
 }
 console.log('Refresh complete. Changes:');
 for (const line of summary) {
