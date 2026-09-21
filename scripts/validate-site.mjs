@@ -5,7 +5,7 @@ import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { problemsHeading, sectionVisibility } from '../assets/js/view-model.js';
 import { colorDistance, contrastRatio, paletteFrom, rootPaletteSource, simulateDichromacy } from './contrast-lib.mjs';
-import { buildColophonProseBlock, buildEvidenceBlock, buildHeroStatsBlock, buildIntroParagraphs, buildPrinciplesBlock, buildProblemIndexBlock, buildProblemListBlock, readBlock, readHeroStatsBlock, readIntroParagraphs } from './site-html-lib.mjs';
+import { buildColophonProseBlock, buildEvidenceBlock, buildHeroStatsBlock, buildIntroParagraphs, buildPrinciplesBlock, buildProblemIndexBlock, buildProblemListBlock, buildStructuredDataBlock, readBlock, readHeroStatsBlock, readIntroParagraphs } from './site-html-lib.mjs';
 import { scriptSrcHash } from './csp-lib.mjs';
 import { SITE_REPOSITORY, SITE_URL } from './llms-lib.mjs';
 
@@ -470,6 +470,10 @@ if (siteData && showcase) {
   for (const [id, tag, expected] of blocks) {
     const actual = readBlock(indexSource, tag, id);
     if (actual !== expected) fail(`index.html: the #${id} block does not match the data files`);
+  }
+  const canonicalHref = indexSource.match(/<link rel="canonical" href="([^"]+)"/)?.[1] ?? `${SITE_URL}/`;
+  if (structuredData?.[0] !== buildStructuredDataBlock(siteData, showcase, canonicalHref)) {
+    fail('index.html: the inline JSON-LD block does not match the data files');
   }
   if (elementText(indexSource, 'evidence-kicker') !== (showcase.evidence?.kicker ?? '')) {
     fail('index.html: #evidence-kicker does not match the showcase');

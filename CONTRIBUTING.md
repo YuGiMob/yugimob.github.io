@@ -77,8 +77,8 @@ These are derived. Edit the inputs, then regenerate:
 | file | regenerate with |
 | --- | --- |
 | `llms.txt`, `index.md`, `agent-readability.json`, `feed.json` | `npm run build:llms` |
-| the pre-rendered page content in `index.html` (hero stats, intro, the problems heading, problem cards, evidence, colophon) | `npm run build:static` |
-| the CSP hash in `index.html` | `npm run csp` |
+| the pre-rendered page content in `index.html` (hero stats, intro, the problems heading, problem cards, evidence, colophon, and the JSON-LD block) | `npm run build:static` |
+| the CSP hash in `index.html` (also refreshed by `npm run build:static`) | `npm run csp` |
 | `sitemap.xml` lastmod | `npm run refresh` |
 
 `npm run refresh:check` runs the daily pipeline without writing, so a data

@@ -10,7 +10,6 @@ import {
   repositoryFacts,
   sectionVisibility,
   stalenessNotice,
-  structuredData,
 } from './view-model.js';
 
 export function renderIdentity(data) {
@@ -197,13 +196,6 @@ export function renderFooter(data) {
     notice.textContent = message ?? '';
     notice.hidden = !message;
   }
-}
-
-export function renderStructuredData(data, showcase) {
-  const target = document.getElementById('structured-data');
-  if (!target) return;
-  const canonical = document.querySelector('link[rel="canonical"]')?.href || document.baseURI;
-  target.replaceChildren(document.createTextNode(JSON.stringify(structuredData(data, showcase, canonical))));
 }
 
 export function applyVisibility(sections, showcase) {

@@ -9,8 +9,9 @@ from this repository. The site code is MIT (see `LICENSE`).
 
 The page opens with an introduction, then presents one problem per tool and
 the extension that answers it, each with a live demo of the interaction it
-changes. The problem cards, the evidence prose, and the colophon are pre-rendered
-into the HTML, so a fetch-only reader gets the full page before JavaScript runs;
+changes. The problem cards, the evidence prose, the colophon, and the JSON-LD are
+pre-rendered into the HTML, so a fetch-only reader gets the full page before
+JavaScript runs;
 the browser hydrates that markup instead of rebuilding it, mounting demos and
 charts into the pre-rendered panels.
 The benchmark at the end shows the runs, including the ones the flagship loses.
@@ -62,7 +63,8 @@ data/site-data.json      machine numbers          data/showcase.json  curated pr
 ```
 
 The same refresh rewrites the pre-rendered blocks in `index.html` (hero stats,
-intro, the problems heading, problem cards, evidence, and colophon) and
+intro, the problems heading, problem cards, evidence, colophon, and the inline
+JSON-LD block) and
 regenerates `llms.txt`,
 `index.md`, `agent-readability.json`, and `feed.json`, so the
 page, the machine files, and the agent index cannot drift apart. Validators
@@ -336,7 +338,7 @@ the section order, title and description lengths, and a set of static
 accessibility rules (`lang`, `img` alt text, `aria` references, `target=_blank`
 rel, heading order, a single `main`), then prints `validate:site: ok`. It also
 refuses static copy that drifts from the data files (`<title>`, meta description,
-social tags, the inline JSON-LD identity, `#display-name`, `#class-title`,
+social tags, the inline JSON-LD block, `#display-name`, `#class-title`,
 `#problems-heading`), inline `style` and event-handler attributes the CSP forbids,
 a sitemap or `robots.txt` that disagrees with the canonical URL, a `security.txt`
 that expires within 60 days, a palette pair below the 4.5:1 contrast minimum, a

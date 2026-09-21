@@ -1,9 +1,14 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
-import { heroStatRows, problemEntries, problemId, problemIndexRows, problemsHeading, projectChipRows, sectionVisibility } from '../assets/js/view-model.js';
+import { heroStatRows, problemEntries, problemId, problemIndexRows, problemsHeading, projectChipRows, sectionVisibility, structuredData } from '../assets/js/view-model.js';
 import { formatNumber } from '../assets/js/ui.js';
+import { withScriptSrcHash } from './csp-lib.mjs';
+import { SITE_URL } from './llms-lib.mjs';
 
 const BLOCK_PATTERN = /[ \t]*<dl class="intro-stats" id="hero-stats"[^>]*>[\s\S]*?<\/dl>/;
 const INTRO_PATTERN = /( *<div id="intro-paragraphs">)([\s\S]*?)(<\/div>)/;
+const STRUCTURED_DATA_PATTERN = /([ \t]*)<script type="application\/ld\+json">([\s\S]*?)<\/script>/;
+const CSP_PATTERN = /(<meta http-equiv="Content-Security-Policy" content=")([^"]+)(")/;
 
 function escapeHtml(text) {
   return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -109,6 +114,31 @@ function applySectionVisibility(source, sections = {}, showcase = null) {
     next = setHiddenAttribute(next, id, !visible[id]);
   }
   return next;
+}
+
+function readCanonical(source) {
+  return String(source).match(/<link rel="canonical" href="([^"]+)"/)?.[1] ?? `${SITE_URL}/`;
+}
+
+export function buildStructuredDataBlock(siteData, showcase, baseUrl = `${SITE_URL}/`) {
+  return `<script type="application/ld+json">${JSON.stringify(structuredData(siteData, showcase, baseUrl))}</script>`;
+}
+
+function replaceStructuredData(source, siteData, showcase) {
+  const match = STRUCTURED_DATA_PATTERN.exec(source);
+  if (!match) return source;
+  const built = buildStructuredDataBlock(siteData, showcase, readCanonical(source));
+  return source.replace(STRUCTURED_DATA_PATTERN, () => `${match[1]}${built}`);
+}
+
+function refreshCspHash(source) {
+  const block = STRUCTURED_DATA_PATTERN.exec(source);
+  const policy = CSP_PATTERN.exec(source);
+  if (!block || !policy) return source;
+  const hash = createHash('sha256').update(block[2], 'utf8').digest('base64');
+  const next = withScriptSrcHash(policy[2], hash);
+  if (next === null || next === policy[2]) return source;
+  return source.replace(policy[0], `${policy[1]}${next}${policy[3]}`);
 }
 
 function answerBlockHtml(entry, project, headingTag = 'h4') {
@@ -222,8 +252,10 @@ export function applyGeneratedBlocks(source, siteData, showcase = null) {
     next = setElementText(next, 'evidence-kicker', showcase.evidence?.kicker ?? '');
     next = setElementText(next, 'evidence-heading', showcase.evidence?.headline ?? '');
     next = setElementText(next, 'problems-heading', problemsHeading(showcase, projects));
+    next = replaceStructuredData(next, siteData, showcase);
   }
   next = applySectionVisibility(next, siteData.sections ?? {}, showcase);
+  next = refreshCspHash(next);
   return next;
 }
 

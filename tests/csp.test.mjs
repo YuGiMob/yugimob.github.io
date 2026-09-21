@@ -9,16 +9,16 @@ function run(copy, script, ...args) {
   return spawnSync(process.execPath, [join(copy, 'scripts', script), copy, ...args], { encoding: 'utf8' });
 }
 
-function changeStructuredData(copy) {
+function stalePolicyHash(copy) {
   const page = join(copy, 'index.html');
   const source = readFileSync(page, 'utf8');
-  const block = source.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[0];
-  writeFileSync(page, source.replace(block, block.replace('{"@context"', '{ "@context"')));
+  const policy = source.match(/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/)[1];
+  writeFileSync(page, source.replace(policy, policy.replace(/'sha256-[A-Za-z0-9+/=]+'/, "'sha256-STALE='")));
 }
 
 test('build-csp refreshes a stale hash so the site validator accepts the page', () => {
   const result = withRepoCopy((copy) => {
-    changeStructuredData(copy);
+    stalePolicyHash(copy);
     const stale = run(copy, 'validate-site.mjs');
     const csp = run(copy, 'build-csp.mjs');
     const fixed = run(copy, 'validate-site.mjs');

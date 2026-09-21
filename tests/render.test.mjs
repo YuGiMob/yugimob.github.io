@@ -10,7 +10,6 @@ import {
   renderIdentity,
   renderIntro,
   renderProblems,
-  renderStructuredData,
 } from '../assets/js/render.js';
 import { element, findAll, register, registerQuery, withDom } from './dom.mjs';
 
@@ -458,42 +457,4 @@ test('renderDegradedNotice reveals the notice before writing the message', () =>
 
 test('renderDegradedNotice does nothing when the page has no notice element', () => {
   withDom(() => renderDegradedNotice('fallback in use'));
-});
-
-test('renderStructuredData writes the JSON-LD through a text node', () => {
-  withDom((dom) => {
-    const target = register(dom.document, 'structured-data');
-    renderStructuredData(DATA, SHOWCASE);
-    assert.equal(target.childNodes.length, 1);
-    assert.match(target.textContent, /"@type":"ItemList"/);
-    assert.match(target.textContent, /"name":"tool-a"/);
-  });
-  withDom(() => renderStructuredData(DATA, SHOWCASE));
-});
-
-test('renderStructuredData never assigns textContent on the script element', () => {
-  const script = {
-    written: null,
-    replaceChildren(node) {
-      this.written = node.textContent;
-    },
-    set textContent(value) {
-      throw new TypeError(`TrustedScript required, got ${value}`);
-    },
-  };
-  withDom((dom) => {
-    dom.document.elements.set('structured-data', script);
-    renderStructuredData(DATA, SHOWCASE);
-  });
-  assert.match(script.written, /"@type":"ItemList"/);
-});
-
-test('renderStructuredData resolves the canonical URL for the machine-readable copy', () => {
-  withDom((dom) => {
-    const target = register(dom.document, 'structured-data');
-    const canonical = registerQuery(dom.document, 'link[rel="canonical"]', element('link'));
-    canonical.href = 'https://yugimob.github.io/';
-    renderStructuredData(DATA, SHOWCASE);
-    assert.match(target.textContent, /"image":"https:\/\/yugimob\.github\.io\/avatar\.png\?s=108"/);
-  });
 });

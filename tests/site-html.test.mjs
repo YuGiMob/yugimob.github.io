@@ -4,7 +4,7 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { problemsHeading } from '../assets/js/view-model.js';
-import { applyGeneratedBlocks, buildColophonProseBlock, buildEvidenceBlock, buildHeroStatsBlock, buildIntroParagraphs, buildPrinciplesBlock, buildProblemIndexBlock, buildProblemListBlock, readBlock, readHeroStatsBlock, readIntroParagraphs, updateIndexFile } from '../scripts/site-html-lib.mjs';
+import { applyGeneratedBlocks, buildColophonProseBlock, buildEvidenceBlock, buildHeroStatsBlock, buildIntroParagraphs, buildPrinciplesBlock, buildProblemIndexBlock, buildProblemListBlock, buildStructuredDataBlock, readBlock, readHeroStatsBlock, readIntroParagraphs, updateIndexFile } from '../scripts/site-html-lib.mjs';
 import { ROOT, withRepoCopy } from './helpers.mjs';
 
 const DATA = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.json'), 'utf8'));
@@ -13,6 +13,12 @@ const SHOWCASE = JSON.parse(readFileSync(join(ROOT, 'data', 'showcase.json'), 'u
 test('the committed hero stat block already matches the data', () => {
   const source = readFileSync(join(ROOT, 'index.html'), 'utf8');
   assert.equal(readHeroStatsBlock(source), buildHeroStatsBlock(DATA));
+});
+
+test('the committed inline JSON-LD already matches the data files', () => {
+  const source = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  const block = source.match(/<script type="application\/ld\+json">[\s\S]*?<\/script>/)?.[0];
+  assert.equal(block, buildStructuredDataBlock(DATA, SHOWCASE));
 });
 
 test('the committed intro paragraphs already match the showcase', () => {
@@ -89,6 +95,18 @@ test('applyGeneratedBlocks rewrites every pre-rendered block', () => {
   assert.equal(readBlock(next, 'div', 'problem-list'), readBlock(source, 'div', 'problem-list'));
   const shortened = applyGeneratedBlocks(source, DATA, { ...SHOWCASE, problems: SHOWCASE.problems.slice(0, 2) });
   assert.match(shortened, /id="problems-heading">Three things that kept going wrong</);
+});
+
+test('applyGeneratedBlocks regenerates a drifted inline JSON-LD block', () => {
+  const source = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  const drifted = source.replace('"@context":"https://schema.org"', '"@context":"https://example.org"');
+  assert.notEqual(drifted, source);
+  assert.equal(applyGeneratedBlocks(drifted, DATA, SHOWCASE), source);
+});
+
+test('applyGeneratedBlocks falls back to the canonical site URL for the JSON-LD', () => {
+  const next = applyGeneratedBlocks('<script type="application/ld+json">{"@context":"https://example.org"}</script>', DATA, SHOWCASE);
+  assert.match(next, /"url":"https:\/\/yugimob\.github\.io\/"/);
 });
 
 test('applyGeneratedBlocks rewrites both blocks and leaves unknown markup alone', () => {

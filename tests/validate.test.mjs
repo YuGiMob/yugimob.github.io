@@ -354,7 +354,7 @@ test('the site validator refuses third-party assets, README ghosts, and noscript
 
   const noscript = runSiteValidator((dir) => {
     const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('github.com/YuGiMob/pi-tor-proxy', 'github.com/YuGiMob/pi-ghost'));
+    writeFileSync(path, readFileSync(path, 'utf8').replace('<li><a href="https://github.com/YuGiMob/pi-tor-proxy">', '<li><a href="https://github.com/YuGiMob/pi-ghost">'));
   });
   assert.equal(noscript.status, 1);
   assert.match(noscript.stderr, /noscript link pi-ghost is not in site-data\.json/);
@@ -453,14 +453,11 @@ test('the site validator refuses a CSP without Trusted Types and a DOM sink', ()
   assert.match(styleAttribute.stderr, /sets an inline style attribute, which the CSP forbids \(setAttribute\("style"\)/);
 
   const scriptText = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'js', 'render.js');
-    writeFileSync(path, readFileSync(path, 'utf8').replace(
-      'target.replaceChildren(document.createTextNode(JSON.stringify(structuredData(data, showcase, canonical))));',
-      'target.textContent = JSON.stringify(structuredData(data, showcase, canonical));',
-    ));
+    const path = join(dir, 'assets', 'js', 'ui.js');
+    writeFileSync(path, `${readFileSync(path, 'utf8')}\nconst scriptNode = {};\nscriptNode.textContent = 'x';\n`);
   });
   assert.equal(scriptText.status, 1);
-  assert.match(scriptText.stderr, /uses a DOM sink that Trusted Types forbids \(target\.textContent\)/);
+  assert.match(scriptText.stderr, /uses a DOM sink that Trusted Types forbids \(scriptNode\.textContent\)/);
 
   const createdScript = runSiteValidator((dir) => {
     const path = join(dir, 'assets', 'js', 'ui.js');
@@ -700,6 +697,13 @@ test('the site validator refuses static copy that drifts from the data files', (
   });
   assert.equal(inline.status, 1);
   assert.match(inline.stderr, /uses an inline style/);
+
+  const jsonLd = runSiteValidator((dir) => {
+    const path = join(dir, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('"@context":"https://schema.org"', '"@context":"https://example.org"'));
+  });
+  assert.equal(jsonLd.status, 1);
+  assert.match(jsonLd.stderr, /the inline JSON-LD block does not match the data files/);
 
   const problemBlock = runSiteValidator((dir) => {
     const path = join(dir, 'index.html');

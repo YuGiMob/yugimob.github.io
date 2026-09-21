@@ -78,27 +78,30 @@ function webToolsDemo() {
   }
 
   const wide = diagram('flow-wide');
-  wide.svgRoot.setAttribute('viewBox', '0 0 520 240');
+  wide.svgRoot.setAttribute('viewBox', '0 0 562 240');
   wide.svgRoot.classList.add('is-wide');
-  const columns = [126, 260, 394];
+  const columns = [126, 262, 405];
+  const widths = [122, 129, 149];
   const wideLaneY = (index) => 10 + index * 88;
   lanes.forEach((lane, index) => {
     const y = wideLaneY(index);
     wide.plate(6, y, 104, 44, 'is-tool');
     wide.text(58, y + 26, 'flow-label is-tool', lane.tool);
     lane.stages.forEach((stage, stageIndex) => {
-      wide.plate(columns[stageIndex], y, 118, 44);
-      wide.text(columns[stageIndex] + 59, y + 19, 'flow-label', stage[0]);
-      wide.text(columns[stageIndex] + 59, y + 34, 'flow-sub', stage[1]);
-      const from = stageIndex === 0 ? 114 : columns[stageIndex - 1] + 118;
+      const width = widths[stageIndex];
+      wide.plate(columns[stageIndex], y, width, 44);
+      wide.text(columns[stageIndex] + width / 2, y + 19, 'flow-label', stage[0]);
+      wide.text(columns[stageIndex] + width / 2, y + 34, 'flow-sub', stage[1]);
+      const from = stageIndex === 0 ? 114 : columns[stageIndex - 1] + widths[stageIndex - 1];
       wide.wire(`M ${from} ${y + 22} L ${columns[stageIndex] - 6} ${y + 22}`);
     });
   });
-  wide.text(260, 68, 'flow-sub', 'duckduckgo · brave · google · mojeek · yahoo · yandex · wikipedia');
+  wide.text(280, 68, 'flow-sub', 'duckduckgo · brave · google · mojeek · yahoo · yandex · wikipedia');
   const wideFetchBottom = wideLaneY(1) + 44;
   const wideFallbackTo = wideLaneY(2) - 6;
-  wide.wire(`M 319 ${wideFetchBottom} L 319 ${wideFallbackTo}`, true);
-  wide.text(327, (wideFetchBottom + wideFallbackTo) / 2, 'flow-edge-label', '403 · JS page', 'start');
+  const wideMiddle = columns[1] + widths[1] / 2;
+  wide.wire(`M ${wideMiddle} ${wideFetchBottom} L ${wideMiddle} ${wideFallbackTo}`, true);
+  wide.text(wideMiddle + 8, (wideFetchBottom + wideFallbackTo) / 2, 'flow-edge-label', '403 · JS page', 'start');
 
   const tall = diagram('flow-tall');
   tall.svgRoot.setAttribute('viewBox', '0 0 280 620');

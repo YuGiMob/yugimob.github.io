@@ -30,7 +30,7 @@ const IDS = [
   'data-notice', 'hero-stats', 'problems', 'problems-heading', 'problem-index', 'problem-list',
   'evidence', 'colophon',
   'evidence-kicker', 'evidence-heading', 'evidence-body', 'colophon-prose', 'principles',
-  'activity-panel', 'github-link', 'campfire-year', 'data-age', 'structured-data',
+  'activity-panel', 'github-link', 'campfire-year', 'data-age',
   'nav-github', 'hero-github',
 ];
 
@@ -59,7 +59,7 @@ function flush(rounds = 5) {
   return chain;
 }
 
-test('the boot path renders identity, stats, problems, and structured data', async () => {
+test('the boot path renders identity, stats, and problems', async () => {
   await withDom(async (dom) => {
     prepare(dom);
     await import('../assets/js/main.js?boot-ok');
@@ -70,7 +70,6 @@ test('the boot path renders identity, stats, problems, and structured data', asy
     assert.equal(dom.document.getElementById('problem-list').children.length, 1);
     assert.equal(dom.document.getElementById('problem-list').querySelector('.problem-demo').classList.contains('is-loading'), true);
     assert.equal(dom.document.getElementById('main-content').getAttribute('aria-busy'), null);
-    assert.match(dom.document.getElementById('structured-data').textContent, /ItemList/);
     assert.equal(dom.document.getElementById('intro-headline').textContent, 'A headline.');
   }, { fetch: async (url) => jsonResponse(String(url).includes('showcase') ? SHOWCASE : DATA) });
 });

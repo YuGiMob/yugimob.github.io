@@ -11,7 +11,6 @@ import {
   renderIdentity,
   renderIntro,
   renderProblems,
-  renderStructuredData,
 } from './render.js';
 
 const DATA_URL = 'data/site-data.json';
@@ -133,7 +132,6 @@ async function init() {
   renderEvidence(showcase, benchmark, data.benchmarkHistory);
   await renderActivity(data);
   renderFooter(data);
-  renderStructuredData(data, showcase);
   document.getElementById('main-content')?.removeAttribute('aria-busy');
   if (!curatedShowcase) {
     renderDegradedNotice('The curated copy in data/showcase.json could not be loaded, so this page is showing the fallback descriptions from data/site-data.json.');
