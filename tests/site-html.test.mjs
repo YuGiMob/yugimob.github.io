@@ -48,7 +48,7 @@ test('the pre-rendered problem blocks carry every entry and escape markup', () =
     assert.ok(list.includes(`id="problem-${problem.name}"`));
     assert.ok(list.includes(problem.headline));
   }
-  assert.ok(list.includes('class="install-command"'));
+  assert.ok(list.includes('class="install-command">pi install npm:'));
   assert.ok(list.includes('class="problem is-hero"'));
   assert.ok(list.includes('data-demo="hashline"'));
   const escaped = buildProblemListBlock({ problems: [{ name: 'x', kicker: 'k', headline: '<b>h</b>', problem: 'p & q', answer: 'a', highlights: ['h'] }] }, new Map([['x', { name: 'x', url: 'https://example.com', npm: null, stars: 1, forks: 0 }]]));

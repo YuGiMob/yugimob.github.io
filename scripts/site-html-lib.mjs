@@ -131,7 +131,7 @@ function answerBlockHtml(entry, project, headingTag = 'h4') {
   lines.push('                <div class="actions">');
   if (project.npm) {
     lines.push(`                  <a class="action-link" href="https://www.npmjs.com/package/${escapeAttr(project.npm)}" target="_blank" rel="noopener noreferrer">npm ↗</a>`);
-    lines.push(`                  <code class="install-command">npm i ${escapeHtml(project.npm)}</code>`);
+    lines.push(`                  <code class="install-command">pi install npm:${escapeHtml(project.npm)}</code>`);
   }
   lines.push(`                  <a class="action-link" href="${escapeAttr(project.url)}" target="_blank" rel="noopener noreferrer">GitHub ↗</a>`);
   lines.push('                </div>');

@@ -63,7 +63,7 @@ function projectNumbers(project) {
 }
 
 function installLine(project) {
-  return project.npm ? ` Install: \`npm i ${project.npm}\`.` : '';
+  return project.npm ? ` Install: \`pi install npm:${project.npm}\`.` : '';
 }
 
 export function buildLlmsTxt(siteData, showcase) {

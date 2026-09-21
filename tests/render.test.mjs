@@ -108,7 +108,7 @@ function seedProblemCards(dom) {
     article.appendChild(box);
     const command = element('code');
     command.className = 'install-command';
-    command.textContent = `npm i ${entry.name}`;
+    command.textContent = `pi install npm:${entry.name}`;
     article.appendChild(command);
     list.appendChild(article);
   }
@@ -130,7 +130,7 @@ function seedEvidence(dom) {
   if (SHOWCASE.evidence.demo) trace.setAttribute('data-demo', SHOWCASE.evidence.demo);
   const command = element('code');
   command.className = 'install-command';
-  command.textContent = `npm i ${SHOWCASE.evidence.name}`;
+  command.textContent = `pi install npm:${SHOWCASE.evidence.name}`;
   article.append(chart, matrix, trace, command);
   body.appendChild(article);
   register(dom.document, `problem-${SHOWCASE.evidence.name}`, article);
@@ -239,7 +239,7 @@ test('renderProblems mounts a demo into every pre-rendered card that names one',
     assert.equal(boxes.length, 4);
     assert.equal(boxes.filter((box) => box.classList.contains('is-loading')).length, 3);
     assert.equal(classes(container, 'install-command').length, 0);
-    assert.deepEqual(classes(container, 'copy-btn').map((node) => node.textContent), ['npm i tool-a', 'npm i tool-b', 'npm i tool-c', 'npm i tool-d']);
+    assert.deepEqual(classes(container, 'copy-btn').map((node) => node.textContent), ['pi install npm:tool-a', 'pi install npm:tool-b', 'pi install npm:tool-c', 'pi install npm:tool-d']);
 
     dom.window.dispatch('beforeprint');
     await flush();
@@ -293,7 +293,7 @@ test('renderEvidence mounts the chart, the matrix, and the trace into the pre-re
     renderEvidence(SHOWCASE, BENCHMARK, [{ date: '2026-09-20', overall: 100, safety: null, served: null }]);
     assert.equal(dom.document.getElementById('evidence-kicker').textContent, 'Evidence');
     assert.equal(classes(body, 'install-command').length, 0);
-    assert.deepEqual(classes(body, 'copy-btn').map((node) => node.textContent), ['npm i tool-b']);
+    assert.deepEqual(classes(body, 'copy-btn').map((node) => node.textContent), ['pi install npm:tool-b']);
     assert.equal(dom.document.getElementById('evidence-heading').textContent, 'The evidence');
     assert.equal(classes(body, 'chart').length, 0);
 

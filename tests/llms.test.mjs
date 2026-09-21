@@ -30,7 +30,7 @@ test('llms.txt lists every showcased tool with its install command and numbers',
     const project = projects.get(problem.name);
     assert.ok(project, `${problem.name} is not in the manifest`);
     assert.match(COMMITTED, new RegExp(`\\[${project.name}\\]\\(${project.url}\\)`));
-    if (project.npm) assert.ok(COMMITTED.includes(`npm i ${project.npm}`));
+    if (project.npm) assert.ok(COMMITTED.includes(`pi install npm:${project.npm}`));
     assert.ok(COMMITTED.includes(`Stars ${project.stars.toLocaleString('en-US')}`));
   }
 });

@@ -284,6 +284,7 @@ const CONTRAST_PAIRS = [
   ['term-green', 'term-bg'],
   ['term-red', 'term-bg'],
   ['term-accent-2', 'term-bg'],
+  ['tor-circuit', 'term-bg'],
 ];
 for (const [scheme, palette] of [['light', lightPalette], ['dark', darkPalette]]) {
   for (const [foreground, background] of CONTRAST_PAIRS) {
