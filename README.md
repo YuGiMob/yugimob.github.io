@@ -62,7 +62,8 @@ data/site-data.json      machine numbers          data/showcase.json  curated pr
 ```
 
 The same refresh rewrites the pre-rendered blocks in `index.html` (hero stats,
-intro, problem cards, evidence, and colophon) and regenerates `llms.txt`,
+intro, the problems heading, problem cards, evidence, and colophon) and
+regenerates `llms.txt`,
 `index.md`, `agent-readability.json`, and `feed.json`, so the
 page, the machine files, and the agent index cannot drift apart. Validators
 re-derive every rule they can, and the test suite runs them against a temporary
@@ -204,11 +205,13 @@ a 95% Wilson interval per contender. Because every contender runs the same model
 × scenario grid, each one is also paired against the highlighted project with
 an exact two-sided McNemar test, a Newcombe score interval built from every cell
 of the paired table for the difference, and p-values Holm-adjusted across the
-comparisons, so the chart can say whether a lead is real or inside noise. Each
-contender keeps a link to a committed trace. Nothing in that block is typed by
-hand, so the chart cannot drift from the runs it claims to show. Each refresh
-also appends one `benchmarkHistory` snapshot for the highlighted project,
-carrying the model × scenario grid it was measured on, so the evidence panel can
+comparisons, so the chart can say whether a lead is real or inside noise. The
+comparison interval is unadjusted, so it can exclude zero while the adjusted
+p-value does not. Each contender keeps a link to a committed trace. Nothing in
+that block is typed by hand, so the chart cannot drift from the runs it claims
+to show. Each refresh also appends one `benchmarkHistory` snapshot for the
+highlighted project, carrying the model × scenario grid it was measured on, so
+the evidence panel can
 show whether the tool is improving between reports without comparing two
 different grids. An entry written before the grid fields existed stays valid but
 is left out of the trend, and the newest entry must match the current grid.

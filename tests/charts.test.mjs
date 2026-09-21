@@ -298,6 +298,15 @@ test('benchmarkChart bases the verdict on the adjusted p-value, not the raw one'
   });
 });
 
+test('benchmarkChart discloses that the paired interval is unadjusted', () => {
+  withDom(() => {
+    const controller = benchmarkChart(BENCHMARK, []);
+    const note = classes(controller.node, 'chart-method')[0];
+    assert.match(note.textContent, /unadjusted Newcombe score interval/);
+    assert.match(note.textContent, /not Holm-adjusted/);
+  });
+});
+
 test('benchmarkMatrix renders a scenario grid of pass counts', () => {
   const matrix = {
     models: ['m1', 'm2'],

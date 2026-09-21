@@ -7,7 +7,6 @@ import {
   activityLine,
   heroStatRows,
   problemId,
-  problemsHeading,
   repositoryFacts,
   sectionVisibility,
   stalenessNotice,
@@ -59,12 +58,6 @@ export function renderHeroStats(data) {
       animateValue(dd, stat.value);
     }, () => {});
   }
-}
-
-export function renderProblemsHeading(showcase, projects) {
-  const heading = document.getElementById('problems-heading');
-  if (!heading) return;
-  heading.textContent = problemsHeading(showcase, projects);
 }
 
 function hydrateInstallCommand(article) {

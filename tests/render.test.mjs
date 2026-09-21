@@ -10,7 +10,6 @@ import {
   renderIdentity,
   renderIntro,
   renderProblems,
-  renderProblemsHeading,
   renderStructuredData,
 } from '../assets/js/render.js';
 import { element, findAll, register, registerQuery, withDom } from './dom.mjs';
@@ -97,8 +96,6 @@ const BENCHMARK = {
     { id: 'tool-a', label: 'tool-a', version: '1.0.0', highlight: true, overall: 100, safety: null, served: null, low: 20, high: 100, runs: 1, passed: 1, errors: 0, outcomes: { applied: 1 }, traceUrl: 'https://github.com/tester/trace.json' },
   ],
 };
-
-const projectMap = () => new Map(DATA.projects.map((project) => [project.name, project]));
 
 function seedProblemCards(dom) {
   const list = register(dom.document, 'problem-list');
@@ -232,17 +229,6 @@ test('renderHeroStats renders three stats and animates them on first view', () =
     assert.deepEqual(classes(list, 'stat-value').map((node) => node.textContent), ['12', '1', '34']);
   });
   withDom(() => renderHeroStats(DATA));
-});
-
-test('renderProblemsHeading counts the rendered problems and the evidence entry', () => {
-  withDom((dom) => {
-    const heading = register(dom.document, 'problems-heading');
-    renderProblemsHeading(SHOWCASE, projectMap());
-    assert.equal(heading.textContent, 'Five things that kept going wrong');
-  });
-  withDom(() => {
-    renderProblemsHeading(SHOWCASE, new Map());
-  });
 });
 
 test('renderProblems mounts a demo into every pre-rendered card that names one', async () => {

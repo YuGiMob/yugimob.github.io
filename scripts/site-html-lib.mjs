@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
-import { heroStatRows, problemEntries, problemId, problemIndexRows, projectChipRows, sectionVisibility } from '../assets/js/view-model.js';
+import { heroStatRows, problemEntries, problemId, problemIndexRows, problemsHeading, projectChipRows, sectionVisibility } from '../assets/js/view-model.js';
 import { formatNumber } from '../assets/js/ui.js';
 
 const BLOCK_PATTERN = /[ \t]*<dl class="intro-stats" id="hero-stats"[^>]*>[\s\S]*?<\/dl>/;
@@ -221,6 +221,7 @@ export function applyGeneratedBlocks(source, siteData, showcase = null) {
     next = replaceBlock(next, 'ul', 'principles', buildPrinciplesBlock(showcase)) ?? next;
     next = setElementText(next, 'evidence-kicker', showcase.evidence?.kicker ?? '');
     next = setElementText(next, 'evidence-heading', showcase.evidence?.headline ?? '');
+    next = setElementText(next, 'problems-heading', problemsHeading(showcase, projects));
   }
   next = applySectionVisibility(next, siteData.sections ?? {}, showcase);
   return next;

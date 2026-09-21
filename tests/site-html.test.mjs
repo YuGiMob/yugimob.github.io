@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
+import { problemsHeading } from '../assets/js/view-model.js';
 import { applyGeneratedBlocks, buildColophonProseBlock, buildEvidenceBlock, buildHeroStatsBlock, buildIntroParagraphs, buildPrinciplesBlock, buildProblemIndexBlock, buildProblemListBlock, readBlock, readHeroStatsBlock, readIntroParagraphs, updateIndexFile } from '../scripts/site-html-lib.mjs';
 import { ROOT, withRepoCopy } from './helpers.mjs';
 
@@ -34,6 +35,8 @@ test('the committed pre-rendered blocks already match the data files', () => {
   assert.equal(readBlock(source, 'div', 'evidence-body'), buildEvidenceBlock(SHOWCASE, projects));
   assert.equal(readBlock(source, 'div', 'colophon-prose'), buildColophonProseBlock(SHOWCASE));
   assert.equal(readBlock(source, 'ul', 'principles'), buildPrinciplesBlock(SHOWCASE));
+  const heading = source.match(/id="problems-heading"[^>]*>([^<]*)</)?.[1];
+  assert.equal(heading, problemsHeading(SHOWCASE, projects));
 });
 
 test('the pre-rendered problem blocks carry every entry and escape markup', () => {
@@ -84,6 +87,8 @@ test('applyGeneratedBlocks rewrites every pre-rendered block', () => {
   const next = applyGeneratedBlocks(drifted, DATA, SHOWCASE);
   assert.ok(!next.includes('A stale headline'));
   assert.equal(readBlock(next, 'div', 'problem-list'), readBlock(source, 'div', 'problem-list'));
+  const shortened = applyGeneratedBlocks(source, DATA, { ...SHOWCASE, problems: SHOWCASE.problems.slice(0, 2) });
+  assert.match(shortened, /id="problems-heading">Three things that kept going wrong</);
 });
 
 test('applyGeneratedBlocks rewrites both blocks and leaves unknown markup alone', () => {

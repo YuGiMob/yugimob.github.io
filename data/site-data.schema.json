@@ -158,6 +158,7 @@
     },
     "benchmarkHistory": {
       "type": "array",
+      "description": "One snapshot per benchmark report. Entries written before the grid fields existed may omit models, scenarios, and runsPerContender; the trend skips those, and the newest entry must match the current benchmark grid.",
       "items": {
         "type": "object",
         "required": ["date", "overall", "safety", "served"],

@@ -84,6 +84,16 @@ test('check-freshness fails when the benchmark report is older than its cap', ()
   assert.match(stale.stderr, new RegExp(`is ${MAX_BENCHMARK_AGE_DAYS + 6} days old; the cap is ${MAX_BENCHMARK_AGE_DAYS}`));
 });
 
+test('check-freshness reports every stale source in one run', () => {
+  const both = withRepoCopy((copy) => {
+    rewriteNewestSnapshot(copy, MAX_HISTORY_AGE_DAYS + 8, MAX_BENCHMARK_AGE_DAYS + 6);
+    return spawnSync(process.execPath, [SCRIPT, copy], { encoding: 'utf8' });
+  });
+  assert.equal(both.status, 1);
+  assert.match(both.stderr, /the newest history snapshot/);
+  assert.match(both.stderr, /the benchmark report/);
+});
+
 test('check-freshness fails when the benchmark block has no usable stamp', () => {
   const broken = withRepoCopy((copy) => {
     rewriteData(copy, (data) => {

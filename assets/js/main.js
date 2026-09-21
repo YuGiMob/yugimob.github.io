@@ -11,7 +11,6 @@ import {
   renderIdentity,
   renderIntro,
   renderProblems,
-  renderProblemsHeading,
   renderStructuredData,
 } from './render.js';
 
@@ -123,7 +122,6 @@ async function init() {
   if (!isValidSiteData(data)) throw new Error('invalid site data');
   const curatedShowcase = isValidShowcase(showcaseRaw) ? showcaseRaw : null;
   const showcase = curatedShowcase ?? fallbackShowcase(data);
-  const projects = new Map(data.projects.map((project) => [project.name, project]));
   const benchmark = isValidBenchmark(data.benchmark) ? data.benchmark : null;
   if (data.benchmark != null && !benchmark) console.warn('YuGiMob: ignoring an unusable benchmark block');
 
@@ -131,7 +129,6 @@ async function init() {
   renderIdentity(data);
   renderIntro(showcase);
   renderHeroStats(data);
-  renderProblemsHeading(showcase, projects);
   renderProblems();
   renderEvidence(showcase, benchmark, data.benchmarkHistory);
   await renderActivity(data);
