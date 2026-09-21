@@ -1900,9 +1900,6 @@ a:hover {
 }
 
 .matrix-contender {
-  max-width: 8rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
   color: var(--ink-3);
   font-weight: 600;
 }
