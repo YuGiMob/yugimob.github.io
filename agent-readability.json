@@ -5,7 +5,7 @@
   "repository": "https://github.com/YuGiMob/yugimob.github.io",
   "language": "en",
   "license": "MIT",
-  "updated": "2026-09-20",
+  "updated": "2026-09-22",
   "artifacts": {
     "llmsTxt": "https://yugimob.github.io/llms.txt",
     "markdown": "https://yugimob.github.io/index.md",

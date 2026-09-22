@@ -14,6 +14,16 @@
   ],
   "items": [
     {
+      "id": "https://yugimob.github.io/#history-2026-09-22",
+      "url": "https://yugimob.github.io/#intro",
+      "title": "Data refresh 2026-09-22: 100 stars, 5,067 weekly installs",
+      "content_text": "100 GitHub stars and 5,067 npm installs per week across the projects on 2026-09-22.",
+      "date_published": "2026-09-22T00:00:00Z",
+      "tags": [
+        "data"
+      ]
+    },
+    {
       "id": "https://yugimob.github.io/#benchmark-2026-09-20",
       "url": "https://yugimob.github.io/#evidence",
       "title": "Benchmark report 2026-09-20: 97.8% overall",

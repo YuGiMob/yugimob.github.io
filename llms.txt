@@ -10,11 +10,11 @@ If you run coding agents against real repositories, you have watched at least on
 
 ## Tools
 
-- [pi-hashline-edit-pro](https://github.com/YuGiMob/pi-hashline-edit-pro): Every served line gets its own four-letter anchor. Install: `pi install npm:pi-hashline-edit-pro`. Stars 88, 4,285 npm installs per week.
-- [pi-unsloth-webtools](https://github.com/YuGiMob/pi-unsloth-webtools): One tool for search, one for fetch, one for pages that need JavaScript. Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 801 npm installs per week.
-- [pi-tor-proxy](https://github.com/YuGiMob/pi-tor-proxy): The extension downloads its own Tor binary, verifies it against a SHA-256 hash, and routes every request through it. Install: `pi install npm:pi-tor-proxy`. Stars 3, 39 npm installs per week.
-- [pi-msg-workflow](https://github.com/YuGiMob/pi-msg-workflow): Numbered message and command stores keep the plan outside the conversation, where you can edit it. Install: `pi install npm:pi-msg-workflow`. Stars 1, 110 npm installs per week.
-- [pi-git-commit](https://github.com/YuGiMob/pi-git-commit): The bash guard blocks mutative git commands before they run. Install: `pi install npm:pi-git-commit`. Stars 1, 168 npm installs per week.
+- [pi-hashline-edit-pro](https://github.com/YuGiMob/pi-hashline-edit-pro): Every served line gets its own four-letter anchor. Install: `pi install npm:pi-hashline-edit-pro`. Stars 91, 3,837 npm installs per week.
+- [pi-unsloth-webtools](https://github.com/YuGiMob/pi-unsloth-webtools): One tool for search, one for fetch, one for pages that need JavaScript. Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 820 npm installs per week.
+- [pi-tor-proxy](https://github.com/YuGiMob/pi-tor-proxy): The extension downloads its own Tor binary, verifies it against a SHA-256 hash, and routes every request through it. Install: `pi install npm:pi-tor-proxy`. Stars 3, 28 npm installs per week.
+- [pi-msg-workflow](https://github.com/YuGiMob/pi-msg-workflow): Numbered message and command stores keep the plan outside the conversation, where you can edit it. Install: `pi install npm:pi-msg-workflow`. Stars 1, 87 npm installs per week.
+- [pi-git-commit](https://github.com/YuGiMob/pi-git-commit): The bash guard blocks mutative git commands before they run. Install: `pi install npm:pi-git-commit`. Stars 1, 295 npm installs per week.
 
 ## Evidence
 
