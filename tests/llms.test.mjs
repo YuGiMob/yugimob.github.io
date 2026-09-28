@@ -109,7 +109,8 @@ test('the committed feed.json matches the generator output', () => {
   assert.equal(feed.favicon, 'https://yugimob.github.io/assets/favicon.svg');
   assert.equal(feed.feed_url, 'https://yugimob.github.io/feed.json');
   assert.equal(feed.items.length, DATA.history.length + DATA.benchmarkHistory.length);
-  assert.match(feed.items[0].content_text, /hashline-edit-pro/);
+  const benchmarkItem = feed.items.find((item) => item.tags.includes('benchmark'));
+  assert.match(benchmarkItem.content_text, /hashline-edit-pro/);
   assert.equal(new Set(feed.items.map((item) => item.id)).size, feed.items.length);
 });
 
@@ -118,7 +119,6 @@ test('buildJsonFeed caps the item list and survives an empty manifest', () => {
     date: `2026-01-${String(index + 1).padStart(2, '0')}`,
     overall: 90,
     safety: null,
-    served: null,
   }));
   const long = buildJsonFeed({ identity: { displayName: 'Tester', tagline: 'A tagline.' }, benchmarkHistory, history: [] });
   assert.equal(JSON.parse(long).items.length, 30);

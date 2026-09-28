@@ -86,13 +86,13 @@ const BENCHMARK = {
   generatedAt: '2026-09-20T12:03:04.357Z',
   models: 1,
   scenarios: 1,
-  focusCounts: { core: 1, staleness: 0, 'served-state': 0 },
+  focusCounts: { core: 1, staleness: 0 },
   contenderCount: 1,
   runsPerContender: 1,
   totalRuns: 1,
   costUsd: 0.1,
   contenders: [
-    { id: 'tool-a', label: 'tool-a', version: '1.0.0', highlight: true, overall: 100, safety: null, served: null, low: 20, high: 100, runs: 1, passed: 1, errors: 0, outcomes: { applied: 1 }, traceUrl: 'https://github.com/tester/trace.json' },
+    { id: 'tool-a', label: 'tool-a', version: '1.0.0', highlight: true, overall: 100, safety: null, low: 20, high: 100, runs: 1, passed: 1, errors: 0, outcomes: { applied: 1 }, traceUrl: 'https://github.com/tester/trace.json' },
   ],
 };
 
@@ -289,7 +289,7 @@ test('renderEvidence hides the section when the showcase has no evidence', () =>
 test('renderEvidence mounts the chart, the matrix, and the trace into the pre-rendered panel', async () => {
   await withDom(async (dom) => {
     const body = seedEvidence(dom);
-    renderEvidence(SHOWCASE, BENCHMARK, [{ date: '2026-09-20', overall: 100, safety: null, served: null }]);
+    renderEvidence(SHOWCASE, BENCHMARK, [{ date: '2026-09-20', overall: 100, safety: null }]);
     assert.equal(dom.document.getElementById('evidence-kicker').textContent, 'Evidence');
     assert.equal(classes(body, 'install-command').length, 0);
     assert.deepEqual(classes(body, 'copy-btn').map((node) => node.textContent), ['pi install npm:tool-b']);

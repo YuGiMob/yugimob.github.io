@@ -90,9 +90,9 @@
     "kicker": "Evidence",
     "headline": "Everyone claims their tool is better",
     "problem": "Editing-tool READMEs ship with a demo GIF and a claim, and almost none of them publish the runs where they lose. If the only evidence is a highlight reel, it is not evidence; it is marketing with extra steps.",
-    "answer": "pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness. The headline number is a pass rate; the next two split out staleness and served state, where a silent mis-edit is worse than a refusal. Every contender links to a committed trace, including the runs my own tool fails.",
+    "answer": "pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness. The headline number is a pass rate; the staleness split is scored separately, where a silent mis-edit is worse than a refusal. Every contender links to a committed trace, including the runs my own tool fails.",
     "highlights": [
-      "Stale and served-state scenarios are scored separately",
+      "Stale scenarios are scored separately",
       "Every contender links to a committed trace",
       "Confidence intervals on every pass rate",
       "The losses are published too"

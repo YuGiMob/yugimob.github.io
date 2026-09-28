@@ -42,7 +42,6 @@ export function benchmarkTableRows(bench) {
     version: contender.version ?? '',
     overall: `${contender.overall.toFixed(1)}%`,
     safety: contender.safety == null ? '—' : `${contender.safety.toFixed(1)}%`,
-    served: contender.served == null ? '—' : `${contender.served.toFixed(1)}%`,
     interval: `${contender.low.toFixed(1)}–${contender.high.toFixed(1)}`,
     difference: contender.vsHighlight == null ? '—' : pairedInterval(contender.vsHighlight),
     runs: formatNumber(contender.runs),
@@ -71,7 +70,6 @@ const TABLE_LABELS = {
   version: 'version',
   overall: 'overall pass rate',
   safety: 'staleness scenarios',
-  served: 'served-state scenarios',
   interval: '95% interval',
   difference: 'paired difference vs the highlighted tool',
   runs: 'runs',
@@ -172,7 +170,6 @@ function contenderDetail(contender, bench) {
   const parts = [`${contender.overall.toFixed(1)}% overall`];
   const focusCounts = bench.focusCounts ?? {};
   if (contender.safety != null) parts.push(`${contender.safety.toFixed(1)}% on ${focusCounts.staleness ?? 0} staleness scenarios`);
-  if (contender.served != null) parts.push(`${contender.served.toFixed(1)}% on ${focusCounts['served-state'] ?? 0} served-state scenarios`);
   const outcomes = contender.outcomes ?? {};
   const split = OUTCOME_ORDER.filter((kind) => outcomes[kind] > 0).map((kind) => `${formatNumber(outcomes[kind])} ${kind}`);
   if (split.length > 0) parts.push(`out of ${formatNumber(contender.runs)} runs: ${split.join(', ')}`);
@@ -214,7 +211,6 @@ export function benchmarkChart(bench, benchmarkHistory) {
       bars,
       meter('meter-overall', contender.overall, { low: contender.low, high: contender.high }),
       meter('meter-safety', contender.safety ?? 0),
-      meter('meter-served', contender.served ?? 0),
       outcomeStrip(contender),
     );
     const value = el('span', 'bench-value');
@@ -231,11 +227,10 @@ export function benchmarkChart(bench, benchmarkHistory) {
     legend,
     legendItem('meter-overall', 'overall pass rate'),
     legendItem('meter-safety', `staleness (${bench.focusCounts?.staleness ?? 0})`),
-    legendItem('meter-served', `served state (${bench.focusCounts?.['served-state'] ?? 0})`),
   );
   const outcomeLegend = el('p', 'chart-legend');
   for (const kind of present) outcomeLegend.appendChild(legendItem(`outcome-segment is-${kind}`, kind));
-  const method = el('p', 'chart-method', 'Real models drive each contender’s own tools through a tool-calling loop, and every row links to a committed trace. Staleness and served-state scenarios are scored separately, so refusing a stale edit is not counted against the tool. Each rival is paired with the highlighted project on the shared model × scenario grid, and the exact two-sided McNemar p-values are Holm-adjusted across the comparisons; the interval beside each comparison is an unadjusted Newcombe score interval built from every cell of the paired table, with each run treated as one independent model × scenario trial. Because the interval is not Holm-adjusted, it can exclude zero even when the adjusted p-value does not.');
+  const method = el('p', 'chart-method', 'Real models drive each contender’s own tools through a tool-calling loop, and every row links to a committed trace. Staleness scenarios are scored separately, so refusing a stale edit is not counted against the tool. Each rival is paired with the highlighted project on the shared model × scenario grid, and the exact two-sided McNemar p-values are Holm-adjusted across the comparisons; the interval beside each comparison is an unadjusted Newcombe score interval built from every cell of the paired table, with each run treated as one independent model × scenario trial. Because the interval is not Holm-adjusted, it can exclude zero even when the adjusted p-value does not.');
   const source = el('p', 'chart-source');
   append(
     source,
@@ -255,7 +250,7 @@ export function benchmarkChart(bench, benchmarkHistory) {
   append(body, list, legend, outcomeLegend, noteNode, method, source);
   const trend = benchmarkTrend(benchmarkHistory);
   if (trend) body.appendChild(trend);
-  const table = dataTable('View the numbers as a table', benchmarkTableRows(bench), 'Pass rate, staleness, served state, interval, paired difference against the highlighted tool, and run counts per contender.');
+  const table = dataTable('View the numbers as a table', benchmarkTableRows(bench), 'Pass rate, staleness, interval, paired difference against the highlighted tool, and run counts per contender.');
   if (table) body.appendChild(table);
   return createController(root, (runtime) => {
     runtime.after(() => root.classList.add('is-live'), 120);
@@ -426,10 +421,6 @@ export function benchmarkTrend(history) {
   const safety = entries.filter((entry) => Number.isFinite(entry.safety));
   if (safety.length >= 2) {
     rows.appendChild(growthRow('staleness', safety.map((entry) => entry.safety), safety[safety.length - 1].safety - safety[0].safety, percent));
-  }
-  const served = entries.filter((entry) => Number.isFinite(entry.served));
-  if (served.length >= 2) {
-    rows.appendChild(growthRow('served state', served.map((entry) => entry.served), served[served.length - 1].served - served[0].served, percent));
   }
   root.appendChild(rows);
   const reportNote = dropped === 0

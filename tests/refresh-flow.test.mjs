@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, withRepoCopy as withRepo } from './helpers.mjs';
+import { ROOT, withRepoCopy } from './helpers.mjs';
 
 const LOADER = join(ROOT, 'tests', 'fake-fetch.mjs');
 const FIXTURES = join(ROOT, 'tests', 'fixtures', 'refresh');
@@ -19,6 +19,15 @@ function refresh(repo, env = {}, args = []) {
 
 function readData(repo) {
   return JSON.parse(readFileSync(join(repo, DATA_FILE), 'utf8'));
+}
+
+function withRepo(run) {
+  return withRepoCopy(run, (repo) => {
+    const path = join(repo, DATA_FILE);
+    const data = JSON.parse(readFileSync(path, 'utf8'));
+    data.benchmarkHistory = [];
+    writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+  });
 }
 
 test('a fixture refresh writes every machine field and rebuilds the derived files', () => {
@@ -47,8 +56,8 @@ test('a fixture refresh writes every machine field and rebuilds the derived file
     assert.equal(data.benchmark.models, 1);
     assert.equal(data.benchmark.scenarios, 1);
     assert.equal(data.benchmark.totalRuns, 2);
-    assert.equal(data.benchmarkHistory.length, 2);
-    assert.deepEqual(data.benchmarkHistory.at(-1), { date: '2026-09-21', models: 1, scenarios: 1, runsPerContender: 1, overall: 100, safety: null, served: null });
+    assert.equal(data.benchmarkHistory.length, 1);
+    assert.deepEqual(data.benchmarkHistory.at(-1), { date: '2026-09-21', models: 1, scenarios: 1, runsPerContender: 1, overall: 100, safety: null });
     const highlighted = data.benchmark.contenders.find((entry) => entry.highlight);
     const rival = data.benchmark.contenders.find((entry) => !entry.highlight);
     assert.equal(highlighted.vsHighlight, null);

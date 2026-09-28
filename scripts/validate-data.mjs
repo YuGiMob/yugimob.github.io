@@ -402,7 +402,7 @@ function validateBenchmarkHistory(benchmark, history) {
   const newest = history[history.length - 1];
   if (!isPlainObject(newest)) return;
   if (newest.date !== snapshot.date) fail(`benchmarkHistory newest entry is dated ${newest.date}, not the benchmark report date ${snapshot.date}`);
-  if (newest.overall !== snapshot.overall || newest.safety !== snapshot.safety || newest.served !== snapshot.served) {
+  if (newest.overall !== snapshot.overall || newest.safety !== snapshot.safety) {
     fail('benchmarkHistory newest entry does not match the highlighted contender');
   }
   if (newest.models !== snapshot.models || newest.scenarios !== snapshot.scenarios || newest.runsPerContender !== snapshot.runsPerContender) {

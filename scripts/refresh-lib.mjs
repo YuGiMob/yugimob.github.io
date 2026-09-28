@@ -15,10 +15,10 @@ export const BENCHMARK_SCENARIO_RAW = [
   'https://raw.githubusercontent.com/YuGiMob/pi-edit-benchmark/main/src/scenarios/index.ts',
   'https://raw.githubusercontent.com/YuGiMob/pi-edit-benchmark/main/src/scenarios/better-edit.ts',
 ];
-export const BENCHMARK_FOCI = ['core', 'staleness', 'served-state'];
+export const BENCHMARK_FOCI = ['core', 'staleness'];
 export const OUTCOME_KINDS = ['applied', 'recovered', 'rejected', 'noop', 'undo', 'error'];
 
-const FOCUS_PATTERN = /\bid:\s*"([^"]+)"(?:(?!\bid:\s*")[\s\S])*?\bfocus:\s*"(core|staleness|served-state)"/g;
+const FOCUS_PATTERN = /\bid:\s*"([^"]+)"(?:(?!\bid:\s*")[\s\S])*?\bfocus:\s*"(core|staleness)"/g;
 
 export function buildHighlights(events, limit = MAX_HIGHLIGHTS) {
   const highlights = [];
@@ -295,7 +295,6 @@ export function summarizeBenchmark(report, focusById = new Map(), highlighted = 
       highlight: Boolean(highlighted(entry.id)),
       overall: rate(entry.overall.passed, entry.overall.runs) ?? 0,
       safety: rate(entry.byFocus.get('staleness').passed, entry.byFocus.get('staleness').runs),
-      served: rate(entry.byFocus.get('served-state').passed, entry.byFocus.get('served-state').runs),
       low: interval.low,
       high: interval.high,
       runs: entry.overall.runs,
@@ -365,7 +364,6 @@ export function benchmarkSnapshot(benchmark) {
     runsPerContender: benchmark.runsPerContender,
     overall: highlighted.overall,
     safety: highlighted.safety ?? null,
-    served: highlighted.served ?? null,
   };
 }
 

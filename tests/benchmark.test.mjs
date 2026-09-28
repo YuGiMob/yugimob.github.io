@@ -38,7 +38,7 @@ export const scenarios: Scenario[] = [
     id: "undo-restore",
     fileName: "undo.ts",
     category: "safety",
-    focus: "served-state",
+    focus: "core",
     name: "undo",
   },
 ];
@@ -63,7 +63,7 @@ test('parseScenarioFocus maps scenario ids to their focus', () => {
   assert.deepEqual([...focus.entries()], [
     ['single-line', 'core'],
     ['stale-line', 'staleness'],
-    ['undo-restore', 'served-state'],
+    ['undo-restore', 'core'],
   ]);
 });
 
@@ -145,7 +145,7 @@ test('summarizeBenchmark aggregates pass rates, focus splits, and outcomes', () 
   const summary = summarizeBenchmark(report, focus, (id) => id === 'beta');
   assert.equal(summary.models, 2);
   assert.equal(summary.scenarios, 3);
-  assert.deepEqual(summary.focusCounts, { core: 1, staleness: 1, 'served-state': 1 });
+  assert.deepEqual(summary.focusCounts, { core: 2, staleness: 1 });
   assert.equal(summary.contenderCount, 2);
   assert.equal(summary.totalRuns, 7);
   assert.equal(summary.runsPerContender, 4);
@@ -156,7 +156,6 @@ test('summarizeBenchmark aggregates pass rates, focus splits, and outcomes', () 
   const beta = summary.contenders.find((entry) => entry.id === 'beta');
   assert.equal(alpha.overall, 75);
   assert.equal(alpha.safety, 50);
-  assert.equal(alpha.served, 100);
   assert.equal(alpha.errors, 1);
   assert.deepEqual(alpha.outcomes, { applied: 3, error: 1 });
   assert.ok(alpha.low < alpha.overall && alpha.high > alpha.overall);
@@ -292,14 +291,14 @@ test('buildScenarioMatrix counts passes per scenario and contender in focus orde
   assert.deepEqual(matrix.models, ['m']);
   assert.deepEqual(matrix.scenarios, [
     { id: 'single-line', focus: 'core' },
+    { id: 'undo-restore', focus: 'core' },
     { id: 'stale-line', focus: 'staleness' },
-    { id: 'undo-restore', focus: 'served-state' },
   ]);
   assert.deepEqual(matrix.contenders, ['alpha', 'beta']);
   assert.deepEqual(matrix.cells, [
     [[[0], 1], [[0], 1]],
-    [[[0], 1], [[], 1]],
     [[[], 1], [[0], 1]],
+    [[[0], 1], [[], 1]],
   ]);
 });
 
@@ -344,7 +343,7 @@ test('scenarioMatrixMatchesBenchmark accepts a consistent matrix and rejects dri
   const benchmark = {
     generatedAt: '2026-09-20T12:03:04.357Z',
     scenarios: 2,
-    focusCounts: { core: 1, staleness: 1, 'served-state': 0 },
+    focusCounts: { core: 1, staleness: 1 },
     contenderCount: 2,
     contenders: [
       { id: 'alpha', runs: 4, passed: 3, highlight: true, vsHighlight: null },
@@ -373,7 +372,7 @@ test('scenarioMatrixMatchesBenchmark accepts a consistent matrix and rejects dri
   assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[[[0], 2], [[0, 1], 2]]] }, benchmark), false);
   assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, contenders: ['alpha'] }, benchmark), false);
   assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, scenarios: [{ id: 'x', focus: 'speed' }, { id: 'stale-line', focus: 'staleness' }] }, benchmark), false);
-  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, scenarios: [{ id: 'x', focus: 'served-state' }, { id: 'stale-line', focus: 'staleness' }] }, benchmark), false);
+  assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, scenarios: [{ id: 'x', focus: 'robustness' }, { id: 'stale-line', focus: 'staleness' }] }, benchmark), false);
   assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [null, matrix.cells[1]] }, benchmark), false);
   assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[[[0], 2]], matrix.cells[1]] }, benchmark), false);
   assert.equal(scenarioMatrixMatchesBenchmark({ ...matrix, cells: [[null, [[0, 1], 2]], matrix.cells[1]] }, benchmark), false);

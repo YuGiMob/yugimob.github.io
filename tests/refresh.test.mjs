@@ -109,10 +109,10 @@ test('benchmarkSnapshot reads the highlighted contender on the report date', () 
     runsPerContender: 12,
     contenders: [
       { highlight: false, overall: 10 },
-      { highlight: true, overall: 97.8, safety: 98.9, served: 92.1 },
+      { highlight: true, overall: 97.8, safety: 98.9 },
     ],
   };
-  assert.deepEqual(benchmarkSnapshot(benchmark), { date: '2026-09-20', models: 3, scenarios: 4, runsPerContender: 12, overall: 97.8, safety: 98.9, served: 92.1 });
+  assert.deepEqual(benchmarkSnapshot(benchmark), { date: '2026-09-20', models: 3, scenarios: 4, runsPerContender: 12, overall: 97.8, safety: 98.9 });
 });
 
 test('benchmarkSnapshot refuses a report without a highlighted contender or a date', () => {

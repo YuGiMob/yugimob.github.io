@@ -70,9 +70,9 @@ const BENCHMARK = {
   contenderCount: 1,
   runsPerContender: 1,
   totalRuns: 1,
-  focusCounts: { core: 1, staleness: 0, 'served-state': 0 },
+  focusCounts: { core: 1, staleness: 0 },
   contenders: [
-    { label: 'tool', overall: 100, low: 20, high: 100, runs: 1, passed: 1, errors: 0, safety: null, served: null, vsHighlight: null },
+    { label: 'tool', overall: 100, low: 20, high: 100, runs: 1, passed: 1, errors: 0, safety: null, vsHighlight: null },
   ],
 };
 

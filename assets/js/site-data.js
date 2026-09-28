@@ -47,7 +47,7 @@ function isChartableContender(contender) {
   for (const key of ['overall', 'low', 'high', 'runs', 'passed', 'errors']) {
     if (!isFiniteNumber(contender[key])) return false;
   }
-  if (!isNullableNumber(contender.safety) || !isNullableNumber(contender.served)) return false;
+  if (!isNullableNumber(contender.safety)) return false;
   if (contender.vsHighlight == null) return true;
   if (typeof contender.vsHighlight !== 'object' || Array.isArray(contender.vsHighlight)) return false;
   return ['p', 'low', 'high', 'bothPassed', 'bothFailed'].every((key) => isFiniteNumber(contender.vsHighlight[key]));

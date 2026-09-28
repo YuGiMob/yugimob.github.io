@@ -202,7 +202,7 @@ so they can differ from the sum of the curated project cards.
 It also holds the `benchmark` block behind the evidence chart. The refresh
 pulls the committed run report from pi-edit-benchmark, joins every run to the
 scenario focus that the benchmark's own scenario sources declare, and derives
-the pass rates, the staleness and served-state splits, the outcome counts, and
+the pass rates, the staleness split, the outcome counts, and
 a 95% Wilson interval per contender. Because every contender runs the same model
 × scenario grid, each one is also paired against the highlighted project with
 an exact two-sided McNemar test, a Newcombe score interval built from every cell

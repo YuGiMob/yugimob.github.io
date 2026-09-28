@@ -12,15 +12,15 @@
   "projects": [
     {
       "name": "pi-hashline-edit-pro",
-      "description": "Hash-anchored read/replace/undo tools for the pi coding agent; every line gets a unique 4-letter anchor",
+      "description": "Hash-anchored read/replace/insert/grep/undo tools for the pi coding agent; every line gets a unique 4-character anchor",
       "language": "TypeScript",
-      "stars": 91,
+      "stars": 97,
       "forks": 30,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
-      "npmWeeklyDownloads": 3837,
-      "pushedAt": "2026-09-22T10:30:20Z"
+      "npmWeeklyDownloads": 5326,
+      "pushedAt": "2026-09-28T13:52:37Z"
     },
     {
       "name": "pi-tor-proxy",
@@ -31,7 +31,7 @@
       "url": "https://github.com/YuGiMob/pi-tor-proxy",
       "npm": "pi-tor-proxy",
       "license": "MIT",
-      "npmWeeklyDownloads": 28,
+      "npmWeeklyDownloads": 231,
       "pushedAt": "2026-09-21T23:06:20Z"
     },
     {
@@ -43,7 +43,7 @@
       "url": "https://github.com/YuGiMob/pi-git-commit",
       "npm": "pi-git-commit",
       "license": "MIT",
-      "npmWeeklyDownloads": 295,
+      "npmWeeklyDownloads": 314,
       "pushedAt": "2026-09-21T22:06:19Z"
     },
     {
@@ -55,7 +55,7 @@
       "url": "https://github.com/YuGiMob/pi-msg-workflow",
       "npm": "pi-msg-workflow",
       "license": "MIT",
-      "npmWeeklyDownloads": 87,
+      "npmWeeklyDownloads": 349,
       "pushedAt": "2026-09-21T22:52:27Z"
     },
     {
@@ -67,8 +67,8 @@
       "url": "https://github.com/YuGiMob/pi-unsloth-webtools",
       "npm": "pi-unsloth-webtools",
       "license": "AGPL-3.0",
-      "npmWeeklyDownloads": 820,
-      "pushedAt": "2026-09-21T23:08:28Z"
+      "npmWeeklyDownloads": 845,
+      "pushedAt": "2026-09-26T09:51:49Z"
     },
     {
       "name": "pi-edit-benchmark",
@@ -79,56 +79,31 @@
       "url": "https://github.com/YuGiMob/pi-edit-benchmark",
       "npm": null,
       "license": null,
-      "pushedAt": "2026-09-20T12:38:46Z"
+      "pushedAt": "2026-09-24T18:40:28Z"
     }
   ],
   "stats": {
-    "totalStars": 100,
+    "totalStars": 106,
     "npmPackages": 5,
-    "publicRepos": 12,
+    "publicRepos": 13,
     "forksReceived": 31
   },
   "activity": {
-    "window": "2026-08-23..2026-09-21",
-    "pushes": 184,
+    "window": "2026-08-28..2026-09-28",
+    "pushes": 158,
     "highlights": [
+      "starred alexshpunt/explicit-edit-benchmark",
+      "opened issue #4 on k0valik/pi-edit-guard",
       "closed issue #45 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #44 on YuGiMob/pi-hashline-edit-pro",
-      "closed issue #46 on YuGiMob/pi-hashline-edit-pro",
-      "closed issue #41 on YuGiMob/pi-hashline-edit-pro",
-      "closed issue #38 on YuGiMob/pi-hashline-edit-pro"
+      "closed issue #46 on YuGiMob/pi-hashline-edit-pro"
     ],
-    "fetchedAt": "2026-09-22",
+    "fetchedAt": "2026-09-28",
     "daily": [
       {
-        "date": "2026-08-23",
+        "date": "2026-08-28",
         "events": 7,
         "pushes": 7
-      },
-      {
-        "date": "2026-08-24",
-        "events": 8,
-        "pushes": 6
-      },
-      {
-        "date": "2026-08-25",
-        "events": 24,
-        "pushes": 14
-      },
-      {
-        "date": "2026-08-26",
-        "events": 7,
-        "pushes": 5
-      },
-      {
-        "date": "2026-08-27",
-        "events": 10,
-        "pushes": 6
-      },
-      {
-        "date": "2026-08-28",
-        "events": 23,
-        "pushes": 16
       },
       {
         "date": "2026-08-29",
@@ -249,6 +224,41 @@
         "date": "2026-09-21",
         "events": 24,
         "pushes": 22
+      },
+      {
+        "date": "2026-09-22",
+        "events": 3,
+        "pushes": 2
+      },
+      {
+        "date": "2026-09-23",
+        "events": 11,
+        "pushes": 11
+      },
+      {
+        "date": "2026-09-24",
+        "events": 2,
+        "pushes": 2
+      },
+      {
+        "date": "2026-09-25",
+        "events": 1,
+        "pushes": 1
+      },
+      {
+        "date": "2026-09-26",
+        "events": 4,
+        "pushes": 4
+      },
+      {
+        "date": "2026-09-27",
+        "events": 0,
+        "pushes": 0
+      },
+      {
+        "date": "2026-09-28",
+        "events": 4,
+        "pushes": 1
       }
     ]
   },
@@ -276,244 +286,83 @@
       "totalDownloads": 5403
     },
     {
-      "date": "2026-09-22",
-      "totalStars": 100,
-      "totalDownloads": 5067
+      "date": "2026-09-24",
+      "totalStars": 101,
+      "totalDownloads": 4962
+    },
+    {
+      "date": "2026-09-28",
+      "totalStars": 106,
+      "totalDownloads": 7065
     }
   ],
   "benchmark": {
     "source": "https://github.com/YuGiMob/pi-edit-benchmark",
     "reportUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/llm-report.json",
     "tracesUrl": "https://github.com/YuGiMob/pi-edit-benchmark/tree/main/results/traces",
-    "generatedAt": "2026-09-20T12:03:04.357Z",
-    "models": 9,
-    "scenarios": 35,
+    "generatedAt": "2026-09-23T21:10:22.460Z",
+    "models": 10,
+    "scenarios": 34,
     "focusCounts": {
-      "core": 18,
-      "staleness": 10,
-      "served-state": 7
+      "core": 23,
+      "staleness": 11
     },
-    "contenderCount": 11,
-    "runsPerContender": 315,
-    "totalRuns": 3465,
-    "costUsd": 4.5422,
+    "contenderCount": 9,
+    "runsPerContender": 340,
+    "totalRuns": 3060,
+    "costUsd": 3.2206,
     "contenders": [
       {
         "id": "pi-hashline-edit-pro",
         "label": "hashline-edit-pro",
-        "version": "4.3.5",
+        "version": "4.4.1",
         "highlight": true,
-        "overall": 97.8,
-        "safety": 98.9,
-        "served": 92.1,
-        "low": 95.5,
-        "high": 98.9,
-        "runs": 315,
-        "passed": 308,
-        "errors": 1,
-        "costUsd": 0.3297,
+        "overall": 99.4,
+        "safety": 100,
+        "low": 97.9,
+        "high": 99.8,
+        "runs": 340,
+        "passed": 338,
+        "errors": 0,
+        "costUsd": 0.363,
         "outcomes": {
-          "applied": 243,
-          "recovered": 60,
-          "rejected": 2,
-          "undo": 9,
-          "error": 1
+          "applied": 260,
+          "recovered": 70,
+          "undo": 10
         },
         "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-hashline-edit-pro-b9-boundary-changed.json",
         "vsHighlight": null
       },
       {
-        "id": "pi-hashline-edit-pro-diff0",
-        "label": "hashline-edit-pro-diff0",
-        "version": "4.3.5",
+        "id": "builtin-bash",
+        "label": "builtin-bash",
+        "version": "0.87.0",
         "highlight": false,
-        "overall": 97.8,
-        "safety": 98.9,
-        "served": 93.7,
-        "low": 95.5,
-        "high": 98.9,
-        "runs": 315,
-        "passed": 308,
-        "errors": 3,
-        "costUsd": 0.3513,
-        "outcomes": {
-          "applied": 241,
-          "recovered": 61,
-          "rejected": 1,
-          "undo": 9,
-          "error": 3
-        },
-        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-hashline-edit-pro-diff0-b10-duplicate-drift.json",
-        "vsHighlight": {
-          "b": 3,
-          "c": 3,
-          "bothPassed": 305,
-          "bothFailed": 4,
-          "p": 1,
-          "low": -1.9,
-          "high": 1.9,
-          "pAdjusted": 1
-        }
-      },
-      {
-        "id": "@agimon-ai/doompi-edit",
-        "label": "doompi-edit",
-        "version": "0.0.1-alpha.49",
-        "highlight": false,
-        "overall": 94.3,
-        "safety": 95.6,
-        "served": 98.4,
-        "low": 91.1,
-        "high": 96.4,
-        "runs": 315,
-        "passed": 297,
-        "errors": 1,
-        "costUsd": 0.3485,
-        "outcomes": {
-          "applied": 246,
-          "recovered": 60,
-          "undo": 8,
-          "error": 1
-        },
-        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/_agimon-ai_doompi-edit-b9-boundary-changed.json",
-        "vsHighlight": {
-          "b": 18,
-          "c": 7,
-          "bothPassed": 290,
-          "bothFailed": 0,
-          "p": 0.043285,
-          "low": -6.9,
-          "high": -0.3,
-          "pAdjusted": 0.08657
-        }
-      },
-      {
-        "id": "pi-hashline-readmap",
-        "label": "hashline-readmap",
-        "version": "0.14.0",
-        "highlight": false,
-        "overall": 93,
-        "safety": 94.4,
-        "served": 90.5,
+        "overall": 92.9,
+        "safety": 90.9,
         "low": 89.7,
-        "high": 95.3,
-        "runs": 315,
-        "passed": 293,
-        "errors": 2,
-        "costUsd": 0.3897,
-        "outcomes": {
-          "applied": 244,
-          "recovered": 60,
-          "undo": 9,
-          "error": 2
-        },
-        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-hashline-readmap-b9-boundary-changed.json",
-        "vsHighlight": {
-          "b": 19,
-          "c": 4,
-          "bothPassed": 289,
-          "bothFailed": 3,
-          "p": 0.002599,
-          "low": -8.1,
-          "high": -1.9,
-          "pAdjusted": 0.007797
-        }
-      },
-      {
-        "id": "pi-hashline-context-edit",
-        "label": "hashline-context-edit",
-        "version": "0.11.0",
-        "highlight": false,
-        "overall": 90.2,
-        "safety": 96.7,
-        "served": 100,
-        "low": 86.4,
-        "high": 93,
-        "runs": 315,
-        "passed": 284,
+        "high": 95.2,
+        "runs": 340,
+        "passed": 316,
         "errors": 0,
-        "costUsd": 0.3263,
+        "costUsd": 0.3326,
         "outcomes": {
-          "applied": 246,
-          "recovered": 60,
-          "undo": 9
+          "applied": 265,
+          "recovered": 59,
+          "rejected": 2,
+          "noop": 4,
+          "undo": 10
         },
-        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-hashline-context-edit-b9-boundary-changed.json",
+        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/builtin-bash-b10-duplicate-drift.json",
         "vsHighlight": {
-          "b": 31,
-          "c": 7,
-          "bothPassed": 277,
+          "b": 24,
+          "c": 2,
+          "bothPassed": 314,
           "bothFailed": 0,
-          "p": 0.000116,
-          "low": -11.6,
-          "high": -3.9,
-          "pAdjusted": 0.000464
-        }
-      },
-      {
-        "id": "pi-hashline-edit",
-        "label": "hashline-edit",
-        "version": "0.8.3",
-        "highlight": false,
-        "overall": 89.8,
-        "safety": 96.7,
-        "served": 100,
-        "low": 86,
-        "high": 92.7,
-        "runs": 315,
-        "passed": 283,
-        "errors": 2,
-        "costUsd": 0.3612,
-        "outcomes": {
-          "applied": 243,
-          "recovered": 60,
-          "rejected": 1,
-          "undo": 9,
-          "error": 2
-        },
-        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-hashline-edit-b9-boundary-changed.json",
-        "vsHighlight": {
-          "b": 32,
-          "c": 7,
-          "bothPassed": 276,
-          "bothFailed": 0,
-          "p": 0.00007,
-          "low": -12,
-          "high": -4.2,
-          "pAdjusted": 0.00035
-        }
-      },
-      {
-        "id": "@cortexkit/aft-pi",
-        "label": "aft-pi",
-        "version": "0.56.2",
-        "highlight": false,
-        "overall": 88.3,
-        "safety": 84.4,
-        "served": 98.4,
-        "low": 84.2,
-        "high": 91.4,
-        "runs": 315,
-        "passed": 278,
-        "errors": 1,
-        "costUsd": 0.3872,
-        "outcomes": {
-          "applied": 255,
-          "recovered": 49,
-          "noop": 1,
-          "undo": 9,
-          "error": 1
-        },
-        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/_cortexkit_aft-pi-b9-boundary-changed.json",
-        "vsHighlight": {
-          "b": 37,
-          "c": 7,
-          "bothPassed": 271,
-          "bothFailed": 0,
-          "p": 0.000005,
-          "low": -13.8,
-          "high": -5.6,
-          "pAdjusted": 0.00003
+          "p": 0.00001,
+          "low": -9.7,
+          "high": -3.7,
+          "pAdjusted": 0.00001
         }
       },
       {
@@ -521,98 +370,63 @@
         "label": "pix-edit",
         "version": "0.2.5",
         "highlight": false,
-        "overall": 88.3,
-        "safety": 84.4,
-        "served": 95.2,
-        "low": 84.2,
-        "high": 91.4,
-        "runs": 315,
-        "passed": 278,
-        "errors": 4,
-        "costUsd": 0.3391,
+        "overall": 91.8,
+        "safety": 86.4,
+        "low": 88.4,
+        "high": 94.2,
+        "runs": 340,
+        "passed": 312,
+        "errors": 2,
+        "costUsd": 0.3718,
         "outcomes": {
-          "applied": 250,
-          "recovered": 45,
-          "rejected": 5,
+          "applied": 269,
+          "recovered": 54,
+          "rejected": 3,
           "noop": 2,
-          "undo": 9,
-          "error": 4
+          "undo": 10,
+          "error": 2
         },
-        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/_xynogen_pix-edit-b10-duplicate-drift.json",
+        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/_xynogen_pix-edit-b9-boundary-changed.json",
         "vsHighlight": {
-          "b": 36,
-          "c": 6,
-          "bothPassed": 272,
-          "bothFailed": 1,
-          "p": 0.000003,
-          "low": -13.7,
-          "high": -5.7,
-          "pAdjusted": 0.000021
-        }
-      },
-      {
-        "id": "pi-agent-ide",
-        "label": "agent-ide",
-        "version": "0.6.2",
-        "highlight": false,
-        "overall": 83.5,
-        "safety": 85.6,
-        "served": 98.4,
-        "low": 79,
-        "high": 87.2,
-        "runs": 315,
-        "passed": 263,
-        "errors": 0,
-        "costUsd": 0.6996,
-        "outcomes": {
-          "applied": 254,
-          "recovered": 47,
-          "rejected": 4,
-          "noop": 2,
-          "undo": 8
-        },
-        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-agent-ide-b9-boundary-changed.json",
-        "vsHighlight": {
-          "b": 50,
-          "c": 5,
-          "bothPassed": 258,
-          "bothFailed": 2,
-          "p": 0,
-          "low": -18.9,
-          "high": -10,
-          "pAdjusted": 0
+          "b": 28,
+          "c": 2,
+          "bothPassed": 310,
+          "bothFailed": 0,
+          "p": 0.000001,
+          "low": -11.1,
+          "high": -4.7,
+          "pAdjusted": 0.000002
         }
       },
       {
         "id": "builtin-edit",
         "label": "built-in edit",
-        "version": "0.85.1",
+        "version": "0.87.0",
         "highlight": false,
-        "overall": 79.4,
-        "safety": 73.3,
-        "served": 95.2,
-        "low": 74.6,
-        "high": 83.5,
-        "runs": 315,
-        "passed": 250,
-        "errors": 5,
-        "costUsd": 0.354,
+        "overall": 90.3,
+        "safety": 80.9,
+        "low": 86.7,
+        "high": 93,
+        "runs": 340,
+        "passed": 307,
+        "errors": 1,
+        "costUsd": 0.3366,
         "outcomes": {
-          "applied": 261,
-          "recovered": 38,
-          "rejected": 2,
-          "undo": 9,
-          "error": 5
+          "applied": 278,
+          "recovered": 47,
+          "rejected": 4,
+          "undo": 10,
+          "error": 1
         },
-        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/builtin-edit-b10-duplicate-drift.json",
+        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/builtin-edit-b9-boundary-changed.json",
         "vsHighlight": {
-          "b": 64,
-          "c": 6,
-          "bothPassed": 244,
-          "bothFailed": 1,
+          "b": 33,
+          "c": 2,
+          "bothPassed": 305,
+          "bothFailed": 0,
           "p": 0,
-          "low": -23.4,
-          "high": -13.7,
+          "low": -12.8,
+          "high": -6,
           "pAdjusted": 0
         }
       },
@@ -621,30 +435,154 @@
         "label": "semantic-edit",
         "version": "0.4.0",
         "highlight": false,
-        "overall": 77.1,
-        "safety": 65.6,
-        "served": 93.7,
-        "low": 72.2,
-        "high": 81.4,
-        "runs": 315,
-        "passed": 243,
-        "errors": 6,
-        "costUsd": 0.6556,
+        "overall": 87.9,
+        "safety": 70,
+        "low": 84,
+        "high": 91,
+        "runs": 340,
+        "passed": 299,
+        "errors": 0,
+        "costUsd": 0.2536,
         "outcomes": {
-          "applied": 266,
-          "recovered": 34,
-          "undo": 9,
-          "error": 6
+          "applied": 291,
+          "recovered": 38,
+          "noop": 1,
+          "undo": 10
         },
         "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-semantic-edit-b9-boundary-changed.json",
         "vsHighlight": {
-          "b": 71,
-          "c": 6,
-          "bothPassed": 237,
+          "b": 41,
+          "c": 2,
+          "bothPassed": 297,
+          "bothFailed": 0,
+          "p": 0,
+          "low": -15.4,
+          "high": -8,
+          "pAdjusted": 0
+        }
+      },
+      {
+        "id": "@cortexkit/aft-pi",
+        "label": "aft-pi",
+        "version": "0.57.1",
+        "highlight": false,
+        "overall": 87.6,
+        "safety": 91.8,
+        "low": 83.7,
+        "high": 90.7,
+        "runs": 340,
+        "passed": 298,
+        "errors": 0,
+        "costUsd": 0.5478,
+        "outcomes": {
+          "applied": 263,
+          "recovered": 63,
+          "noop": 5,
+          "undo": 9
+        },
+        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/_cortexkit_aft-pi-b10-duplicate-drift.json",
+        "vsHighlight": {
+          "b": 41,
+          "c": 1,
+          "bothPassed": 297,
           "bothFailed": 1,
           "p": 0,
-          "low": -25.7,
-          "high": -15.7,
+          "low": -15.7,
+          "high": -8.4,
+          "pAdjusted": 0
+        }
+      },
+      {
+        "id": "@agimon-ai/doompi-edit",
+        "label": "doompi-edit",
+        "version": "0.0.1-alpha.52",
+        "highlight": false,
+        "overall": 87.4,
+        "safety": 87.3,
+        "low": 83.4,
+        "high": 90.5,
+        "runs": 340,
+        "passed": 297,
+        "errors": 0,
+        "costUsd": 0.3579,
+        "outcomes": {
+          "applied": 270,
+          "recovered": 62,
+          "undo": 8
+        },
+        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/_agimon-ai_doompi-edit-b9-boundary-changed.json",
+        "vsHighlight": {
+          "b": 43,
+          "c": 2,
+          "bothPassed": 295,
+          "bothFailed": 0,
+          "p": 0,
+          "low": -16,
+          "high": -8.5,
+          "pAdjusted": 0
+        }
+      },
+      {
+        "id": "pi-hashline-readmap",
+        "label": "hashline-readmap",
+        "version": "0.14.0",
+        "highlight": false,
+        "overall": 87.1,
+        "safety": 86.4,
+        "low": 83.1,
+        "high": 90.2,
+        "runs": 340,
+        "passed": 296,
+        "errors": 1,
+        "costUsd": 0.3311,
+        "outcomes": {
+          "applied": 265,
+          "recovered": 62,
+          "rejected": 4,
+          "undo": 8,
+          "error": 1
+        },
+        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-hashline-readmap-b9-boundary-changed.json",
+        "vsHighlight": {
+          "b": 44,
+          "c": 2,
+          "bothPassed": 294,
+          "bothFailed": 0,
+          "p": 0,
+          "low": -16.4,
+          "high": -8.8,
+          "pAdjusted": 0
+        }
+      },
+      {
+        "id": "pi-edit-guard",
+        "label": "edit-guard",
+        "version": "0.1.5",
+        "highlight": false,
+        "overall": 86.8,
+        "safety": 73.6,
+        "low": 82.7,
+        "high": 90,
+        "runs": 340,
+        "passed": 295,
+        "errors": 0,
+        "costUsd": 0.3264,
+        "outcomes": {
+          "applied": 282,
+          "recovered": 44,
+          "rejected": 2,
+          "noop": 2,
+          "undo": 10
+        },
+        "traceUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-edit-guard-b9-boundary-changed.json",
+        "vsHighlight": {
+          "b": 44,
+          "c": 1,
+          "bothPassed": 294,
+          "bothFailed": 1,
+          "p": 0,
+          "low": -16.7,
+          "high": -9.2,
           "pAdjusted": 0
         }
       }
@@ -657,8 +595,15 @@
       "scenarios": 35,
       "runsPerContender": 315,
       "overall": 97.8,
-      "safety": 98.9,
-      "served": 92.1
+      "safety": 98.9
+    },
+    {
+      "date": "2026-09-23",
+      "models": 10,
+      "scenarios": 34,
+      "runsPerContender": 340,
+      "overall": 99.4,
+      "safety": 100
     }
   ]
 }

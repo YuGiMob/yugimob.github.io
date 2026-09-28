@@ -21,7 +21,7 @@ Line numbers shift the moment anything above them changes, and fuzzy matching wi
 - Undo restores the exact bytes
 - Edits to one file land as a single atomic batch
 
-Install: `pi install npm:pi-hashline-edit-pro`. Stars 91, 3,837 npm installs per week.
+Install: `pi install npm:pi-hashline-edit-pro`. Stars 97, 5,326 npm installs per week.
 
 ### 02. Web access costs a key and returns soup
 
@@ -34,7 +34,7 @@ Almost every way to give an agent the web wants an API key, a paid tier, or a br
 - SSRF guard and a 512 KiB cap
 - Jina Reader fallback for JavaScript pages
 
-Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 820 npm installs per week.
+Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 845 npm installs per week.
 
 ### 03. Agent traffic leaks where it comes from
 
@@ -47,7 +47,7 @@ The moment an agent fetches a URL, your IP and your resolver are part of the req
 - Exit IP checked against check.torproject.org
 - Nothing to configure in your other tools
 
-Install: `pi install npm:pi-tor-proxy`. Stars 3, 28 npm installs per week.
+Install: `pi install npm:pi-tor-proxy`. Stars 3, 231 npm installs per week.
 
 ### 04. Long runs forget the plan
 
@@ -60,7 +60,7 @@ Ask an agent to review a change in three passes and the original plan, the corre
 - Rounds reset the context between passes
 - Start, loop, and finish as configuration
 
-Install: `pi install npm:pi-msg-workflow`. Stars 1, 87 npm installs per week.
+Install: `pi install npm:pi-msg-workflow`. Stars 1, 349 npm installs per week.
 
 ### 05. The agent commits like it owns the repo
 
@@ -73,7 +73,7 @@ An agent with shell access will eventually run git commit -am "fix", or stage a 
 - The flow opens only after /commit
 - One guard instead of prompt heroics
 
-Install: `pi install npm:pi-git-commit`. Stars 1, 295 npm installs per week.
+Install: `pi install npm:pi-git-commit`. Stars 1, 314 npm installs per week.
 
 ## Evidence
 
@@ -81,28 +81,26 @@ Install: `pi install npm:pi-git-commit`. Stars 1, 295 npm installs per week.
 
 Editing-tool READMEs ship with a demo GIF and a claim, and almost none of them publish the runs where they lose. If the only evidence is a highlight reel, it is not evidence; it is marketing with extra steps.
 
-**Built:** [pi-edit-benchmark](https://github.com/YuGiMob/pi-edit-benchmark) — pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness. The headline number is a pass rate; the next two split out staleness and served state, where a silent mis-edit is worse than a refusal. Every contender links to a committed trace, including the runs my own tool fails.
+**Built:** [pi-edit-benchmark](https://github.com/YuGiMob/pi-edit-benchmark) — pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness. The headline number is a pass rate; the staleness split is scored separately, where a silent mis-edit is worse than a refusal. Every contender links to a committed trace, including the runs my own tool fails.
 
-- Stale and served-state scenarios are scored separately
+- Stale scenarios are scored separately
 - Every contender links to a committed trace
 - Confidence intervals on every pass rate
 - The losses are published too
 
-11 contenders over 9 models × 35 scenarios, 315 runs each (3,465 total).
+9 contenders over 10 models × 34 scenarios, 340 runs each (3,060 total).
 
-| tool | version | overall | staleness | served state | 95% interval | vs the highlighted tool | runs | passed | API cost |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **hashline-edit-pro** | v4.3.5 | 97.8% | 98.9% | 92.1% | 95.5–98.9 | — | 315 | 308 | $0.33 |
-| hashline-edit-pro-diff0 | v4.3.5 | 97.8% | 98.9% | 93.7% | 95.5–98.9 | -1.9 to +1.9 points, Holm-adjusted p=1.000 | 315 | 308 | $0.35 |
-| doompi-edit | v0.0.1-alpha.49 | 94.3% | 95.6% | 98.4% | 91.1–96.4 | -6.9 to -0.3 points, Holm-adjusted p=0.087 | 315 | 297 | $0.35 |
-| hashline-readmap | v0.14.0 | 93.0% | 94.4% | 90.5% | 89.7–95.3 | -8.1 to -1.9 points, Holm-adjusted p=0.008 | 315 | 293 | $0.39 |
-| hashline-context-edit | v0.11.0 | 90.2% | 96.7% | 100.0% | 86.4–93.0 | -11.6 to -3.9 points, Holm-adjusted p=< 0.001 | 315 | 284 | $0.33 |
-| hashline-edit | v0.8.3 | 89.8% | 96.7% | 100.0% | 86.0–92.7 | -12.0 to -4.2 points, Holm-adjusted p=< 0.001 | 315 | 283 | $0.36 |
-| aft-pi | v0.56.2 | 88.3% | 84.4% | 98.4% | 84.2–91.4 | -13.8 to -5.6 points, Holm-adjusted p=< 0.001 | 315 | 278 | $0.39 |
-| pix-edit | v0.2.5 | 88.3% | 84.4% | 95.2% | 84.2–91.4 | -13.7 to -5.7 points, Holm-adjusted p=< 0.001 | 315 | 278 | $0.34 |
-| agent-ide | v0.6.2 | 83.5% | 85.6% | 98.4% | 79.0–87.2 | -18.9 to -10.0 points, Holm-adjusted p=< 0.001 | 315 | 263 | $0.70 |
-| built-in edit | v0.85.1 | 79.4% | 73.3% | 95.2% | 74.6–83.5 | -23.4 to -13.7 points, Holm-adjusted p=< 0.001 | 315 | 250 | $0.35 |
-| semantic-edit | v0.4.0 | 77.1% | 65.6% | 93.7% | 72.2–81.4 | -25.7 to -15.7 points, Holm-adjusted p=< 0.001 | 315 | 243 | $0.66 |
+| tool | version | overall | staleness | 95% interval | vs the highlighted tool | runs | passed | API cost |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **hashline-edit-pro** | v4.4.1 | 99.4% | 100.0% | 97.9–99.8 | — | 340 | 338 | $0.36 |
+| builtin-bash | v0.87.0 | 92.9% | 90.9% | 89.7–95.2 | -9.7 to -3.7 points, Holm-adjusted p=< 0.001 | 340 | 316 | $0.33 |
+| pix-edit | v0.2.5 | 91.8% | 86.4% | 88.4–94.2 | -11.1 to -4.7 points, Holm-adjusted p=< 0.001 | 340 | 312 | $0.37 |
+| built-in edit | v0.87.0 | 90.3% | 80.9% | 86.7–93.0 | -12.8 to -6.0 points, Holm-adjusted p=< 0.001 | 340 | 307 | $0.34 |
+| semantic-edit | v0.4.0 | 87.9% | 70.0% | 84.0–91.0 | -15.4 to -8.0 points, Holm-adjusted p=< 0.001 | 340 | 299 | $0.25 |
+| aft-pi | v0.57.1 | 87.6% | 91.8% | 83.7–90.7 | -15.7 to -8.4 points, Holm-adjusted p=< 0.001 | 340 | 298 | $0.55 |
+| doompi-edit | v0.0.1-alpha.52 | 87.4% | 87.3% | 83.4–90.5 | -16.0 to -8.5 points, Holm-adjusted p=< 0.001 | 340 | 297 | $0.36 |
+| hashline-readmap | v0.14.0 | 87.1% | 86.4% | 83.1–90.2 | -16.4 to -8.8 points, Holm-adjusted p=< 0.001 | 340 | 296 | $0.33 |
+| edit-guard | v0.1.5 | 86.8% | 73.6% | 82.7–90.0 | -16.7 to -9.2 points, Holm-adjusted p=< 0.001 | 340 | 295 | $0.33 |
 
 Every rate is a pass rate over the shared model × scenario grid, the interval is a 95% Wilson interval, and the comparison column pairs each rival with the highlighted tool: the exact two-sided McNemar test, Holm-adjusted across rivals, with an unadjusted 95% Newcombe score interval for the difference.
 

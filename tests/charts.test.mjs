@@ -10,7 +10,7 @@ const BENCHMARK = {
   generatedAt: '2026-09-20T12:03:04.357Z',
   models: 2,
   scenarios: 3,
-  focusCounts: { core: 1, staleness: 1, 'served-state': 1 },
+  focusCounts: { core: 1, staleness: 1 },
   contenderCount: 2,
   runsPerContender: 6,
   totalRuns: 12,
@@ -24,7 +24,6 @@ const BENCHMARK = {
       overall: 90,
       costUsd: 0.25,
       safety: 88,
-      served: 92,
       low: 80,
       high: 95,
       runs: 10,
@@ -40,7 +39,6 @@ const BENCHMARK = {
       highlight: false,
       overall: 50,
       safety: null,
-      served: null,
       low: 40,
       high: 60,
       runs: 10,
@@ -91,13 +89,13 @@ test('sparklinePoints flattens a constant series', () => {
 test('benchmarkTableRows formats every contender in rank order', () => {
   const rows = benchmarkTableRows({
     contenders: [
-      { label: 'b', version: null, overall: 70, safety: null, served: 80, low: 60, high: 80, runs: 10, passed: 7, errors: 0 },
-      { label: 'a', version: '1.2.3', overall: 90, safety: 88, served: 92, low: 80, high: 95, runs: 1000, passed: 900, errors: 2, costUsd: 0.5 },
+      { label: 'b', version: null, overall: 70, safety: null, low: 60, high: 80, runs: 10, passed: 7, errors: 0 },
+      { label: 'a', version: '1.2.3', overall: 90, safety: 88, low: 80, high: 95, runs: 1000, passed: 900, errors: 2, costUsd: 0.5 },
     ],
   });
   assert.deepEqual(rows, [
-    { tool: 'a', version: '1.2.3', overall: '90.0%', safety: '88.0%', served: '92.0%', interval: '80.0–95.0', difference: '—', runs: '1,000', passed: '900', errors: '2', cost: '$0.50' },
-    { tool: 'b', version: '', overall: '70.0%', safety: '—', served: '80.0%', interval: '60.0–80.0', difference: '—', runs: '10', passed: '7', errors: '0', cost: '—' },
+    { tool: 'a', version: '1.2.3', overall: '90.0%', safety: '88.0%', interval: '80.0–95.0', difference: '—', runs: '1,000', passed: '900', errors: '2', cost: '$0.50' },
+    { tool: 'b', version: '', overall: '70.0%', safety: '—', interval: '60.0–80.0', difference: '—', runs: '10', passed: '7', errors: '0', cost: '—' },
   ]);
 });
 
@@ -133,7 +131,7 @@ test('benchmarkChart renders rows, meters, outcomes, legends, sources, and a tab
     assert.match(node.textContent, /90\.0% overall/);
 
     const fills = classes(node, 'meter-fill');
-    assert.deepEqual(fills.map((entry) => entry.style.values.get('--pct')), ['90%', '88%', '92%', '50%', '0%', '0%']);
+    assert.deepEqual(fills.map((entry) => entry.style.values.get('--pct')), ['90%', '88%', '50%', '0%']);
     const whiskers = classes(node, 'meter-whisker');
     assert.equal(whiskers[0].style.values.get('--low'), '80%');
     assert.equal(whiskers[0].style.values.get('--high'), '95%');
@@ -159,7 +157,7 @@ test('benchmarkChart renders rows, meters, outcomes, legends, sources, and a tab
     const table = classes(node, 'chart-data');
     assert.equal(table.length, 1);
     assert.equal(tags(table[0], 'TR').length, 3);
-    assert.equal(tags(table[0], 'TH').length, 11);
+    assert.equal(tags(table[0], 'TH').length, 10);
     assert.deepEqual(tags(table[0], 'TH').slice(0, 3).map((cell) => cell.textContent), ['tool', 'version', 'overall pass rate']);
     assert.equal(classes(node, 'bench-cost').length, 2);
 
@@ -189,18 +187,18 @@ test('benchmarkChart tolerates an empty contender list', () => {
 
 test('benchmarkChart adds the pass-rate trend when history has two reports', () => {
   withDom(() => {
-    const single = benchmarkChart(BENCHMARK, [{ date: '2026-09-20', overall: 90, safety: 88, served: 92 }]);
+    const single = benchmarkChart(BENCHMARK, [{ date: '2026-09-20', overall: 90, safety: 88 }]);
     assert.equal(classes(single.node, 'bench-trend').length, 0);
 
     const history = [
-      { date: '2026-09-18', overall: 80, safety: 70, served: 60 },
-      { date: '2026-09-20', overall: 90, safety: 88, served: 92 },
+      { date: '2026-09-18', overall: 80, safety: 70 },
+      { date: '2026-09-20', overall: 90, safety: 88 },
     ];
     const controller = benchmarkChart(BENCHMARK, history);
     const trend = classes(controller.node, 'bench-trend');
     assert.equal(trend.length, 1);
     assert.match(trend[0].textContent, /2 benchmark reports since 2026-09-18/);
-    assert.equal(classes(trend[0], 'growth-row').length, 3);
+    assert.equal(classes(trend[0], 'growth-row').length, 2);
     assert.match(trend[0].textContent, /\+10\.0%/);
   });
 });
@@ -237,9 +235,9 @@ test('benchmarkTrend returns null without two usable reports', () => {
 test('benchmarkTrend skips reports measured on a different grid', () => {
   withDom(() => {
     const history = [
-      { date: '2026-09-18', overall: 80, safety: 70, served: 60, models: 1, scenarios: 1, runsPerContender: 1 },
-      { date: '2026-09-19', overall: 85, safety: 75, served: 65, models: 9, scenarios: 35, runsPerContender: 315 },
-      { date: '2026-09-20', overall: 90, safety: 88, served: 92, models: 9, scenarios: 35, runsPerContender: 315 },
+      { date: '2026-09-18', overall: 80, safety: 70, models: 1, scenarios: 1, runsPerContender: 1 },
+      { date: '2026-09-19', overall: 85, safety: 75, models: 9, scenarios: 35, runsPerContender: 315 },
+      { date: '2026-09-20', overall: 90, safety: 88, models: 9, scenarios: 35, runsPerContender: 315 },
     ];
     const trend = benchmarkTrend(history);
     assert.match(trend.textContent, /2 benchmark reports since 2026-09-19/);

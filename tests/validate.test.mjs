@@ -74,7 +74,7 @@ test('the validator reports every failure in one run', () => {
   const data = structuredClone(DATA);
   const showcase = structuredClone(SHOWCASE);
   showcase.problems[0].demo = 'not-a-demo';
-  data.benchmark.contenderCount = 9;
+  data.benchmark.contenderCount = 1;
   const result = runValidator(data, showcase);
   assert.equal(result.status, 1);
   assert.match(result.stderr, /demo unknown: not-a-demo/);
@@ -280,7 +280,7 @@ test('the validator refuses benchmark history beyond the cap and out of order', 
   const day = 86400000;
   const start = Date.parse('2026-01-01');
   const dateAt = (index) => new Date(start + index * day).toISOString().slice(0, 10);
-  const snapshot = (index) => ({ date: dateAt(index), models: 9, scenarios: 35, runsPerContender: 315, overall: 1, safety: null, served: null });
+  const snapshot = (index) => ({ date: dateAt(index), models: 9, scenarios: 35, runsPerContender: 315, overall: 1, safety: null });
   const longHistory = structuredClone(DATA);
   longHistory.benchmarkHistory = Array.from({ length: 121 }, (unused, index) => snapshot(index));
   assert.match(runValidator(longHistory, SHOWCASE).stderr, /benchmarkHistory has 121 entries; the cap is 120/);
@@ -288,7 +288,7 @@ test('the validator refuses benchmark history beyond the cap and out of order', 
   unsorted.benchmarkHistory = [snapshot(1), snapshot(0)];
   assert.match(runValidator(unsorted, SHOWCASE).stderr, /benchmarkHistory dates must be unique and sorted/);
   const badScore = structuredClone(DATA);
-  badScore.benchmarkHistory = [{ date: '2026-01-01', models: 9, scenarios: 35, runsPerContender: 315, overall: 101, safety: null, served: null }];
+  badScore.benchmarkHistory = [{ date: '2026-01-01', models: 9, scenarios: 35, runsPerContender: 315, overall: 101, safety: null }];
   assert.match(runValidator(badScore, SHOWCASE).stderr, /benchmarkHistory\.0\.overall invalid/);
 });
 
@@ -300,13 +300,13 @@ test('the validator refuses benchmark history that drifts from the current repor
   misdated.benchmarkHistory[misdated.benchmarkHistory.length - 1].date = '2026-09-19';
   assert.match(runValidator(misdated, SHOWCASE).stderr, /benchmarkHistory newest entry is dated 2026-09-19/);
   const regridded = structuredClone(DATA);
-  regridded.benchmarkHistory[regridded.benchmarkHistory.length - 1].scenarios = 34;
+  regridded.benchmarkHistory[regridded.benchmarkHistory.length - 1].scenarios = DATA.benchmark.scenarios + 1;
   assert.match(runValidator(regridded, SHOWCASE).stderr, /benchmarkHistory newest entry does not match the benchmark grid/);
 });
 
 test('the validator accepts benchmark history from before the grid fields', () => {
   const legacy = structuredClone(DATA);
-  legacy.benchmarkHistory = [{ date: '2026-01-01', overall: 42, safety: null, served: null }, ...legacy.benchmarkHistory];
+  legacy.benchmarkHistory = [{ date: '2026-01-01', overall: 42, safety: null }, ...legacy.benchmarkHistory];
   const result = runValidator(legacy, SHOWCASE);
   assert.equal(result.status, 0, result.stderr);
 });
@@ -844,7 +844,7 @@ test('the data validator re-derives the Holm adjustment across the rivals', () =
 test('the data validator re-derives the paired-difference interval', () => {
   const drifted = structuredClone(DATA);
   const compared = drifted.benchmark.contenders.find((entry) => entry.vsHighlight != null);
-  compared.vsHighlight.low = 0;
+  compared.vsHighlight.low -= 1;
   const result = runValidator(drifted, SHOWCASE, MATRIX);
   assert.equal(result.status, 1);
   assert.match(result.stderr, /vsHighlight interval does not match the paired-difference interval/);

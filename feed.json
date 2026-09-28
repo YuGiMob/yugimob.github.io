@@ -14,20 +14,40 @@
   ],
   "items": [
     {
-      "id": "https://yugimob.github.io/#history-2026-09-22",
+      "id": "https://yugimob.github.io/#history-2026-09-28",
       "url": "https://yugimob.github.io/#intro",
-      "title": "Data refresh 2026-09-22: 100 stars, 5,067 weekly installs",
-      "content_text": "100 GitHub stars and 5,067 npm installs per week across the projects on 2026-09-22.",
-      "date_published": "2026-09-22T00:00:00Z",
+      "title": "Data refresh 2026-09-28: 106 stars, 7,065 weekly installs",
+      "content_text": "106 GitHub stars and 7,065 npm installs per week across the projects on 2026-09-28.",
+      "date_published": "2026-09-28T00:00:00Z",
       "tags": [
         "data"
+      ]
+    },
+    {
+      "id": "https://yugimob.github.io/#history-2026-09-24",
+      "url": "https://yugimob.github.io/#intro",
+      "title": "Data refresh 2026-09-24: 101 stars, 4,962 weekly installs",
+      "content_text": "101 GitHub stars and 4,962 npm installs per week across the projects on 2026-09-24.",
+      "date_published": "2026-09-24T00:00:00Z",
+      "tags": [
+        "data"
+      ]
+    },
+    {
+      "id": "https://yugimob.github.io/#benchmark-2026-09-23",
+      "url": "https://yugimob.github.io/#evidence",
+      "title": "Benchmark report 2026-09-23: 99.4% overall",
+      "content_text": "hashline-edit-pro scored 99.4% overall, 100.0% on staleness scenarios in the 2026-09-23 pi-edit-benchmark report.",
+      "date_published": "2026-09-23T00:00:00Z",
+      "tags": [
+        "benchmark"
       ]
     },
     {
       "id": "https://yugimob.github.io/#benchmark-2026-09-20",
       "url": "https://yugimob.github.io/#evidence",
       "title": "Benchmark report 2026-09-20: 97.8% overall",
-      "content_text": "hashline-edit-pro scored 97.8% overall, 98.9% on staleness scenarios, 92.1% on served-state scenarios in the 2026-09-20 pi-edit-benchmark report.",
+      "content_text": "hashline-edit-pro scored 97.8% overall, 98.9% on staleness scenarios in the 2026-09-20 pi-edit-benchmark report.",
       "date_published": "2026-09-20T00:00:00Z",
       "tags": [
         "benchmark"

@@ -34,8 +34,8 @@ function benchmarkTable(benchmark) {
   const contenders = Array.isArray(benchmark?.contenders) ? benchmark.contenders : [];
   if (contenders.length === 0) return [];
   const lines = [
-    '| tool | version | overall | staleness | served state | 95% interval | vs the highlighted tool | runs | passed | API cost |',
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |',
+    '| tool | version | overall | staleness | 95% interval | vs the highlighted tool | runs | passed | API cost |',
+    '| --- | --- | --- | --- | --- | --- | --- | --- | --- |',
   ];
   for (const contender of contenders) {
     lines.push(`| ${[
@@ -43,7 +43,6 @@ function benchmarkTable(benchmark) {
       contender.version ? `v${contender.version}` : '—',
       rateCell(contender.overall),
       rateCell(contender.safety),
-      rateCell(contender.served),
       `${contender.low.toFixed(1)}–${contender.high.toFixed(1)}`,
       comparisonCell(contender),
       formatNumber(contender.runs),
@@ -99,7 +98,6 @@ export function buildLlmsTxt(siteData, showcase) {
     for (const contender of benchmark.contenders ?? []) {
       const splits = [`${contender.overall.toFixed(1)}% overall`];
       if (Number.isFinite(contender.safety)) splits.push(`${contender.safety.toFixed(1)}% staleness`);
-      if (Number.isFinite(contender.served)) splits.push(`${contender.served.toFixed(1)}% served state`);
       const version = contender.version ? ` v${contender.version}` : '';
       const comparison = contender.vsHighlight == null ? '' : `; ${comparisonCell(contender)} against the highlighted tool`;
       const trace = contender.traceUrl ? `[${contender.label}](${contender.traceUrl})` : contender.label;
@@ -224,7 +222,6 @@ const FEED_ITEM_LIMIT = 30;
 function benchmarkFeedItem(entry, label) {
   const splits = [`${entry.overall.toFixed(1)}% overall`];
   if (Number.isFinite(entry.safety)) splits.push(`${entry.safety.toFixed(1)}% on staleness scenarios`);
-  if (Number.isFinite(entry.served)) splits.push(`${entry.served.toFixed(1)}% on served-state scenarios`);
   return {
     id: `${SITE_URL}/#benchmark-${entry.date}`,
     url: `${SITE_URL}/#evidence`,
