@@ -172,6 +172,27 @@ test('the validator re-derives the benchmark cost total from the contenders', ()
   assert.match(result.stderr, /costUsd .* does not match the contender total/);
 });
 
+test('the validator refuses an external benchmark that cannot come from the dataset', () => {
+  const mismatch = structuredClone(DATA);
+  mismatch.externalBenchmark.configurationCount = 9;
+  const mismatchResult = runValidator(mismatch, SHOWCASE);
+  assert.equal(mismatchResult.status, 1);
+  assert.match(mismatchResult.stderr, /externalBenchmark configurationCount does not match observations \/ tasks/);
+
+  const inverted = structuredClone(DATA);
+  inverted.externalBenchmark.firstExact = 100;
+  inverted.externalBenchmark.finalExact = 90;
+  const invertedResult = runValidator(inverted, SHOWCASE);
+  assert.equal(invertedResult.status, 1);
+  assert.match(invertedResult.stderr, /externalBenchmark finalExact is below firstExact/);
+
+  const unbalanced = structuredClone(DATA);
+  unbalanced.externalBenchmark.quality = 20;
+  const unbalancedResult = runValidator(unbalanced, SHOWCASE);
+  assert.equal(unbalancedResult.status, 1);
+  assert.match(unbalancedResult.stderr, /externalBenchmark quality is not within one point/);
+});
+
 test('the validator refuses a duplicated project and a malformed fetchedAt', () => {
   const duplicate = structuredClone(DATA);
   duplicate.projects.push(structuredClone(duplicate.projects[0]));
@@ -714,7 +735,7 @@ test('the site validator refuses static copy that drifts from the data files', (
 
   const evidenceHeading = runSiteValidator((dir) => {
     const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('id="evidence-heading">Everyone claims their tool is better<', 'id="evidence-heading">A stale evidence heading<'));
+    writeFileSync(path, readFileSync(path, 'utf8').replace('id="evidence-heading">One benchmark I did not write, one I did<', 'id="evidence-heading">A stale evidence heading<'));
   });
   assert.equal(evidenceHeading.status, 1);
   assert.match(evidenceHeading.stderr, /#evidence-heading does not match the showcase/);

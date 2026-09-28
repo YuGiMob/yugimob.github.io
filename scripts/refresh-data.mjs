@@ -4,6 +4,8 @@ import { readFileSync, writeFileSync, renameSync, existsSync, unlinkSync, readdi
 import {
   BENCHMARK_HISTORY_LIMIT,
   BENCHMARK_REPORT_RAW,
+  EXTERNAL_BENCHMARK_RAW,
+  externalBenchmarkSnapshot,
   BENCHMARK_SCENARIO_RAW,
   benchmarkCoversFullMatrix,
   benchmarkSnapshot,
@@ -461,6 +463,23 @@ if (!benchmarkReport || focusById.size === 0) {
       matrixText = `${JSON.stringify({ $schema: './benchmark-matrix.schema.json', ...matrix }, null, 2)}\n`;
     }
   }
+}
+const externalViews = await getJson(EXTERNAL_BENCHMARK_RAW, { Accept: 'application/json' }, 'external benchmark dataset');
+const externalSnapshot = externalBenchmarkSnapshot(externalViews);
+if (!externalSnapshot) {
+  if (externalViews) console.warn('external benchmark dataset has no usable harness family; keeping the existing block');
+  summary.push('externalBenchmark: unchanged (fetch failed)');
+} else {
+  const previous = data.externalBenchmark && typeof data.externalBenchmark === 'object' && !Array.isArray(data.externalBenchmark) ? data.externalBenchmark : {};
+  const moved = ['tasks', 'observations', 'configurationCount', 'firstExact', 'finalExact', 'quality'].some((key) => previous[key] !== externalSnapshot[key]);
+  const block = { ...externalSnapshot, asOf: moved || typeof previous.asOf !== 'string' ? today : previous.asOf };
+  report('externalBenchmark.quality', previous.quality, block.quality);
+  report('externalBenchmark.firstExact', previous.firstExact, block.firstExact);
+  report('externalBenchmark.finalExact', previous.finalExact, block.finalExact);
+  report('externalBenchmark.configurationCount', previous.configurationCount, block.configurationCount);
+  report('externalBenchmark.observations', previous.observations, block.observations);
+  report('externalBenchmark.asOf', previous.asOf, block.asOf);
+  data.externalBenchmark = block;
 }
 if (Array.isArray(events)) {
   data.activity.fetchedAt = today;

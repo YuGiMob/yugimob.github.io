@@ -463,7 +463,7 @@ if (siteData && showcase) {
   const blocks = [
     ['problem-index', 'ol', buildProblemIndexBlock(showcase, projects)],
     ['problem-list', 'div', buildProblemListBlock(showcase, projects)],
-    ['evidence-body', 'div', buildEvidenceBlock(showcase, projects)],
+    ['evidence-body', 'div', buildEvidenceBlock(showcase, projects, siteData.externalBenchmark ?? null)],
     ['colophon-prose', 'div', buildColophonProseBlock(showcase)],
     ['principles', 'ul', buildPrinciplesBlock(showcase)],
   ];

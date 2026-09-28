@@ -38,7 +38,7 @@ test('the committed pre-rendered blocks already match the data files', () => {
   const projects = new Map(DATA.projects.map((project) => [project.name, project]));
   assert.equal(readBlock(source, 'ol', 'problem-index'), buildProblemIndexBlock(SHOWCASE, projects));
   assert.equal(readBlock(source, 'div', 'problem-list'), buildProblemListBlock(SHOWCASE, projects));
-  assert.equal(readBlock(source, 'div', 'evidence-body'), buildEvidenceBlock(SHOWCASE, projects));
+  assert.equal(readBlock(source, 'div', 'evidence-body'), buildEvidenceBlock(SHOWCASE, projects, DATA.externalBenchmark ?? null));
   assert.equal(readBlock(source, 'div', 'colophon-prose'), buildColophonProseBlock(SHOWCASE));
   assert.equal(readBlock(source, 'ul', 'principles'), buildPrinciplesBlock(SHOWCASE));
   const heading = source.match(/id="problems-heading"[^>]*>([^<]*)</)?.[1];

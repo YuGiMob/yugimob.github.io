@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "groups": {
+    "harnessFamily": {
+      "pi-hashline-edit-pro": {
+        "firstExactRate": 0.5,
+        "finalExactRate": 1,
+        "qualityScore": 0.625,
+        "coverage": 1,
+        "taskCount": 4,
+        "observations": 8,
+        "configurationCount": 2,
+        "completeConfigurationCount": 2
+      }
+    }
+  }
+}

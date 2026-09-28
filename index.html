@@ -173,7 +173,7 @@
         <li class="index-row">
           <a class="index-link" href="#evidence">
             <span class="index-number">06</span>
-            <span class="index-headline">Everyone claims their tool is better</span>
+            <span class="index-headline">One benchmark I did not write, one I did</span>
             <span class="index-tool">pi-edit-benchmark</span>
             <span class="index-arrow" aria-hidden="true">→</span>
           </a>
@@ -380,10 +380,19 @@
     <section id="evidence" class="section" aria-labelledby="evidence-heading">
       <div class="section-head">
         <p class="section-kicker" id="evidence-kicker">Evidence</p>
-        <h2 class="section-title" id="evidence-heading">Everyone claims their tool is better</h2>
+        <h2 class="section-title" id="evidence-heading">One benchmark I did not write, one I did</h2>
       </div>
       <div id="evidence-body">
-        <p class="section-lede">The figures come from committed run reports in pi-edit-benchmark. The trace beside the chart shows one run being scored, including the refusal that became the point.</p>
+        <p class="section-lede">Two checks, in order of independence. The first is third-party: alexshpunt's Explicit Edit Benchmark scores the tool without me. The second is mine: pi-edit-benchmark, with a committed trace for every run, including the ones I lose.</p>
+        <div class="evidence evidence-external" id="evidence-external">
+          <p class="problem-kicker">Third-party check</p>
+          <h3 class="answer-name"><a href="https://github.com/alexshpunt/explicit-edit-benchmark" target="_blank" rel="noopener noreferrer">Explicit Edit Benchmark</a></h3>
+          <p class="answer-text">98.6% median quality over 8 complete model-route configurations: 98.2% first exact and 100% final exact across 226 byte-exact tasks (1,808 observations), as of 2026-09-28.</p>
+          <p class="answer-text">Maintained by alexshpunt. I did not write the tasks or the scoring rule; the number is the median across the complete model-route configurations.</p>
+          <div class="actions">
+            <a class="action-link" href="https://huggingface.co/spaces/alexshpunt/benchmark-explorer?card=harness%3Api-hashline-edit-pro%40latest" target="_blank" rel="noopener noreferrer">Explorer ↗</a>
+          </div>
+        </div>
         <div class="evidence" id="problem-pi-edit-benchmark">
           <p class="problem-statement">Editing-tool READMEs ship with a demo GIF and a claim, and almost none of them publish the runs where they lose. If the only evidence is a highlight reel, it is not evidence; it is marketing with extra steps.</p>
           <div class="problem-grid">
@@ -408,6 +417,7 @@
                   <a class="action-link" href="https://github.com/YuGiMob/pi-edit-benchmark" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
                 </div>
               </div>
+              <p class="answer-text evidence-disclosure">I wrote pi-edit-benchmark, so read it as a regression suite with receipts, not neutral evidence.</p>
             </div>
             <div class="problem-demo"></div>
           </div>

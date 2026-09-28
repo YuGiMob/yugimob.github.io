@@ -205,17 +205,35 @@ export function buildProblemListBlock(showcase, projects) {
   return ['      <div class="problem-list" id="problem-list">', articles, '      </div>'].join('\n');
 }
 
-export function buildEvidenceBlock(showcase, projects) {
+function externalSummary(external) {
+  const configurations = `${formatNumber(external.configurationCount)} complete model-route ${external.configurationCount === 1 ? 'configuration' : 'configurations'}`;
+  return `${external.quality}% median quality over ${configurations}: ${external.firstExact}% first exact and ${external.finalExact}% final exact across ${formatNumber(external.tasks)} byte-exact tasks (${formatNumber(external.observations)} observations), as of ${external.asOf}.`;
+}
+
+export function buildEvidenceBlock(showcase, projects, externalBenchmark = null) {
   const evidence = showcase?.evidence;
   if (!evidence) return '      <div id="evidence-body"></div>';
   const project = projects.get(evidence.name);
   const lines = [];
   if (evidence.intro) lines.push(`        <p class="section-lede">${escapeHtml(evidence.intro)}</p>`);
+  if (externalBenchmark) {
+    const external = evidence.external ?? {};
+    lines.push('        <div class="evidence evidence-external" id="evidence-external">');
+    if (external.kicker) lines.push(`          <p class="problem-kicker">${escapeHtml(external.kicker)}</p>`);
+    lines.push(`          <h3 class="answer-name"><a href="${escapeAttr(externalBenchmark.source)}" target="_blank" rel="noopener noreferrer">${escapeHtml(externalBenchmark.name)}</a></h3>`);
+    lines.push(`          <p class="answer-text">${escapeHtml(externalSummary(externalBenchmark))}</p>`);
+    if (external.note) lines.push(`          <p class="answer-text">${escapeHtml(external.note)}</p>`);
+    lines.push('          <div class="actions">');
+    lines.push(`            <a class="action-link" href="${escapeAttr(externalBenchmark.explorerUrl)}" target="_blank" rel="noopener noreferrer">Explorer ↗</a>`);
+    lines.push('          </div>');
+    lines.push('        </div>');
+  }
   lines.push(`        <div class="evidence" id="${escapeAttr(problemId(evidence.name))}">`);
   lines.push(`          <p class="problem-statement">${escapeHtml(evidence.problem)}</p>`);
   lines.push('          <div class="problem-grid">');
   lines.push('            <div class="problem-copy">');
   if (project) lines.push(answerBlockHtml(evidence, project, 'h3'));
+  if (evidence.disclosure) lines.push(`              <p class="answer-text evidence-disclosure">${escapeHtml(evidence.disclosure)}</p>`);
   lines.push('            </div>');
   lines.push('            <div class="problem-demo"></div>');
   lines.push('          </div>');
@@ -246,7 +264,7 @@ export function applyGeneratedBlocks(source, siteData, showcase = null) {
     const projects = new Map((siteData.projects ?? []).map((project) => [project.name, project]));
     next = replaceBlock(next, 'ol', 'problem-index', buildProblemIndexBlock(showcase, projects)) ?? next;
     next = replaceBlock(next, 'div', 'problem-list', buildProblemListBlock(showcase, projects)) ?? next;
-    next = replaceBlock(next, 'div', 'evidence-body', buildEvidenceBlock(showcase, projects)) ?? next;
+    next = replaceBlock(next, 'div', 'evidence-body', buildEvidenceBlock(showcase, projects, siteData.externalBenchmark ?? null)) ?? next;
     next = replaceBlock(next, 'div', 'colophon-prose', buildColophonProseBlock(showcase)) ?? next;
     next = replaceBlock(next, 'ul', 'principles', buildPrinciplesBlock(showcase)) ?? next;
     next = setElementText(next, 'evidence-kicker', showcase.evidence?.kicker ?? '');

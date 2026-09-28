@@ -18,6 +18,12 @@ export const BENCHMARK_SCENARIO_RAW = [
 export const BENCHMARK_FOCI = ['core', 'staleness'];
 export const OUTCOME_KINDS = ['applied', 'recovered', 'rejected', 'noop', 'undo', 'error'];
 
+export const EXTERNAL_BENCHMARK_NAME = 'Explicit Edit Benchmark';
+export const EXTERNAL_BENCHMARK_URL = 'https://github.com/alexshpunt/explicit-edit-benchmark';
+export const EXTERNAL_BENCHMARK_EXPLORER = 'https://huggingface.co/spaces/alexshpunt/benchmark-explorer?card=harness%3Api-hashline-edit-pro%40latest';
+export const EXTERNAL_BENCHMARK_RAW = 'https://huggingface.co/datasets/alexshpunt/explicit-edit-benchmark/resolve/main/views.json';
+export const EXTERNAL_BENCHMARK_HARNESS = 'pi-hashline-edit-pro';
+
 const FOCUS_PATTERN = /\bid:\s*"([^"]+)"(?:(?!\bid:\s*")[\s\S])*?\bfocus:\s*"(core|staleness)"/g;
 
 export function buildHighlights(events, limit = MAX_HIGHLIGHTS) {
@@ -364,6 +370,30 @@ export function benchmarkSnapshot(benchmark) {
     runsPerContender: benchmark.runsPerContender,
     overall: highlighted.overall,
     safety: highlighted.safety ?? null,
+  };
+}
+
+export function externalBenchmarkSnapshot(views, harness = EXTERNAL_BENCHMARK_HARNESS) {
+  const family = views?.groups?.harnessFamily?.[harness];
+  if (!family || typeof family !== 'object') return null;
+  const percent = (value) => (Number.isFinite(value) ? Math.round(value * 1000) / 10 : null);
+  const firstExact = percent(family.firstExactRate);
+  const finalExact = percent(family.finalExactRate);
+  const quality = percent(family.qualityScore);
+  if (firstExact === null || finalExact === null || quality === null) return null;
+  if (!Number.isInteger(family.taskCount) || !Number.isInteger(family.observations) || !Number.isInteger(family.configurationCount)) return null;
+  return {
+    name: EXTERNAL_BENCHMARK_NAME,
+    maintainer: 'alexshpunt',
+    source: EXTERNAL_BENCHMARK_URL,
+    explorerUrl: EXTERNAL_BENCHMARK_EXPLORER,
+    harness,
+    tasks: family.taskCount,
+    observations: family.observations,
+    configurationCount: family.configurationCount,
+    firstExact,
+    finalExact,
+    quality,
   };
 }
 

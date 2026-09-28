@@ -59,7 +59,17 @@
           "items": { "type": "string", "minLength": 1 }
         },
         "demo": { "type": "string", "minLength": 1 },
-        "intro": { "type": "string", "minLength": 1 }
+        "intro": { "type": "string", "minLength": 1 },
+        "external": {
+          "type": "object",
+          "required": ["kicker", "note"],
+          "additionalProperties": false,
+          "properties": {
+            "kicker": { "type": "string", "minLength": 1 },
+            "note": { "type": "string", "minLength": 1 }
+          }
+        },
+        "disclosure": { "type": "string", "minLength": 1 }
       }
     },
     "principles": {

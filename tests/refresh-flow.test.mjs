@@ -62,6 +62,12 @@ test('a fixture refresh writes every machine field and rebuilds the derived file
     const rival = data.benchmark.contenders.find((entry) => !entry.highlight);
     assert.equal(highlighted.vsHighlight, null);
     assert.deepEqual(rival.vsHighlight, { b: 0, c: 0, bothPassed: 1, bothFailed: 0, p: 1, low: -79.3, high: 79.3, pAdjusted: 1 });
+    assert.equal(data.externalBenchmark.harness, 'pi-hashline-edit-pro');
+    assert.equal(data.externalBenchmark.tasks, 4);
+    assert.equal(data.externalBenchmark.configurationCount, 2);
+    assert.equal(data.externalBenchmark.firstExact, 50);
+    assert.equal(data.externalBenchmark.finalExact, 100);
+    assert.equal(data.externalBenchmark.quality, 62.5);
 
     const matrix = JSON.parse(readFileSync(join(repo, 'data', 'benchmark-matrix.json'), 'utf8'));
     assert.equal(matrix.generatedAt, data.benchmark.generatedAt);

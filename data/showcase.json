@@ -88,7 +88,7 @@
   "evidence": {
     "name": "pi-edit-benchmark",
     "kicker": "Evidence",
-    "headline": "Everyone claims their tool is better",
+    "headline": "One benchmark I did not write, one I did",
     "problem": "Editing-tool READMEs ship with a demo GIF and a claim, and almost none of them publish the runs where they lose. If the only evidence is a highlight reel, it is not evidence; it is marketing with extra steps.",
     "answer": "pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness. The headline number is a pass rate; the staleness split is scored separately, where a silent mis-edit is worse than a refusal. Every contender links to a committed trace, including the runs my own tool fails.",
     "highlights": [
@@ -98,7 +98,12 @@
       "The losses are published too"
     ],
     "demo": "trace",
-    "intro": "The figures come from committed run reports in pi-edit-benchmark. The trace beside the chart shows one run being scored, including the refusal that became the point."
+    "intro": "Two checks, in order of independence. The first is third-party: alexshpunt's Explicit Edit Benchmark scores the tool without me. The second is mine: pi-edit-benchmark, with a committed trace for every run, including the ones I lose.",
+    "external": {
+      "kicker": "Third-party check",
+      "note": "Maintained by alexshpunt. I did not write the tasks or the scoring rule; the number is the median across the complete model-route configurations."
+    },
+    "disclosure": "I wrote pi-edit-benchmark, so read it as a regression suite with receipts, not neutral evidence."
   },
   "principles": [
     "Make the wrong operation impossible, not merely discouraged.",

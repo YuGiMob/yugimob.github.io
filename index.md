@@ -77,11 +77,15 @@ Install: `pi install npm:pi-git-commit`. Stars 1, 314 npm installs per week.
 
 ## Evidence
 
-### Everyone claims their tool is better
+### One benchmark I did not write, one I did
 
 Editing-tool READMEs ship with a demo GIF and a claim, and almost none of them publish the runs where they lose. If the only evidence is a highlight reel, it is not evidence; it is marketing with extra steps.
 
+**Third-party check:** [Explicit Edit Benchmark](https://huggingface.co/spaces/alexshpunt/benchmark-explorer?card=harness%3Api-hashline-edit-pro%40latest) scores pi-hashline-edit-pro at 98.6% median quality over 8 complete model-route configurations, with 98.2% first exact and 100% final exact across 226 byte-exact tasks. Maintained by alexshpunt.
+
 **Built:** [pi-edit-benchmark](https://github.com/YuGiMob/pi-edit-benchmark) — pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness. The headline number is a pass rate; the staleness split is scored separately, where a silent mis-edit is worse than a refusal. Every contender links to a committed trace, including the runs my own tool fails.
+
+I wrote pi-edit-benchmark, so read it as a regression suite with receipts, not neutral evidence.
 
 - Stale scenarios are scored separately
 - Every contender links to a committed trace

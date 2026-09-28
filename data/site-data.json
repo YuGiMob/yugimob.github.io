@@ -90,7 +90,7 @@
   },
   "activity": {
     "window": "2026-08-28..2026-09-28",
-    "pushes": 158,
+    "pushes": 157,
     "highlights": [
       "starred alexshpunt/explicit-edit-benchmark",
       "opened issue #4 on k0valik/pi-edit-guard",
@@ -102,8 +102,8 @@
     "daily": [
       {
         "date": "2026-08-28",
-        "events": 7,
-        "pushes": 7
+        "events": 6,
+        "pushes": 6
       },
       {
         "date": "2026-08-29",
@@ -296,6 +296,20 @@
       "totalDownloads": 7065
     }
   ],
+  "externalBenchmark": {
+    "name": "Explicit Edit Benchmark",
+    "maintainer": "alexshpunt",
+    "source": "https://github.com/alexshpunt/explicit-edit-benchmark",
+    "explorerUrl": "https://huggingface.co/spaces/alexshpunt/benchmark-explorer?card=harness%3Api-hashline-edit-pro%40latest",
+    "harness": "pi-hashline-edit-pro",
+    "tasks": 226,
+    "observations": 1808,
+    "configurationCount": 8,
+    "firstExact": 98.2,
+    "finalExact": 100,
+    "quality": 98.6,
+    "asOf": "2026-09-28"
+  },
   "benchmark": {
     "source": "https://github.com/YuGiMob/pi-edit-benchmark",
     "reportUrl": "https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/llm-report.json",

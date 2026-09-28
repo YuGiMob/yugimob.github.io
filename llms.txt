@@ -18,6 +18,7 @@ If you run coding agents against real repositories, you have watched at least on
 
 ## Evidence
 
+- [Explicit Edit Benchmark (third-party)](https://huggingface.co/spaces/alexshpunt/benchmark-explorer?card=harness%3Api-hashline-edit-pro%40latest): 98.6% median quality over 8 complete model-route configurations, 98.2% first exact and 100% final exact across 226 byte-exact tasks (1,808 observations); maintained by alexshpunt
 - [pi-edit-benchmark](https://github.com/YuGiMob/pi-edit-benchmark): pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness. 9 contenders over 10 models × 34 scenarios, 340 runs each (3,060 total).
 - [hashline-edit-pro](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-hashline-edit-pro-b9-boundary-changed.json) v4.4.1: 99.4% overall, 100.0% staleness across 340 runs
 - [builtin-bash](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/builtin-bash-b10-duplicate-drift.json) v0.87.0: 92.9% overall, 90.9% staleness across 340 runs; -9.7 to -3.7 points, Holm-adjusted p=< 0.001 against the highlighted tool

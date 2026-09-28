@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { benchmarkSnapshot, buildActivity, buildDaily, buildHighlights, buildScenarioMatrix, scenarioCoverage, upsertHistory } from '../scripts/refresh-lib.mjs';
+import { benchmarkSnapshot, buildActivity, buildDaily, buildHighlights, buildScenarioMatrix, externalBenchmarkSnapshot, scenarioCoverage, upsertHistory } from '../scripts/refresh-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -182,4 +182,42 @@ test('buildScenarioMatrix dedupes declared models and drops runs it cannot place
     ['a'],
   );
   assert.deepEqual(unplaceable.cells, [[[[], 0]]]);
+});
+
+test('externalBenchmarkSnapshot reads the harness family and rounds to a tenth', () => {
+  const views = {
+    groups: {
+      harnessFamily: {
+        'pi-hashline-edit-pro': {
+          firstExactRate: 0.9823008849557522,
+          finalExactRate: 1,
+          qualityScore: 0.9861725663716814,
+          taskCount: 226,
+          observations: 1808,
+          configurationCount: 8,
+        },
+      },
+    },
+  };
+  assert.deepEqual(externalBenchmarkSnapshot(views), {
+    name: 'Explicit Edit Benchmark',
+    maintainer: 'alexshpunt',
+    source: 'https://github.com/alexshpunt/explicit-edit-benchmark',
+    explorerUrl: 'https://huggingface.co/spaces/alexshpunt/benchmark-explorer?card=harness%3Api-hashline-edit-pro%40latest',
+    harness: 'pi-hashline-edit-pro',
+    tasks: 226,
+    observations: 1808,
+    configurationCount: 8,
+    firstExact: 98.2,
+    finalExact: 100,
+    quality: 98.6,
+  });
+});
+
+test('externalBenchmarkSnapshot refuses a missing or malformed family', () => {
+  assert.equal(externalBenchmarkSnapshot(null), null);
+  assert.equal(externalBenchmarkSnapshot({ groups: {} }), null);
+  assert.equal(externalBenchmarkSnapshot({ groups: { harnessFamily: { other: {} } } }), null);
+  assert.equal(externalBenchmarkSnapshot({ groups: { harnessFamily: { 'pi-hashline-edit-pro': { firstExactRate: 'high' } } } }), null);
+  assert.equal(externalBenchmarkSnapshot({ groups: { harnessFamily: { 'pi-hashline-edit-pro': { firstExactRate: 0.5, finalExactRate: 1, qualityScore: 0.625, taskCount: 226.5, observations: 8, configurationCount: 2 } } } }), null);
 });

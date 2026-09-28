@@ -88,6 +88,7 @@ globalThis.fetch = async (url, options = {}) => {
     return jsonResponse(Object.fromEntries(names.map((name) => [name, fixtureJson(`npm-${name}.json`)])));
   }
   if (target.endsWith('/llm-report.json')) return jsonResponse(fixtureJson(REPORT));
+  if (target.endsWith('/views.json')) return conditionalJson(target, fixtureJson('views.json'), options);
   if (target.endsWith('/scenarios/index.ts')) return textResponse(fixtureText('scenarios-index.ts'));
   if (target.endsWith('/scenarios/better-edit.ts')) return textResponse(fixtureText('scenarios-better-edit.ts'));
   return jsonResponse(null, 404);

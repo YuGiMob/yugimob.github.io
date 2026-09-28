@@ -395,6 +395,19 @@ function validateBenchmark(benchmark) {
   validateCosts(benchmark);
 }
 
+function validateExternalBenchmark(external) {
+  if (!isPlainObject(external)) fail('externalBenchmark must be an object');
+  const derived = external.observations / external.tasks;
+  if (!Number.isInteger(derived) || derived !== external.configurationCount) {
+    fail('externalBenchmark configurationCount does not match observations / tasks');
+  }
+  if (external.finalExact < external.firstExact) fail('externalBenchmark finalExact is below firstExact');
+  const balanced = 0.75 * external.firstExact + 0.25 * external.finalExact;
+  if (Math.abs(balanced - external.quality) > 1) {
+    fail('externalBenchmark quality is not within one point of 0.75 × firstExact + 0.25 × finalExact');
+  }
+}
+
 function validateBenchmarkHistory(benchmark, history) {
   if (!Array.isArray(history) || history.length === 0) return;
   const snapshot = benchmarkSnapshot(benchmark);
@@ -451,6 +464,7 @@ const declaredNames = isPlainObject(data) && Array.isArray(data.projects) && dat
 
 if (isPlainObject(data)) run(() => validateProjects(data.projects));
 if (isPlainObject(data)) run(() => validateBenchmark(data.benchmark));
+if (isPlainObject(data) && data.externalBenchmark !== undefined) run(() => validateExternalBenchmark(data.externalBenchmark));
 if (isPlainObject(showcase)) run(() => validateShowcase(showcase, declaredNames));
 if (isPlainObject(data)) {
   run(() => {

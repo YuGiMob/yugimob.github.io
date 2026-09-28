@@ -94,6 +94,10 @@ export function buildLlmsTxt(siteData, showcase) {
     const runs = `${benchmark.contenderCount} contenders over ${benchmark.models} models × ${benchmark.scenarios} scenarios, ${benchmark.runsPerContender} runs each (${formatNumber(benchmark.totalRuns)} total).`;
     lines.push('## Evidence');
     lines.push('');
+    if (siteData.externalBenchmark) {
+      const external = siteData.externalBenchmark;
+      lines.push(dataLine(`${external.name} (third-party)`, external.explorerUrl, `${external.quality}% median quality over ${formatNumber(external.configurationCount)} complete model-route configurations, ${external.firstExact}% first exact and ${external.finalExact}% final exact across ${formatNumber(external.tasks)} byte-exact tasks (${formatNumber(external.observations)} observations); maintained by ${external.maintainer}`));
+    }
     lines.push(dataLine(evidence.name, benchmark.source, `${firstSentence(evidence.answer)} ${runs}`));
     for (const contender of benchmark.contenders ?? []) {
       const splits = [`${contender.overall.toFixed(1)}% overall`];
@@ -173,9 +177,18 @@ export function buildIndexMd(siteData, showcase) {
     lines.push(evidence.problem);
     lines.push('');
     const project = projects.get(evidence.name);
+    const external = siteData.externalBenchmark;
+    if (external) {
+      lines.push(`**Third-party check:** [${external.name}](${external.explorerUrl}) scores ${external.harness} at ${external.quality}% median quality over ${formatNumber(external.configurationCount)} complete model-route configurations, with ${external.firstExact}% first exact and ${external.finalExact}% final exact across ${formatNumber(external.tasks)} byte-exact tasks. Maintained by ${external.maintainer}.`);
+      lines.push('');
+    }
     const built = project ? `**Built:** [${project.name}](${project.url}) — ${evidence.answer}` : evidence.answer;
     lines.push(built);
     lines.push('');
+    if (evidence.disclosure) {
+      lines.push(evidence.disclosure);
+      lines.push('');
+    }
     for (const highlight of evidence.highlights ?? []) lines.push(`- ${highlight}`);
     lines.push('');
     if (benchmark) {
