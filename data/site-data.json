@@ -14,13 +14,13 @@
       "name": "pi-hashline-edit-pro",
       "description": "Hash-anchored read/replace/insert/grep/undo tools for the pi coding agent; every line gets a unique 4-character anchor",
       "language": "TypeScript",
-      "stars": 97,
+      "stars": 99,
       "forks": 30,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
       "npmWeeklyDownloads": 5326,
-      "pushedAt": "2026-09-28T13:52:37Z"
+      "pushedAt": "2026-09-29T05:17:44Z"
     },
     {
       "name": "pi-tor-proxy",
@@ -83,32 +83,27 @@
     }
   ],
   "stats": {
-    "totalStars": 106,
+    "totalStars": 108,
     "npmPackages": 5,
     "publicRepos": 13,
     "forksReceived": 31
   },
   "activity": {
-    "window": "2026-08-28..2026-09-28",
-    "pushes": 157,
+    "window": "2026-08-29..2026-09-29",
+    "pushes": 159,
     "highlights": [
+      "closed issue #141 on alexshpunt/explicit-edit-benchmark",
+      "opened issue #141 on alexshpunt/explicit-edit-benchmark",
       "starred alexshpunt/explicit-edit-benchmark",
       "opened issue #4 on k0valik/pi-edit-guard",
-      "closed issue #45 on YuGiMob/pi-hashline-edit-pro",
-      "closed issue #44 on YuGiMob/pi-hashline-edit-pro",
-      "closed issue #46 on YuGiMob/pi-hashline-edit-pro"
+      "closed issue #45 on YuGiMob/pi-hashline-edit-pro"
     ],
-    "fetchedAt": "2026-09-28",
+    "fetchedAt": "2026-09-29",
     "daily": [
       {
-        "date": "2026-08-28",
-        "events": 6,
-        "pushes": 6
-      },
-      {
         "date": "2026-08-29",
-        "events": 7,
-        "pushes": 3
+        "events": 2,
+        "pushes": 1
       },
       {
         "date": "2026-08-30",
@@ -257,8 +252,13 @@
       },
       {
         "date": "2026-09-28",
-        "events": 4,
-        "pushes": 1
+        "events": 12,
+        "pushes": 5
+      },
+      {
+        "date": "2026-09-29",
+        "events": 8,
+        "pushes": 6
       }
     ]
   },
@@ -294,6 +294,11 @@
       "date": "2026-09-28",
       "totalStars": 106,
       "totalDownloads": 7065
+    },
+    {
+      "date": "2026-09-29",
+      "totalStars": 108,
+      "totalDownloads": 7065
     }
   ],
   "externalBenchmark": {
@@ -303,12 +308,12 @@
     "explorerUrl": "https://huggingface.co/spaces/alexshpunt/benchmark-explorer?card=harness%3Api-hashline-edit-pro%40latest",
     "harness": "pi-hashline-edit-pro",
     "tasks": 226,
-    "observations": 1808,
-    "configurationCount": 8,
+    "observations": 2712,
+    "configurationCount": 12,
     "firstExact": 98.2,
     "finalExact": 100,
-    "quality": 98.6,
-    "asOf": "2026-09-28"
+    "quality": 98.7,
+    "asOf": "2026-09-29"
   },
   "benchmark": {
     "source": "https://github.com/YuGiMob/pi-edit-benchmark",
