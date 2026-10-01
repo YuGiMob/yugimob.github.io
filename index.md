@@ -21,7 +21,7 @@ Line numbers shift the moment anything above them changes, and fuzzy matching wi
 - Undo restores the exact bytes
 - Edits to one file land as a single atomic batch
 
-Install: `pi install npm:pi-hashline-edit-pro`. Stars 101, 4,875 npm installs per week.
+Install: `pi install npm:pi-hashline-edit-pro`. Stars 102, 4,528 npm installs per week.
 
 ### 02. Web access costs a key and returns soup
 
@@ -34,7 +34,7 @@ Almost every way to give an agent the web wants an API key, a paid tier, or a br
 - SSRF guard and a 512 KiB cap
 - Jina Reader fallback for JavaScript pages
 
-Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 656 npm installs per week.
+Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 596 npm installs per week.
 
 ### 03. Agent traffic leaks where it comes from
 
@@ -47,7 +47,7 @@ The moment an agent fetches a URL, your IP and your resolver are part of the req
 - Exit IP checked against check.torproject.org
 - Nothing to configure in your other tools
 
-Install: `pi install npm:pi-tor-proxy`. Stars 3, 100 npm installs per week.
+Install: `pi install npm:pi-tor-proxy`. Stars 3, 74 npm installs per week.
 
 ### 04. Long runs forget the plan
 
@@ -60,7 +60,7 @@ Ask an agent to review a change in three passes and the original plan, the corre
 - Rounds reset the context between passes
 - Start, loop, and finish as configuration
 
-Install: `pi install npm:pi-msg-workflow`. Stars 1, 251 npm installs per week.
+Install: `pi install npm:pi-msg-workflow`. Stars 1, 165 npm installs per week.
 
 ### 05. The agent commits like it owns the repo
 
@@ -73,7 +73,7 @@ An agent with shell access will eventually run git commit -am "fix", or stage a 
 - The flow opens only after /commit
 - One guard instead of prompt heroics
 
-Install: `pi install npm:pi-git-commit`. Stars 1, 178 npm installs per week.
+Install: `pi install npm:pi-git-commit`. Stars 1, 132 npm installs per week.
 
 ## Evidence
 
@@ -81,7 +81,7 @@ Install: `pi install npm:pi-git-commit`. Stars 1, 178 npm installs per week.
 
 Editing-tool READMEs ship with a demo GIF and a claim, and almost none of them publish the runs where they lose. If the only evidence is a highlight reel, it is not evidence; it is marketing with extra steps.
 
-**Third-party check:** [Explicit Edit Benchmark](https://huggingface.co/spaces/alexshpunt/benchmark-explorer?card=harness%3Api-hashline-edit-pro%40latest) scores pi-hashline-edit-pro at 98.7% median quality over 12 complete model-route configurations, with 98.2% first exact and 100% final exact across 226 byte-exact tasks. Maintained by alexshpunt.
+**Third-party check:** [Explicit Edit Benchmark](https://huggingface.co/spaces/alexshpunt/benchmark-explorer?card=harness%3Api-hashline-edit-pro%40latest) scores pi-hashline-edit-pro at 98.7% median quality over 15 complete model-route configurations, with 98.2% first exact and 100% final exact across 226 byte-exact tasks. Maintained by alexshpunt.
 
 **Built:** [pi-edit-benchmark](https://github.com/YuGiMob/pi-edit-benchmark) — pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness. The headline number is a pass rate; the staleness split is scored separately, where a silent mis-edit is worse than a refusal. Every contender links to a committed trace, including the runs my own tool fails.
 

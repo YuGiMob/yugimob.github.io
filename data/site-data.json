@@ -14,13 +14,13 @@
       "name": "pi-hashline-edit-pro",
       "description": "Hash-anchored read/replace/insert/grep/undo tools for the pi coding agent; every line gets a unique 4-character anchor",
       "language": "TypeScript",
-      "stars": 101,
+      "stars": 102,
       "forks": 31,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
-      "npmWeeklyDownloads": 4875,
-      "pushedAt": "2026-09-30T10:03:32Z"
+      "npmWeeklyDownloads": 4528,
+      "pushedAt": "2026-09-30T17:30:54Z"
     },
     {
       "name": "pi-tor-proxy",
@@ -31,7 +31,7 @@
       "url": "https://github.com/YuGiMob/pi-tor-proxy",
       "npm": "pi-tor-proxy",
       "license": "MIT",
-      "npmWeeklyDownloads": 100,
+      "npmWeeklyDownloads": 74,
       "pushedAt": "2026-09-21T23:06:20Z"
     },
     {
@@ -43,7 +43,7 @@
       "url": "https://github.com/YuGiMob/pi-git-commit",
       "npm": "pi-git-commit",
       "license": "MIT",
-      "npmWeeklyDownloads": 178,
+      "npmWeeklyDownloads": 132,
       "pushedAt": "2026-09-21T22:06:19Z"
     },
     {
@@ -55,7 +55,7 @@
       "url": "https://github.com/YuGiMob/pi-msg-workflow",
       "npm": "pi-msg-workflow",
       "license": "MIT",
-      "npmWeeklyDownloads": 251,
+      "npmWeeklyDownloads": 165,
       "pushedAt": "2026-09-21T22:52:27Z"
     },
     {
@@ -67,7 +67,7 @@
       "url": "https://github.com/YuGiMob/pi-unsloth-webtools",
       "npm": "pi-unsloth-webtools",
       "license": "AGPL-3.0",
-      "npmWeeklyDownloads": 656,
+      "npmWeeklyDownloads": 596,
       "pushedAt": "2026-09-26T09:51:49Z"
     },
     {
@@ -83,14 +83,14 @@
     }
   ],
   "stats": {
-    "totalStars": 110,
+    "totalStars": 111,
     "npmPackages": 5,
     "publicRepos": 13,
     "forksReceived": 32
   },
   "activity": {
     "window": "2026-08-29..2026-09-30",
-    "pushes": 162,
+    "pushes": 164,
     "highlights": [
       "closed issue #51 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #55 on YuGiMob/pi-hashline-edit-pro",
@@ -98,7 +98,7 @@
       "opened issue #141 on alexshpunt/explicit-edit-benchmark",
       "starred alexshpunt/explicit-edit-benchmark"
     ],
-    "fetchedAt": "2026-09-30",
+    "fetchedAt": "2026-10-01",
     "daily": [
       {
         "date": "2026-08-29",
@@ -262,8 +262,8 @@
       },
       {
         "date": "2026-09-30",
-        "events": 7,
-        "pushes": 4
+        "events": 10,
+        "pushes": 6
       }
     ]
   },
@@ -309,6 +309,11 @@
       "date": "2026-09-30",
       "totalStars": 110,
       "totalDownloads": 6060
+    },
+    {
+      "date": "2026-10-01",
+      "totalStars": 111,
+      "totalDownloads": 5495
     }
   ],
   "externalBenchmark": {
@@ -318,12 +323,12 @@
     "explorerUrl": "https://huggingface.co/spaces/alexshpunt/benchmark-explorer?card=harness%3Api-hashline-edit-pro%40latest",
     "harness": "pi-hashline-edit-pro",
     "tasks": 226,
-    "observations": 2712,
-    "configurationCount": 12,
+    "observations": 3390,
+    "configurationCount": 15,
     "firstExact": 98.2,
     "finalExact": 100,
     "quality": 98.7,
-    "asOf": "2026-09-29"
+    "asOf": "2026-10-01"
   },
   "benchmark": {
     "source": "https://github.com/YuGiMob/pi-edit-benchmark",
