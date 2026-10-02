@@ -14,12 +14,12 @@
       "name": "pi-hashline-edit-pro",
       "description": "Hash-anchored read/replace/insert/grep/undo tools for the pi coding agent; every line gets a unique 4-character anchor",
       "language": "TypeScript",
-      "stars": 102,
+      "stars": 101,
       "forks": 31,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
-      "npmWeeklyDownloads": 4528,
+      "npmWeeklyDownloads": 5462,
       "pushedAt": "2026-09-30T17:30:54Z"
     },
     {
@@ -31,7 +31,7 @@
       "url": "https://github.com/YuGiMob/pi-tor-proxy",
       "npm": "pi-tor-proxy",
       "license": "MIT",
-      "npmWeeklyDownloads": 74,
+      "npmWeeklyDownloads": 58,
       "pushedAt": "2026-09-21T23:06:20Z"
     },
     {
@@ -43,7 +43,7 @@
       "url": "https://github.com/YuGiMob/pi-git-commit",
       "npm": "pi-git-commit",
       "license": "MIT",
-      "npmWeeklyDownloads": 132,
+      "npmWeeklyDownloads": 88,
       "pushedAt": "2026-09-21T22:06:19Z"
     },
     {
@@ -55,7 +55,7 @@
       "url": "https://github.com/YuGiMob/pi-msg-workflow",
       "npm": "pi-msg-workflow",
       "license": "MIT",
-      "npmWeeklyDownloads": 165,
+      "npmWeeklyDownloads": 115,
       "pushedAt": "2026-09-21T22:52:27Z"
     },
     {
@@ -67,7 +67,7 @@
       "url": "https://github.com/YuGiMob/pi-unsloth-webtools",
       "npm": "pi-unsloth-webtools",
       "license": "AGPL-3.0",
-      "npmWeeklyDownloads": 596,
+      "npmWeeklyDownloads": 438,
       "pushedAt": "2026-09-26T09:51:49Z"
     },
     {
@@ -83,14 +83,14 @@
     }
   ],
   "stats": {
-    "totalStars": 111,
+    "totalStars": 110,
     "npmPackages": 5,
     "publicRepos": 13,
     "forksReceived": 32
   },
   "activity": {
     "window": "2026-08-29..2026-09-30",
-    "pushes": 164,
+    "pushes": 162,
     "highlights": [
       "closed issue #51 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #55 on YuGiMob/pi-hashline-edit-pro",
@@ -98,7 +98,7 @@
       "opened issue #141 on alexshpunt/explicit-edit-benchmark",
       "starred alexshpunt/explicit-edit-benchmark"
     ],
-    "fetchedAt": "2026-10-01",
+    "fetchedAt": "2026-10-02",
     "daily": [
       {
         "date": "2026-08-29",
@@ -117,8 +117,8 @@
       },
       {
         "date": "2026-09-01",
-        "events": 5,
-        "pushes": 5
+        "events": 3,
+        "pushes": 3
       },
       {
         "date": "2026-09-02",
@@ -314,6 +314,11 @@
       "date": "2026-10-01",
       "totalStars": 111,
       "totalDownloads": 5495
+    },
+    {
+      "date": "2026-10-02",
+      "totalStars": 110,
+      "totalDownloads": 6161
     }
   ],
   "externalBenchmark": {
