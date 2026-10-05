@@ -14,13 +14,13 @@
       "name": "pi-hashline-edit-pro",
       "description": "Hash-anchored read/replace/insert/grep/undo tools for the pi coding agent; every line gets a unique 4-character anchor",
       "language": "TypeScript",
-      "stars": 101,
+      "stars": 102,
       "forks": 32,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
-      "npmWeeklyDownloads": 6035,
-      "pushedAt": "2026-10-02T12:28:55Z"
+      "npmWeeklyDownloads": 5934,
+      "pushedAt": "2026-10-05T10:08:38Z"
     },
     {
       "name": "pi-tor-proxy",
@@ -31,7 +31,7 @@
       "url": "https://github.com/YuGiMob/pi-tor-proxy",
       "npm": "pi-tor-proxy",
       "license": "MIT",
-      "npmWeeklyDownloads": 40,
+      "npmWeeklyDownloads": 38,
       "pushedAt": "2026-09-21T23:06:20Z"
     },
     {
@@ -43,8 +43,8 @@
       "url": "https://github.com/YuGiMob/pi-git-commit",
       "npm": "pi-git-commit",
       "license": "MIT",
-      "npmWeeklyDownloads": 48,
-      "pushedAt": "2026-09-21T22:06:19Z"
+      "npmWeeklyDownloads": 50,
+      "pushedAt": "2026-10-05T06:31:05Z"
     },
     {
       "name": "pi-msg-workflow",
@@ -67,8 +67,8 @@
       "url": "https://github.com/YuGiMob/pi-unsloth-webtools",
       "npm": "pi-unsloth-webtools",
       "license": "AGPL-3.0",
-      "npmWeeklyDownloads": 378,
-      "pushedAt": "2026-10-04T11:52:19Z"
+      "npmWeeklyDownloads": 888,
+      "pushedAt": "2026-10-05T08:06:44Z"
     },
     {
       "name": "pi-edit-benchmark",
@@ -83,13 +83,13 @@
     }
   ],
   "stats": {
-    "totalStars": 111,
+    "totalStars": 112,
     "npmPackages": 5,
     "publicRepos": 13,
     "forksReceived": 33
   },
   "activity": {
-    "window": "2026-08-29..2026-10-04",
+    "window": "2026-09-03..2026-10-05",
     "pushes": 157,
     "highlights": [
       "starred kunkun9527/pi-hashline-edit-pro-lean",
@@ -98,41 +98,16 @@
       "closed issue #51 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #55 on YuGiMob/pi-hashline-edit-pro"
     ],
-    "fetchedAt": "2026-10-04",
+    "fetchedAt": "2026-10-05",
     "daily": [
       {
-        "date": "2026-08-29",
-        "events": 1,
-        "pushes": 0
-      },
-      {
-        "date": "2026-08-30",
-        "events": 0,
-        "pushes": 0
-      },
-      {
-        "date": "2026-08-31",
-        "events": 0,
-        "pushes": 0
-      },
-      {
-        "date": "2026-09-01",
-        "events": 0,
-        "pushes": 0
-      },
-      {
-        "date": "2026-09-02",
-        "events": 0,
-        "pushes": 0
-      },
-      {
         "date": "2026-09-03",
-        "events": 12,
-        "pushes": 12
+        "events": 7,
+        "pushes": 7
       },
       {
         "date": "2026-09-04",
-        "events": 4,
+        "events": 3,
         "pushes": 3
       },
       {
@@ -257,7 +232,7 @@
       },
       {
         "date": "2026-09-29",
-        "events": 8,
+        "events": 9,
         "pushes": 6
       },
       {
@@ -277,13 +252,18 @@
       },
       {
         "date": "2026-10-03",
-        "events": 3,
-        "pushes": 0
+        "events": 4,
+        "pushes": 1
       },
       {
         "date": "2026-10-04",
         "events": 2,
         "pushes": 2
+      },
+      {
+        "date": "2026-10-05",
+        "events": 4,
+        "pushes": 4
       }
     ]
   },
@@ -349,6 +329,11 @@
       "date": "2026-10-04",
       "totalStars": 111,
       "totalDownloads": 6553
+    },
+    {
+      "date": "2026-10-05",
+      "totalStars": 112,
+      "totalDownloads": 6962
     }
   ],
   "externalBenchmark": {
