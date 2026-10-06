@@ -21,7 +21,7 @@ Line numbers shift the moment anything above them changes, and fuzzy matching wi
 - Undo restores the exact bytes
 - Edits to one file land as a single atomic batch
 
-Install: `pi install npm:pi-hashline-edit-pro`. Stars 102, 5,934 npm installs per week.
+Install: `pi install npm:pi-hashline-edit-pro`. Stars 105, 5,934 npm installs per week.
 
 ### 02. Web access costs a key and returns soup
 
