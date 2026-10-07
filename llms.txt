@@ -10,7 +10,7 @@ If you run coding agents against real repositories, you have watched at least on
 
 ## Tools
 
-- [pi-hashline-edit-pro](https://github.com/YuGiMob/pi-hashline-edit-pro): Every served line gets its own four-letter anchor. Install: `pi install npm:pi-hashline-edit-pro`. Stars 105, 5,934 npm installs per week.
+- [pi-hashline-edit-pro](https://github.com/YuGiMob/pi-hashline-edit-pro): Every served line gets its own four-letter anchor. Install: `pi install npm:pi-hashline-edit-pro`. Stars 106, 5,934 npm installs per week.
 - [pi-unsloth-webtools](https://github.com/YuGiMob/pi-unsloth-webtools): One tool for search, one for fetch, one for pages that need JavaScript. Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 888 npm installs per week.
 - [pi-tor-proxy](https://github.com/YuGiMob/pi-tor-proxy): The extension downloads its own Tor binary, verifies it against a SHA-256 hash, and routes every request through it. Install: `pi install npm:pi-tor-proxy`. Stars 3, 38 npm installs per week.
 - [pi-msg-workflow](https://github.com/YuGiMob/pi-msg-workflow): Numbered message and command stores keep the plan outside the conversation, where you can edit it. Install: `pi install npm:pi-msg-workflow`. Stars 1, 52 npm installs per week.
