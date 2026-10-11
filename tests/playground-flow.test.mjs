@@ -21,14 +21,14 @@ test('the guided run replaces, inserts, greps, refuses, retries, and undoes', ()
   let targetAnchor = current.lines[PLAYGROUND_TARGET].anchor;
   const untouched = original.filter((unused, index) => index !== PLAYGROUND_TARGET).map((line) => line.anchor);
 
-  const landed = replace(current, { remove_from: targetAnchor, replacement_lines: [PLAYGROUND_REPLACEMENT] });
+  const landed = replace(current, { remove_from: targetAnchor, text: PLAYGROUND_REPLACEMENT });
   assert.equal(landed.ok, true);
   assert.equal(current.lines[PLAYGROUND_TARGET].text, PLAYGROUND_REPLACEMENT);
   assert.notEqual(current.lines[PLAYGROUND_TARGET].anchor, targetAnchor);
   for (const anchor of untouched) assert.equal(current.anchors.has(anchor), true);
   targetAnchor = current.lines[PLAYGROUND_TARGET].anchor;
 
-  const inserted = insert(current, { anchor: targetAnchor, direction: 'after', lines: PLAYGROUND_INSERTED });
+  const inserted = insert(current, { anchor: targetAnchor, direction: 'after', text: PLAYGROUND_INSERTED.join('\n') });
   assert.equal(inserted.ok, true);
   assert.equal(current.lines[PLAYGROUND_TARGET + 1].text, PLAYGROUND_INSERTED[0]);
   assert.equal(current.lines[PLAYGROUND_TARGET].anchor, targetAnchor);
@@ -42,12 +42,12 @@ test('the guided run replaces, inserts, greps, refuses, retries, and undoes', ()
 
   externalEdit(current, targetAnchor, PLAYGROUND_DRIFT);
   assert.equal(isStale(current, current.lines[PLAYGROUND_TARGET]), true);
-  const refused = replace(current, { remove_from: targetAnchor, replacement_lines: [PLAYGROUND_REPLACEMENT] });
+  const refused = replace(current, { remove_from: targetAnchor, text: PLAYGROUND_REPLACEMENT });
   assert.equal(refused.ok, false);
   assert.equal(refused.code, 'E_RANGE_STALE');
   assert.ok(refused.rows.some((row) => row.kind === 'context' && row.text === PLAYGROUND_DRIFT));
 
-  const retried = replace(current, { remove_from: targetAnchor, replacement_lines: [PLAYGROUND_REPLACEMENT] });
+  const retried = replace(current, { remove_from: targetAnchor, text: PLAYGROUND_REPLACEMENT });
   assert.equal(retried.ok, true);
   assert.equal(current.lines[PLAYGROUND_TARGET].text, PLAYGROUND_REPLACEMENT);
 

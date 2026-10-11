@@ -12,7 +12,7 @@
   "projects": [
     {
       "name": "pi-hashline-edit-pro",
-      "description": "Hash-anchored read/replace/insert/grep/undo tools for the pi coding agent; every line gets a unique 4-character anchor",
+      "description": "Anchor-addressed read, replace, replace_match, insert, copy, move, grep, and undo_last_change tools for the pi coding agent; every served line gets a unique 4-character anchor",
       "language": "TypeScript",
       "stars": 108,
       "forks": 32,
@@ -24,7 +24,7 @@
     },
     {
       "name": "pi-tor-proxy",
-      "description": "Routes pi agent requests through Tor with a self-managed binary, per-instance circuits, and a verified exit IP",
+      "description": "Routes pi agent requests through Tor with a self-managed, hash-verified binary, per-instance circuits via IsolateSOCKSAuth, and an exit IP verified against check.torproject.org",
       "language": "TypeScript",
       "stars": 3,
       "forks": 0,
@@ -36,7 +36,7 @@
     },
     {
       "name": "pi-git-commit",
-      "description": "Safe commit flow for pi: bash git guard + git_commit tool + /commit",
+      "description": "Safe commit and amend flow for pi: bash git guard, git_commit and git_amend tools, /commit and /amend",
       "language": "TypeScript",
       "stars": 2,
       "forks": 1,
@@ -48,7 +48,7 @@
     },
     {
       "name": "pi-msg-workflow",
-      "description": "Numbered message and command stores plus configurable multi-round review workflows (/msg, /cmd, /workflow)",
+      "description": "Numbered message and command stores plus configurable multi-round review workflows (/msg, /cmd, /workflow) with an interactive /workflow-edit overlay",
       "language": "TypeScript",
       "stars": 1,
       "forks": 0,
@@ -60,7 +60,7 @@
     },
     {
       "name": "pi-unsloth-webtools",
-      "description": "web_search, web_fetch, and web_render tools ported from the Unsloth Studio codebase (multi-engine DDGS search, HTML-to-Markdown and PDF extraction, Jina Reader rendering)",
+      "description": "Keyless web_search and web_fetch tools derived from Unsloth Studio: multi-engine search with reciprocal-rank fusion, HTML-to-Markdown and PDF extraction, a browser-fingerprint transport, and local Lightpanda rendering",
       "language": "TypeScript",
       "stars": 2,
       "forks": 0,

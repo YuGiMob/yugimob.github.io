@@ -27,7 +27,7 @@ The benchmark at the end shows the runs, including the ones the flagship loses.
   - pi-hashline-edit-pro gets the flagship treatment with an interactive
     hashline playground: real 4-letter anchor allocation, a served-row record,
     real `[E_RANGE_STALE]` refusals, and a guided eight-step run through one
-    edit (read, replace, insert, `anchor_grep`, drift, refusal, retry, undo)
+    edit (read, replace, insert, `grep`, drift, refusal, retry, undo)
     that can be linked at any step with `?step=N`.
   - The other entries run a pipeline graph (pi-unsloth-webtools), a Tor circuit
     (pi-tor-proxy), a workflow pipeline (pi-msg-workflow), and a guarded commit

@@ -40,16 +40,16 @@ function typeLines(container, lines, runtime, onDone) {
 }
 
 function webToolsDemo() {
-  const { root, stage } = frame('web_search · web_fetch · web_render', 'no api key');
+  const { root, stage } = frame('web_search · web_fetch', 'no api key');
 
   const lanes = [
-    { tool: 'web_search', stages: [['DDGS.text()', '7 engines'], ['dedupe + rank', 'SimpleFilterRanker'], ['results', 'Title · URL · Snippet']] },
-    { tool: 'web_fetch', stages: [['normalize', 'http · https only'], ['resolve + pin', 'SSRF guard'], ['text + metadata', '512 KiB cap · 5 hops']] },
-    { tool: 'web_render', stages: [['Jina Reader', 'third-party'], ['Markdown', 'JavaScript pages']] },
+    { tool: 'web_search', stages: [['engine sweep', 'duckduckgo · startpage'], ['canonicalize + fuse', 'href dedupe · rank fusion'], ['snippets', 'title · url · snippet']] },
+    { tool: 'web_fetch', stages: [['normalize + validate', 'http · https only'], ['resolve + pin', 'pinned before connect'], ['extract', 'markdown · pdf · metadata']] },
+    { tool: 'on refusal', stages: [['browser fingerprint', 'chrome tls shape'], ['local render', 'lightpanda · no third party']] },
   ];
 
   function diagram(prefix) {
-    const svgRoot = svg('svg', { class: 'flow-svg', role: 'img', 'aria-label': 'How the three webtools run internally: search fans out to seven engines and reranks the hrefs, fetch normalizes and pins the resolved address before extracting HTML or PDF text, and render sends JavaScript pages through the Jina Reader' });
+    const svgRoot = svg('svg', { class: 'flow-svg', role: 'img', 'aria-label': 'How web_search and web_fetch work internally: search sweeps the engines and fuses their orderings, fetch validates and pins the resolved address before extracting HTML or PDF text, and a refused or JavaScript-rendered page escalates to a browser-fingerprint retry and a local Lightpanda render' });
     const defs = svg('defs');
     const arrowId = `${prefix}-arrow`;
     const warnId = `${prefix}-arrow-warn`;
@@ -96,12 +96,12 @@ function webToolsDemo() {
       wide.wire(`M ${from} ${y + 22} L ${columns[stageIndex] - 6} ${y + 22}`);
     });
   });
-  wide.text(280, 68, 'flow-sub', 'duckduckgo · brave · google · mojeek · yahoo · yandex · wikipedia');
+  wide.text(280, 68, 'flow-sub', 'duckduckgo · startpage by default · yandex opt-in');
   const wideFetchBottom = wideLaneY(1) + 44;
   const wideFallbackTo = wideLaneY(2) - 6;
   const wideMiddle = columns[1] + widths[1] / 2;
   wide.wire(`M ${wideMiddle} ${wideFetchBottom} L ${wideMiddle} ${wideFallbackTo}`, true);
-  wide.text(wideMiddle + 8, (wideFetchBottom + wideFallbackTo) / 2, 'flow-edge-label', '403 · JS page', 'start');
+  wide.text(wideMiddle + 8, (wideFetchBottom + wideFallbackTo) / 2, 'flow-edge-label', '403 · JavaScript', 'start');
 
   const tall = diagram('flow-tall');
   tall.svgRoot.setAttribute('viewBox', '0 0 280 620');
@@ -126,9 +126,9 @@ function webToolsDemo() {
   const tallFetchBottom = tallLaneTops[1] + (lanes[1].stages.length - 1) * TALL_STAGE + TALL_PLATE;
   const tallFallbackTo = tallLaneTops[2] - 4;
   tall.wire(`M 140 ${tallFetchBottom} L 140 ${tallFallbackTo}`, true);
-  tall.text(148, (tallFetchBottom + tallFallbackTo) / 2, 'flow-edge-label', '403 · JS page', 'start');
+  tall.text(148, (tallFetchBottom + tallFallbackTo) / 2, 'flow-edge-label', '403 · JavaScript', 'start');
 
-  const note = el('p', 'flow-note', 'web_fetch · local files and private addresses allowed by default');
+  const note = el('p', 'flow-note', 'web_fetch · local files and private addresses allowed by default; the SSRF guard is opt-in');
   append(stage, wide.svgRoot, tall.svgRoot, note);
 
   return createController(root, () => {});
@@ -432,12 +432,15 @@ function gitDemo() {
 
   const lines = [
     { text: '$ git commit -am "quick fix"', cls: 'is-cmd', speed: 18 },
-    { text: 'error · mutative git commands are blocked. Run /toggle-allow-git to allow them for this session.', cls: 'is-err', speed: 8 },
+    { text: 'error · Mutative git commands are blocked. Ask the user to run /toggle-allow-git to allow them for this session.', cls: 'is-err', speed: 8 },
     { text: '$ /commit', cls: 'is-cmd', speed: 18, pause: 320 },
     { text: '✓ staged 4 files · diff summary in the transcript (ctrl+o to expand)', cls: 'is-ok', speed: 10 },
     { text: '$ pi › git_commit(type: "FIX", message: "guard the commit path")', cls: 'is-cmd', speed: 12, pause: 320 },
     { text: '✓ commit 9c1f3a2  FIX: guard the commit path', cls: 'is-ok', speed: 14 },
     { text: '   git_commit refuses until /commit opens the flow', cls: 'is-dim', speed: 12 },
+    { text: '$ /amend tighten the subject', cls: 'is-cmd', speed: 18, pause: 320 },
+    { text: '✓ amended 9c1f3a2  FIX: guard the commit path', cls: 'is-ok', speed: 14 },
+    { text: '   git_amend rewrites the message and timestamp only', cls: 'is-dim', speed: 12 },
   ];
 
   function renderFinal() {
@@ -457,7 +460,7 @@ function gitDemo() {
     runtimeRef.reset();
     body.replaceChildren();
     typeLines(body, lines, runtimeRef, () => {
-      if (announceRun) announce('commit flow finished · guarded commit landed');
+      if (announceRun) announce('commit and amend flow finished · guarded commit landed');
     });
   }
 

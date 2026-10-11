@@ -14,12 +14,13 @@ If you run coding agents against real repositories, you have watched at least on
 
 Line numbers shift the moment anything above them changes, and fuzzy matching will happily edit a similar block somewhere else. The agent reports success, the diff looks plausible, and the mistake surfaces three edits later.
 
-**Built:** [pi-hashline-edit-pro](https://github.com/YuGiMob/pi-hashline-edit-pro) — Every served line gets its own four-letter anchor. An edit may only name anchors, so inserting or deleting lines never renumbers what you did not touch. If the file changed underneath, the tool refuses with [E_RANGE_STALE] instead of guessing, and the last edit can be undone byte-for-byte, line endings included.
+**Built:** [pi-hashline-edit-pro](https://github.com/YuGiMob/pi-hashline-edit-pro) — Every served line gets its own four-letter anchor from a table built for tokenizers, and an edit names anchors instead of line numbers or fuzzy text. The extension registers read, replace, replace_match, insert, copy, move, grep, and undo_last_change; copy and move cross files, same-message edits to one file batch into one atomic change, and a line that changed on disk is refused with [E_RANGE_STALE] and re-served for the retry. Undo is single-level, per file, and survives a restart.
 
 - Anchors survive inserts, deletes, and re-reads
 - Stale edits are refused, not guessed
-- Undo restores the exact bytes
-- Edits to one file land as a single atomic batch
+- replace_match edits inside a line without retyping it
+- copy and move work across files
+- Same-message edits batch into one undoable change
 
 Install: `pi install npm:pi-hashline-edit-pro`. Stars 108, 3,992 npm installs per week.
 
@@ -27,12 +28,13 @@ Install: `pi install npm:pi-hashline-edit-pro`. Stars 108, 3,992 npm installs pe
 
 Almost every way to give an agent the web wants an API key, a paid tier, or a browser farm. When it finally fetches something, it hands the model a wall of navigation, cookie banners, and tracking scripts, and calls that reading.
 
-**Built:** [pi-unsloth-webtools](https://github.com/YuGiMob/pi-unsloth-webtools) — One tool for search, one for fetch, one for pages that need JavaScript. Search fans out across seven engines and dedupes and ranks what comes back, with no key. Fetch normalizes the URL, blocks private addresses, and turns HTML or PDF text into Markdown. Render falls back to Jina Reader when the page only exists after JavaScript runs.
+**Built:** [pi-unsloth-webtools](https://github.com/YuGiMob/pi-unsloth-webtools) — Two tools, both keyless: web_search sweeps DuckDuckGo and Startpage by default, canonicalizes the hrefs, and fuses each engine's own ordering, while web_fetch normalizes the URL, extracts HTML or PDF text to Markdown with page metadata, and retries a refusal through a browser-fingerprint transport. A page that only exists after JavaScript runs is rendered locally with Lightpanda; nothing is sent to a third-party renderer. Localhost and local files work by default, and the resolved-IP SSRF guard is an opt-in setting.
 
-- Seven search engines behind one tool
-- HTML-to-Markdown and PDF extraction
-- SSRF guard and a 512 KiB cap
-- Jina Reader fallback for JavaScript pages
+- DuckDuckGo and Startpage by default, Yandex opt-in
+- HTML-to-Markdown, PDF text, and page metadata
+- Browser-fingerprint transport for refused pages
+- Lightpanda renders JavaScript pages locally
+- Local files and private addresses allowed by default
 
 Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 1,069 npm installs per week.
 
@@ -40,12 +42,13 @@ Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 1,069 npm installs per w
 
 The moment an agent fetches a URL, your IP and your resolver are part of the request. Setting one proxy variable is not a privacy story, and a shared circuit links every request back to the same exit, which is its own kind of fingerprint.
 
-**Built:** [pi-tor-proxy](https://github.com/YuGiMob/pi-tor-proxy) — The extension downloads its own Tor binary, verifies it against a SHA-256 hash, and routes every request through it. Each pi instance gets its own circuit via IsolateSOCKSAuth, and the exit IP is checked against check.torproject.org so you can see that the route is actually Tor.
+**Built:** [pi-tor-proxy](https://github.com/YuGiMob/pi-tor-proxy) — The extension downloads its own Tor binary, verifies it against a SHA-256 hash, and routes every request through it. Each pi instance authenticates with its own SOCKS username, so IsolateSOCKSAuth gives it a separate circuit and exit IP, and the exit is verified against check.torproject.org. /tor-cycle swaps the exit, /tor-country and /tor-exclude constrain which exits are used, and loopback stays out of the proxy so local tooling keeps working. Linux and macOS only.
 
 - Self-managed, hash-verified Tor binary
 - Per-instance circuit via IsolateSOCKSAuth
-- Exit IP checked against check.torproject.org
-- Nothing to configure in your other tools
+- Exit IP verified against check.torproject.org
+- /tor-cycle, /tor-country, and /tor-exclude
+- Loopback stays out of the proxy
 
 Install: `pi install npm:pi-tor-proxy`. Stars 3, 16 npm installs per week.
 
@@ -53,12 +56,13 @@ Install: `pi install npm:pi-tor-proxy`. Stars 3, 16 npm installs per week.
 
 Ask an agent to review a change in three passes and the original plan, the corrections, and the review comments all dissolve into one context window. By the last round it is negotiating with a summary of a summary, and the thing you asked for first is somewhere in the middle.
 
-**Built:** [pi-msg-workflow](https://github.com/YuGiMob/pi-msg-workflow) — Numbered message and command stores keep the plan outside the conversation, where you can edit it. A workflow is a start phase, one or more rounds that reset the context between passes, and a final commit or summary. Each round sees the messages it needs, not the entire history.
+**Built:** [pi-msg-workflow](https://github.com/YuGiMob/pi-msg-workflow) — Numbered message and command stores keep the plan outside the conversation, and /workflow-edit changes it in place. A workflow is a start phase, one or more review rounds that reset the context between passes, and a final commit or summary; rounds carry optional retries, skip-when-unchanged gates, and an early exit once a review converges. Six workflows ship by default, and each round sees the messages it needs, not the entire history.
 
 - /msg, /cmd, and /workflow
-- Numbered, editable message stores
+- Numbered, editable message and command stores
 - Rounds reset the context between passes
-- Start, loop, and finish as configuration
+- The /workflow-edit overlay
+- Six workflows ship by default
 
 Install: `pi install npm:pi-msg-workflow`. Stars 1, 10 npm installs per week.
 
@@ -66,11 +70,12 @@ Install: `pi install npm:pi-msg-workflow`. Stars 1, 10 npm installs per week.
 
 An agent with shell access will eventually run git commit -am "fix", or stage a file you never looked at. A rule in a prompt is not a guardrail; it is a wish with good manners.
 
-**Built:** [pi-git-commit](https://github.com/YuGiMob/pi-git-commit) — The bash guard blocks mutative git commands before they run. Commits go through a structured git_commit tool with a type (FIX, IMPROVE, NEW) and a message, and the flow only opens after a human runs /commit. The agent can prepare the commit; it cannot decide to make it.
+**Built:** [pi-git-commit](https://github.com/YuGiMob/pi-git-commit) — The bash guard blocks mutative git commands before they run. Commits go through a structured git_commit tool with a type (FIX, IMPROVE, NEW) and a message, and the flow only opens after a human runs /commit; /amend rewrites the last commit's message through git_amend, and /stop-commit closes either flow. The gated tools stay listed all session, so the provider prompt cache survives. The agent can prepare the commit; it cannot decide to make it.
 
 - Mutative git commands in bash are blocked
 - FIX, IMPROVE, and NEW typed commits
-- The flow opens only after /commit
+- The flow opens only after /commit or /amend
+- The tool set never changes mid-session
 - One guard instead of prompt heroics
 
 Install: `pi install npm:pi-git-commit`. Stars 2, 382 npm installs per week.
@@ -83,11 +88,12 @@ Editing-tool READMEs ship with a demo GIF and a claim, and almost none of them p
 
 **Third-party check:** [Explicit Edit Benchmark](https://huggingface.co/spaces/alexshpunt/benchmark-explorer?card=harness%3Api-hashline-edit-pro%40latest) scores pi-hashline-edit-pro at 99.3% median quality over 24 complete model-route configurations, with 99.1% first exact and 100% final exact across 226 byte-exact tasks. Maintained by alexshpunt.
 
-**Built:** [pi-edit-benchmark](https://github.com/YuGiMob/pi-edit-benchmark) — pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness. The headline number is a pass rate; the staleness split is scored separately, where a silent mis-edit is worse than a refusal. Every contender links to a committed trace, including the runs my own tool fails.
+**Built:** [pi-edit-benchmark](https://github.com/YuGiMob/pi-edit-benchmark) — pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness. The headline number is a pass rate; the staleness split is scored separately, where a refusal passes and a stale edit that recovers after a re-read still counts, while a silent wrong-line edit is the worst failure class. Every contender links to a committed trace, including the runs my own tool fails.
 
 I wrote pi-edit-benchmark, so read it as a regression suite with receipts, not neutral evidence.
 
 - Stale scenarios are scored separately
+- A refusal can pass; a recovery still counts
 - Every contender links to a committed trace
 - Confidence intervals on every pass rate
 - The losses are published too

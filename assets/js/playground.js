@@ -15,7 +15,7 @@ const SOURCE = [
   '      return staleRange(lines, from, to)',
   '    }',
   '  }',
-  '  return splice(lines, from, to, req.replacement_lines)',
+  '  return splice(lines, from, to, req.text)',
   '}',
 ];
 
@@ -113,12 +113,12 @@ export function buildPlayground() {
     return {
       remove_from: selection ? session.lines[selection.from]?.anchor ?? '' : '',
       remove_to: selection ? session.lines[selection.to]?.anchor ?? '' : '',
-      replacement_lines: replacementText.split('\n'),
+      text: replacementText,
     };
   }
 
   function insertRequest() {
-    return { anchor: targetAnchor, direction: 'after', lines: INSERTED };
+    return { anchor: targetAnchor, direction: 'after', text: INSERTED.join('\n') };
   }
 
   function grepRequest() {
@@ -275,10 +275,10 @@ export function buildPlayground() {
     },
     {
       title: 'Find a row by anchor',
-      text: 'anchor_grep returns each match and its context as lineNumber │ anchor│content, served exactly like read output. A search result is already editable, so it never needs a follow-up read.',
+      text: 'grep returns each match and its context as lineNumber │ anchor│content, served exactly like read output. A search result is already editable, so it never needs a follow-up read.',
       action: `Search for “${GREP_PATTERN}”`,
       preview: grepRequest,
-      call: () => `anchor_grep('${GREP_PATTERN}')`,
+      call: () => `grep({ pattern: '${GREP_PATTERN}', context: 1 })`,
       run() {
         const result = runGrep();
         return { status: 'info', message: 'The matching row carries the same anchor read handed out, so it can be edited in place.', rows: result.rows };

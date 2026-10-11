@@ -97,10 +97,14 @@ export function replace(session, request) {
       return refuse(session, 'E_RANGE_STALE', 'The range changed on disk since it was served. Fresh anchors below.', rangeRows(session, fromIndex, toIndex));
     }
   }
-  if (request.replacement_lines != null && !Array.isArray(request.replacement_lines)) {
-    return refuse(session, 'E_BAD_SHAPE', 'replace needs replacement_lines as an array.', rangeRows(session, fromIndex, toIndex));
+  let replacements;
+  if (typeof request.text === 'string') replacements = request.text === '' ? [] : request.text.split('\n');
+  else if (Array.isArray(request.replacement_lines)) replacements = request.replacement_lines.map(String);
+  else if (request.text != null || request.replacement_lines != null) {
+    return refuse(session, 'E_BAD_SHAPE', 'replace needs text as a string.', rangeRows(session, fromIndex, toIndex));
+  } else {
+    replacements = [];
   }
-  const replacements = Array.isArray(request.replacement_lines) ? request.replacement_lines.map(String) : [];
   if (replacements.some((text) => text.includes('\u0000'))) {
     return refuse(session, 'E_BAD_SHAPE', 'Replacement text contains a NUL byte.', rangeRows(session, fromIndex, toIndex));
   }
@@ -138,10 +142,14 @@ export function insert(session, request) {
     return refuse(session, 'E_BAD_SHAPE', "insert needs a direction of 'before' or 'after'.", rangeRows(session, index, index));
   }
   const direction = rawDirection === 'before' ? 'before' : 'after';
-  if (request.lines != null && !Array.isArray(request.lines)) {
-    return refuse(session, 'E_BAD_SHAPE', 'insert needs lines as an array.', rangeRows(session, index, index));
+  let lines;
+  if (typeof request.text === 'string') lines = request.text.split('\n');
+  else if (Array.isArray(request.lines)) lines = request.lines.map(String);
+  else if (request.text != null || request.lines != null) {
+    return refuse(session, 'E_BAD_SHAPE', 'insert needs text as a string.', rangeRows(session, index, index));
+  } else {
+    lines = [];
   }
-  const lines = Array.isArray(request.lines) ? request.lines.map(String) : [];
   if (lines.some((text) => text.includes('\u0000'))) {
     return refuse(session, 'E_BAD_SHAPE', 'Inserted text contains a NUL byte.', rangeRows(session, index, index));
   }
@@ -169,21 +177,21 @@ export function insert(session, request) {
 export function anchorGrep(session, request) {
   const pattern = String(request.pattern ?? '');
   if (pattern.length === 0) {
-    return refuse(session, 'E_BAD_SHAPE', 'anchor_grep needs a pattern.', []);
+    return refuse(session, 'E_BAD_SHAPE', 'grep needs a pattern.', []);
   }
   if (request.literal != null && typeof request.literal !== 'boolean') {
-    return refuse(session, 'E_BAD_SHAPE', 'anchor_grep needs literal as a boolean.', []);
+    return refuse(session, 'E_BAD_SHAPE', 'grep needs literal as a boolean.', []);
   }
   if (request.ignoreCase != null && typeof request.ignoreCase !== 'boolean') {
-    return refuse(session, 'E_BAD_SHAPE', 'anchor_grep needs ignoreCase as a boolean.', []);
+    return refuse(session, 'E_BAD_SHAPE', 'grep needs ignoreCase as a boolean.', []);
   }
   const literal = request.literal === true;
   const ignoreCase = request.ignoreCase === true;
   if (request.context != null && !Number.isInteger(request.context)) {
-    return refuse(session, 'E_BAD_SHAPE', 'anchor_grep needs context as a whole number.', []);
+    return refuse(session, 'E_BAD_SHAPE', 'grep needs context as a whole number.', []);
   }
   if (request.limit != null && !Number.isInteger(request.limit)) {
-    return refuse(session, 'E_BAD_SHAPE', 'anchor_grep needs limit as a whole number.', []);
+    return refuse(session, 'E_BAD_SHAPE', 'grep needs limit as a whole number.', []);
   }
   const contextSize = Number.isInteger(request.context) ? Math.max(0, request.context) : 0;
   const limit = Number.isInteger(request.limit) ? Math.max(1, request.limit) : 100;
@@ -204,7 +212,7 @@ export function anchorGrep(session, request) {
     if (matchesLine(session.lines[index].text)) matches.push(index);
   }
   if (matches.length === 0) {
-    return { ok: true, code: null, message: `anchor_grep('${pattern}'): 0 matches`, rows: [] };
+    return { ok: true, code: null, message: `grep('${pattern}'): 0 matches`, rows: [] };
   }
   const matched = new Set(matches);
   const emitted = new Set();
@@ -223,7 +231,7 @@ export function anchorGrep(session, request) {
     }));
   serveRows(session, rows);
   const word = matches.length === 1 ? 'match' : 'matches';
-  return { ok: true, code: null, message: `anchor_grep('${pattern}'): ${matches.length} ${word}`, rows };
+  return { ok: true, code: null, message: `grep('${pattern}'): ${matches.length} ${word}`, rows };
 }
 
 export function undo(session) {
