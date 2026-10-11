@@ -17,9 +17,10 @@ else if (historyAge > MAX_HISTORY_AGE_DAYS) {
   errors.push(`the newest history snapshot (${newest}) is ${historyAge} days old; the cap is ${MAX_HISTORY_AGE_DAYS}`);
 }
 
-if (data.benchmark != null && benchmarkAge === null) errors.push('the benchmark block has no usable generatedAt');
-else if (benchmarkAge != null && benchmarkAge > MAX_BENCHMARK_AGE_DAYS) {
-  errors.push(`the benchmark report (${data.benchmark.generatedAt}) is ${benchmarkAge} days old; the cap is ${MAX_BENCHMARK_AGE_DAYS}`);
+if (data.benchmark != null && benchmarkAge === null) {
+  console.warn('freshness: the benchmark block has no usable generatedAt; the site publishes it as a dated snapshot');
+} else if (benchmarkAge != null && benchmarkAge > MAX_BENCHMARK_AGE_DAYS) {
+  console.warn(`freshness: the benchmark report (${data.benchmark.generatedAt}) is ${benchmarkAge} days old; the site publishes it as a dated snapshot, so the refresh is not gated on it`);
 }
 
 if (errors.length > 0) {

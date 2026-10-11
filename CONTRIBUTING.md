@@ -91,8 +91,9 @@ site validator, and `node --test` with coverage thresholds. Fix the first
 failure before re-running; each validator prints every problem it found.
 
 CI runs the same command on Node 22 and 24, and on pushes and scheduled runs it
-also checks freshness: a history snapshot older than two days, or a benchmark
-report older than fourteen days, fails until the daily refresh heals it. Pull
+also checks freshness: a history snapshot older than two days fails until the
+daily refresh heals it, and a benchmark report older than fourteen days only
+warns because the site publishes it as a dated snapshot. Pull
 requests skip the freshness gate so an outage cannot block an unrelated
 contribution. Two more workflows gate a change: Lighthouse
 (`.lighthouserc.json`) audits the committed page for accessibility and layout

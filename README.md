@@ -32,9 +32,11 @@ The benchmark at the end shows the runs, including the ones the flagship loses.
   - The other entries run a pipeline graph (pi-unsloth-webtools), a Tor circuit
     (pi-tor-proxy), a workflow pipeline (pi-msg-workflow), and a guarded commit
     transcript (pi-git-commit).
-- **The evidence** (`#evidence`): pi-edit-benchmark as the answer to "everyone
-  claims their tool is better": benchmark pass rates from committed run
-  reports, plus a scored trace showing a refusal and a recovery.
+- **The evidence** (`#evidence`): two checks, in order of independence. It
+  leads with the third-party Explicit Edit Benchmark for pi-hashline-edit-pro,
+  then the author's own pi-edit-benchmark: benchmark pass rates from committed
+  run reports, the per-scenario matrix, and a scored trace showing a refusal
+  and a recovery.
 - **About** (`#colophon`): why the tools exist, the principles behind them, and
   a pushes-per-day chart built from public GitHub events.
 - Footer (`#campfire`): the GitHub link and the daily-refresh note.
@@ -42,7 +44,7 @@ The benchmark at the end shows the runs, including the ones the flagship loses.
 ## How the pieces fit
 
 ```
-GitHub + npm + benchmark report
+GitHub + npm + benchmark reports
         |
         v
 scripts/refresh-data.mjs ---> scripts/refresh-lib.mjs (pure aggregation)
@@ -194,8 +196,8 @@ description), and machine numbers: stars, forks, languages, last push,
 weekly npm downloads, stats, activity (window, pushes, highlights, per-day
 events), and `history`: one snapshot per day with total stars and total weekly
 downloads. The About panel renders the highlights and the public-repo and
-forks-received totals, and the footer prints a notice when either the activity
-or the benchmark snapshot is more than two days old. The `stats` totals cover
+forks-received totals, and the footer prints a notice when the daily refresh
+snapshot is more than two days old. The `stats` totals cover
 every public repository the API returns, forks and the site repository included,
 so they can differ from the sum of the curated project cards.
 
@@ -225,6 +227,11 @@ counts match the benchmark block, so the McNemar figures and their Holm
 adjustment are re-derived from the matrix rather than trusted. The evidence
 panel fetches the matrix lazily and renders it as a grid.
 
+A separate `externalBenchmark` block records the third-party Explicit Edit
+Benchmark rollup for the highlighted tool, fetched from the Hugging Face
+dataset. Its `asOf` date only moves when a measured field does, so the page can
+show how long the third-party number has stood without pretending it changed.
+
 The About panel renders those snapshots as a stars and weekly-installs trend.
 
 **`data/showcase.json`** is curated by hand. It holds the introduction, one
@@ -246,8 +253,9 @@ node scripts/refresh-data.mjs
 so a candidate can be reviewed before it lands.
 
 The script fetches the GitHub user, repos, and public events, npm weekly
-downloads for every package in the manifest, and the committed
-pi-edit-benchmark run report plus its scenario sources, then updates only the
+downloads for every package in the manifest, the committed pi-edit-benchmark
+run report plus its scenario sources, and the third-party Explicit Edit
+Benchmark rollup from the Hugging Face dataset, then updates only the
 machine fields. It requires Node >= 22.8, needs no install, and makes no
 authenticated requests by default; the refresh workflow passes `GITHUB_TOKEN`
 so scheduled runs do not fight over a shared rate limit. The npm requests go out
@@ -299,8 +307,10 @@ validates the data files, and commits `data/site-data.json`,
 `data/benchmark-matrix.json`, `sitemap.xml`, `index.html`, `llms.txt`, `index.md`,
 `agent-readability.json`, and `feed.json` only when at least
 one of them changed, and fails when the newest history snapshot is more than
-two days old or the benchmark report is more than fourteen days old, so an
-outage cannot pass silently. It can also be triggered manually from the Actions
+two days old, so a refresh outage cannot pass silently. The benchmark report is
+published as a dated snapshot: a report older than fourteen days only prints a
+warning, and never blocks the commit. It can also be triggered manually from
+the Actions
 tab.
 
 ## Validating
@@ -320,7 +330,10 @@ lives in one place, then
 cross-references showcase names with the manifest, verifies every `demo` id,
 and re-derives the benchmark arithmetic (contender counts, `models × scenarios`,
 outcome totals, recomputes the Wilson interval around each pass rate, and
-re-derives the paired-difference interval for every comparison), and
+re-derives the paired-difference interval for every comparison), re-derives the
+external benchmark rollup (`observations / tasks` must equal the configuration
+count, `finalExact` may not fall below `firstExact`, and `quality` must stay
+within one point of `0.75 × firstExact + 0.25 × finalExact`), and
 refuses histories,
 daily activity, benchmark history, or highlight lists beyond the documented
 caps. It prints
@@ -373,8 +386,8 @@ The suite runs on `node --test` with no dependencies: unit tests for the
 anchored-edit session model, the guided playground flow, the avatar hydration
 helper, the retrying fetch, the data guards, the view-model derivations, the
 chart transforms, the dichromacy simulation and color-distance helpers, the
-visibility rules, the sitemap lastmod writer, and the
-refresh activity, history, and benchmark helpers, plus a parse check for every
+visibility rules, the sitemap lastmod writer, and the refresh activity,
+history, benchmark, and external-benchmark helpers, plus a parse check for
 script and integration checks that the committed data and site structure pass
 their validators and that each validator refuses broken input, including
 comments, CRLF, a comment inside a template expression or a stylesheet, a

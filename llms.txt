@@ -6,7 +6,7 @@ I'm YuGiMob. I build extensions for pi, the terminal coding agent, and publish t
 
 The pattern behind all of them is the same. An agent changes a file that looks right and is subtly wrong, or runs a command a human would have paused on. Most fixes are better prompts and good intentions. I would rather move the failure into the tool, where it can be refused, caught, or made impossible.
 
-If you run coding agents against real repositories, you have watched at least one of these failures happen. Each tool below starts with the problem it exists to kill; the benchmark at the end is how I check my own work, including the runs I lose.
+If you run coding agents against real repositories, you have watched at least one of these failures happen. Each tool below starts with the problem it exists to kill; the benchmark at the end was how I checked my own work, including the runs I lose.
 
 ## Tools
 

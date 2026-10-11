@@ -25,8 +25,8 @@ house rules; this file is the short version for a coding agent making a change.
 - `index.html` embeds the hero numbers, the intro paragraphs, the problems heading, the problem cards, the evidence prose, the colophon, the static identity copy, and the JSON-LD block. Edit the data and run `npm run build:static` instead of the HTML; `validate:site` refuses drift.
 - Every file in `assets/js`, `scripts`, `.github/workflows`, and `data` must appear in the README Files block.
 - Every module must be reachable from `assets/js/main.js`. Statically imported modules must be preloaded in `index.html`; modules behind a dynamic `import()` must not be.
-- `scripts/check-freshness.mjs` fails when the newest history snapshot is more than two days old or the benchmark report is more than fourteen days old. It runs on push and schedule, not on pull requests.
-- Schema changes live in `data/*.schema.json`; `validate:data` re-derives every number it can, including the Wilson and Newcombe intervals.
+- `scripts/check-freshness.mjs` fails when the newest history snapshot is more than two days old; a benchmark report older than fourteen days only warns, because the site publishes it as a dated snapshot. It runs on push and schedule, not on pull requests.
+- Schema changes live in `data/*.schema.json`; `validate:data` re-derives every number it can, including the Wilson and Newcombe intervals and the third-party benchmark rollup (configuration count, first-exact floor, and the 0.75/0.25 quality blend).
 - `.cache/`, `.lighthouseci/`, and `.omo/` are gitignored and never published.
 
 ## Shape of the code

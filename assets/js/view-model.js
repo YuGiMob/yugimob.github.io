@@ -107,14 +107,9 @@ export function staleDays(date, today) {
 }
 
 export function stalenessNotice(data, today, limit = STALE_AFTER_DAYS) {
-  const messages = [];
   const activityDays = staleDays(data.activity?.fetchedAt, today);
-  const benchmarkDays = staleDays(data.benchmark?.generatedAt, today);
-  if (activityDays != null && activityDays > limit) messages.push(`the daily refresh last updated this page ${dayCount(activityDays)} ago`);
-  if (benchmarkDays != null && benchmarkDays > limit) messages.push(`the newest benchmark report is ${dayCount(benchmarkDays)} old`);
-  if (messages.length === 0) return null;
-  const joined = messages.join('; ');
-  return `${joined.charAt(0).toUpperCase()}${joined.slice(1)}.`;
+  if (activityDays == null || activityDays <= limit) return null;
+  return `The daily refresh last updated this page ${dayCount(activityDays)} ago.`;
 }
 
 function resolvedUrl(value, baseUrl) {

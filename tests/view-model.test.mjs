@@ -145,13 +145,11 @@ test('stalenessNotice names the source that went stale', () => {
   assert.equal(stalenessNotice({}, '2026-09-20'), null);
 });
 
-test('stalenessNotice blames a stale benchmark report on the report, not the refresh', () => {
-  const fresh = { activity: { fetchedAt: '2026-09-19' }, benchmark: { generatedAt: '2026-09-20T12:00:00Z' } };
-  assert.equal(stalenessNotice(fresh, '2026-09-20'), null);
+test('stalenessNotice ignores a stale benchmark report', () => {
   const oldReport = { activity: { fetchedAt: '2026-09-19' }, benchmark: { generatedAt: '2026-06-01T12:00:00Z' } };
-  assert.equal(stalenessNotice(oldReport, '2026-09-20'), 'The newest benchmark report is 111 days old.');
-  const both = { activity: { fetchedAt: '2026-09-01' }, benchmark: { generatedAt: '2026-09-10T12:00:00Z' } };
-  assert.equal(stalenessNotice(both, '2026-09-20'), 'The daily refresh last updated this page 19 days ago; the newest benchmark report is 10 days old.');
+  assert.equal(stalenessNotice(oldReport, '2026-09-20'), null);
+  const both = { activity: { fetchedAt: '2026-09-01' }, benchmark: { generatedAt: '2026-06-01T12:00:00Z' } };
+  assert.equal(stalenessNotice(both, '2026-09-20'), 'The daily refresh last updated this page 19 days ago.');
 });
 
 test('sectionVisibility mirrors the data toggles and the evidence block', () => {

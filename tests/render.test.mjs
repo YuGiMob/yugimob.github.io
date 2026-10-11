@@ -400,7 +400,7 @@ test('renderFooter writes the link, the year, and the staleness notice', () => {
     assert.equal(github.textContent, 'Tester on GitHub');
     assert.match(dom.document.getElementById('campfire-year').textContent, /© \d{4} Tester/);
     assert.equal(notice.hidden, false);
-    assert.match(notice.textContent, /days ago; the newest benchmark report is \d+ days old\./);
+    assert.match(notice.textContent, /^The daily refresh last updated this page \d+ days ago\.$/);
   });
   withDom((dom) => {
     register(dom.document, 'data-age');

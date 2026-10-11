@@ -75,16 +75,17 @@ test('check-freshness fails when the newest snapshot is older than the cap', () 
   assert.match(stale.result.stderr, new RegExp(`is ${stale.expected} days old; the cap is ${MAX_HISTORY_AGE_DAYS}`));
 });
 
-test('check-freshness fails when the benchmark report is older than its cap', () => {
+test('check-freshness warns but passes when the benchmark report is older than its cap', () => {
   const stale = withRepoCopy((copy) => {
     rewriteNewestSnapshot(copy, 0, MAX_BENCHMARK_AGE_DAYS + 6);
     return spawnSync(process.execPath, [SCRIPT, copy], { encoding: 'utf8' });
   });
-  assert.equal(stale.status, 1);
-  assert.match(stale.stderr, new RegExp(`is ${MAX_BENCHMARK_AGE_DAYS + 6} days old; the cap is ${MAX_BENCHMARK_AGE_DAYS}`));
+  assert.equal(stale.status, 0, stale.stderr);
+  assert.match(stale.stderr, new RegExp(`is ${MAX_BENCHMARK_AGE_DAYS + 6} days old`));
+  assert.match(stale.stdout, /^freshness: ok \(newest history snapshot: /);
 });
 
-test('check-freshness reports every stale source in one run', () => {
+test('check-freshness fails on a stale history and still warns about a stale benchmark', () => {
   const both = withRepoCopy((copy) => {
     rewriteNewestSnapshot(copy, MAX_HISTORY_AGE_DAYS + 8, MAX_BENCHMARK_AGE_DAYS + 6);
     return spawnSync(process.execPath, [SCRIPT, copy], { encoding: 'utf8' });
@@ -102,12 +103,13 @@ test('check-freshness fails when the benchmark block has no usable stamp', () =>
     });
     return spawnSync(process.execPath, [SCRIPT, copy], { encoding: 'utf8' });
   });
-  assert.equal(broken.status, 1);
-  assert.match(broken.stderr, /the benchmark block has no usable generatedAt/);
+  assert.equal(broken.status, 0, broken.stderr);
+  assert.match(broken.stderr, /no usable generatedAt/);
 });
 
-test('check-freshness skips the benchmark gate when the block is absent', () => {
+test('check-freshness skips the benchmark warning when the block is absent', () => {
   const withoutBenchmark = withRepoCopy((copy) => {
+    rewriteNewestSnapshot(copy, 0);
     rewriteData(copy, (data) => {
       delete data.benchmark;
     });
@@ -115,6 +117,7 @@ test('check-freshness skips the benchmark gate when the block is absent', () => 
   });
   assert.equal(withoutBenchmark.status, 0, withoutBenchmark.stderr);
   assert.match(withoutBenchmark.stdout, /^freshness: ok \(newest history snapshot: /);
+  assert.equal(withoutBenchmark.stdout.includes('benchmark'), false);
 });
 
 test('check-freshness fails when the history is missing', () => {
