@@ -95,7 +95,7 @@ test('check-freshness fails on a stale history and still warns about a stale ben
   assert.match(both.stderr, /the benchmark report/);
 });
 
-test('check-freshness fails when the benchmark block has no usable stamp', () => {
+test('check-freshness warns when the benchmark block has no usable stamp', () => {
   const broken = withRepoCopy((copy) => {
     rewriteData(copy, (data) => {
       data.history[data.history.length - 1] = { date: dateDaysAgo(0), totalStars: 1, totalDownloads: 1 };
