@@ -33,46 +33,6 @@ export function isValidShowcase(showcase) {
   return true;
 }
 
-function isFiniteNumber(value) {
-  return typeof value === 'number' && Number.isFinite(value);
-}
-
-function isNullableNumber(value) {
-  return value == null || isFiniteNumber(value);
-}
-
-function isChartableContender(contender) {
-  if (!contender || typeof contender !== 'object' || Array.isArray(contender)) return false;
-  if (typeof contender.label !== 'string') return false;
-  for (const key of ['overall', 'low', 'high', 'runs', 'passed', 'errors']) {
-    if (!isFiniteNumber(contender[key])) return false;
-  }
-  if (!isNullableNumber(contender.safety)) return false;
-  if (contender.vsHighlight == null) return true;
-  if (typeof contender.vsHighlight !== 'object' || Array.isArray(contender.vsHighlight)) return false;
-  return ['p', 'low', 'high', 'bothPassed', 'bothFailed'].every((key) => isFiniteNumber(contender.vsHighlight[key]));
-}
-
-export function isValidBenchmark(benchmark) {
-  if (!benchmark || typeof benchmark !== 'object' || Array.isArray(benchmark)) return false;
-  if (!Array.isArray(benchmark.contenders)) return false;
-  if (!benchmark.focusCounts || typeof benchmark.focusCounts !== 'object' || Array.isArray(benchmark.focusCounts)) return false;
-  if (typeof benchmark.generatedAt !== 'string') return false;
-  for (const key of ['models', 'scenarios', 'contenderCount', 'runsPerContender', 'totalRuns']) {
-    if (!isFiniteNumber(benchmark[key])) return false;
-  }
-  return benchmark.contenders.every(isChartableContender);
-}
-
-export function isValidBenchmarkMatrix(matrix) {
-  if (!matrix || typeof matrix !== 'object' || Array.isArray(matrix)) return false;
-  if (!Array.isArray(matrix.models) || matrix.models.length === 0) return false;
-  if (!Array.isArray(matrix.scenarios) || matrix.scenarios.length === 0) return false;
-  if (!Array.isArray(matrix.contenders) || matrix.contenders.length === 0) return false;
-  if (!Array.isArray(matrix.cells) || matrix.cells.length !== matrix.scenarios.length) return false;
-  return true;
-}
-
 export function fallbackShowcase(data) {
   const paragraphs = [data.identity.tagline];
   return {
@@ -86,7 +46,6 @@ export function fallbackShowcase(data) {
       highlights: ['Public repository'],
       size: 'default',
     })),
-    evidence: null,
     principles: [],
     colophon: paragraphs,
   };

@@ -110,7 +110,7 @@ function setHiddenAttribute(source, id, hidden) {
 function applySectionVisibility(source, sections = {}, showcase = null) {
   const visible = sectionVisibility(sections, showcase);
   let next = source;
-  for (const id of ['problems', 'evidence', 'colophon', 'campfire']) {
+  for (const id of ['problems', 'colophon', 'campfire']) {
     next = setHiddenAttribute(next, id, !visible[id]);
   }
   return next;
@@ -141,11 +141,11 @@ function refreshCspHash(source) {
   return source.replace(policy[0], `${policy[1]}${next}${policy[3]}`);
 }
 
-function answerBlockHtml(entry, project, headingTag = 'h4') {
+function answerBlockHtml(entry, project) {
   const lines = [
     '              <div class="answer">',
     '                <p class="answer-label">What I built</p>',
-    `                <${headingTag} class="answer-name"><a href="${escapeAttr(project.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(project.name)}</a></${headingTag}>`,
+    `                <h4 class="answer-name"><a href="${escapeAttr(project.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(project.name)}</a></h4>`,
     `                <p class="answer-text">${escapeHtml(entry.answer)}</p>`,
     '                <ul class="answer-points">',
   ];
@@ -205,44 +205,6 @@ export function buildProblemListBlock(showcase, projects) {
   return ['      <div class="problem-list" id="problem-list">', articles, '      </div>'].join('\n');
 }
 
-function externalSummary(external) {
-  const configurations = `${formatNumber(external.configurationCount)} complete model-route ${external.configurationCount === 1 ? 'configuration' : 'configurations'}`;
-  return `${external.quality}% median quality over ${configurations}: ${external.firstExact}% first exact and ${external.finalExact}% final exact across ${formatNumber(external.tasks)} byte-exact tasks (${formatNumber(external.observations)} observations), as of ${external.asOf}.`;
-}
-
-export function buildEvidenceBlock(showcase, projects, externalBenchmark = null) {
-  const evidence = showcase?.evidence;
-  if (!evidence) return '      <div id="evidence-body"></div>';
-  const project = projects.get(evidence.name);
-  const lines = [];
-  if (evidence.intro) lines.push(`        <p class="section-lede">${escapeHtml(evidence.intro)}</p>`);
-  if (externalBenchmark) {
-    const external = evidence.external ?? {};
-    lines.push('        <div class="evidence evidence-external" id="evidence-external">');
-    if (external.kicker) lines.push(`          <p class="problem-kicker">${escapeHtml(external.kicker)}</p>`);
-    lines.push(`          <h3 class="answer-name"><a href="${escapeAttr(externalBenchmark.source)}" target="_blank" rel="noopener noreferrer">${escapeHtml(externalBenchmark.name)}</a></h3>`);
-    lines.push(`          <p class="answer-text">${escapeHtml(externalSummary(externalBenchmark))}</p>`);
-    if (external.note) lines.push(`          <p class="answer-text">${escapeHtml(external.note)}</p>`);
-    lines.push('          <div class="actions">');
-    lines.push(`            <a class="action-link" href="${escapeAttr(externalBenchmark.explorerUrl)}" target="_blank" rel="noopener noreferrer">Explorer ↗</a>`);
-    lines.push('          </div>');
-    lines.push('        </div>');
-  }
-  lines.push(`        <div class="evidence" id="${escapeAttr(problemId(evidence.name))}">`);
-  lines.push(`          <p class="problem-statement">${escapeHtml(evidence.problem)}</p>`);
-  lines.push('          <div class="problem-grid">');
-  lines.push('            <div class="problem-copy">');
-  if (project) lines.push(answerBlockHtml(evidence, project, 'h3'));
-  if (evidence.disclosure) lines.push(`              <p class="answer-text evidence-disclosure">${escapeHtml(evidence.disclosure)}</p>`);
-  lines.push('            </div>');
-  lines.push('            <div class="problem-demo"></div>');
-  lines.push('          </div>');
-  lines.push('          <div class="evidence-matrix"></div>');
-  lines.push(`          <div class="evidence-trace"${evidence.demo ? ` data-demo="${escapeAttr(evidence.demo)}"` : ''}></div>`);
-  lines.push('        </div>');
-  return ['      <div id="evidence-body">', lines.join('\n'), '      </div>'].join('\n');
-}
-
 export function buildColophonProseBlock(showcase) {
   const paragraphs = (showcase?.colophon ?? []).map((text) => `          <p class="colophon-paragraph">${escapeHtml(text)}</p>`).join('\n');
   return ['        <div class="colophon-prose" id="colophon-prose">', paragraphs, '        </div>'].join('\n');
@@ -264,11 +226,8 @@ export function applyGeneratedBlocks(source, siteData, showcase = null) {
     const projects = new Map((siteData.projects ?? []).map((project) => [project.name, project]));
     next = replaceBlock(next, 'ol', 'problem-index', buildProblemIndexBlock(showcase, projects)) ?? next;
     next = replaceBlock(next, 'div', 'problem-list', buildProblemListBlock(showcase, projects)) ?? next;
-    next = replaceBlock(next, 'div', 'evidence-body', buildEvidenceBlock(showcase, projects, siteData.externalBenchmark ?? null)) ?? next;
     next = replaceBlock(next, 'div', 'colophon-prose', buildColophonProseBlock(showcase)) ?? next;
     next = replaceBlock(next, 'ul', 'principles', buildPrinciplesBlock(showcase)) ?? next;
-    next = setElementText(next, 'evidence-kicker', showcase.evidence?.kicker ?? '');
-    next = setElementText(next, 'evidence-heading', showcase.evidence?.headline ?? '');
     next = setElementText(next, 'problems-heading', problemsHeading(showcase, projects));
     next = replaceStructuredData(next, siteData, showcase);
   }

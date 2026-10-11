@@ -60,3 +60,29 @@ test('lazyMount shows a failure note when the loader throws', (t) => {
     assert.equal(container.classList.contains('is-loading'), false);
   }, { IntersectionObserver: undefined });
 });
+
+test('lazyMount waits for an intersecting entry before mounting', () => {
+  withDom((dom) => {
+    const container = element('div');
+    const node = element('div');
+    let started = 0;
+    lazyMount(container, () => ({ node, caption: null, start: () => { started += 1; }, stop() {} }));
+    assert.equal(container.children.length, 0);
+    assert.equal(container.classList.contains('is-loading'), true);
+    dom.observers[0].trigger([{ isIntersecting: true }]);
+    assert.equal(container.children[0], node);
+    for (const observer of dom.observers) observer.trigger([{ isIntersecting: true }]);
+    assert.equal(started, 1);
+  });
+});
+
+test('lazyMount mounts on beforeprint before an intersection', () => {
+  withDom((dom) => {
+    const container = element('div');
+    const node = element('div');
+    lazyMount(container, () => ({ node, caption: null, start() {}, stop() {} }));
+    assert.equal(container.children.length, 0);
+    dom.window.dispatch('beforeprint');
+    assert.equal(container.children[0], node);
+  });
+});

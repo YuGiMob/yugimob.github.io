@@ -3,7 +3,6 @@ import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
 const FIXTURES = process.env.YUGIMOB_FIXTURES;
-const REPORT = process.env.YUGIMOB_LLM_REPORT ?? 'llm-report.json';
 const NO_GITHUB = process.env.YUGIMOB_NO_GITHUB === '1';
 const LOG = process.env.YUGIMOB_FETCH_LOG;
 const NPM_BULK_FAIL = process.env.YUGIMOB_NPM_BULK_FAIL === '1';
@@ -36,20 +35,10 @@ function jsonResponse(value, status = 200, etag = null) {
   };
 }
 
-function textResponse(value, status = 200, etag = null) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    headers: responseHeaders(etag),
-    json: async () => JSON.parse(value),
-    text: async () => value,
-  };
-}
-
 function requestHeader(options, name) {
   const headers = options?.headers ?? {};
   if (typeof headers.get === 'function') return headers.get(name);
-  return headers[name] ?? null;
+  return headers[name.toLowerCase()] ?? headers[name] ?? null;
 }
 
 function logRequest(url, status, conditional) {
@@ -87,9 +76,5 @@ globalThis.fetch = async (url, options = {}) => {
     if (names.length === 1) return jsonResponse(fixtureJson(`npm-${names[0]}.json`));
     return jsonResponse(Object.fromEntries(names.map((name) => [name, fixtureJson(`npm-${name}.json`)])));
   }
-  if (target.endsWith('/llm-report.json')) return jsonResponse(fixtureJson(REPORT));
-  if (target.endsWith('/views.json')) return conditionalJson(target, fixtureJson('views.json'), options);
-  if (target.endsWith('/scenarios/index.ts')) return textResponse(fixtureText('scenarios-index.ts'));
-  if (target.endsWith('/scenarios/better-edit.ts')) return textResponse(fixtureText('scenarios-better-edit.ts'));
   return jsonResponse(null, 404);
 };

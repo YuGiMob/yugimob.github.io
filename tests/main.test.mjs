@@ -19,8 +19,7 @@ const DATA = {
 
 const SHOWCASE = {
   intro: { headline: 'A headline.', paragraphs: ['One paragraph.'] },
-  problems: [{ name: 'tool-a', kicker: 'Kicker', headline: 'A problem.', problem: 'Broke.', answer: 'Fixed.', highlights: ['One'], size: 'default' }],
-  evidence: null,
+  problems: [{ name: 'tool-a', kicker: 'Rule', headline: 'A problem.', problem: 'Broke.', answer: 'Fixed.', highlights: ['One'], size: 'default' }],
   principles: ['A principle.'],
   colophon: ['A paragraph.'],
 };
@@ -28,10 +27,8 @@ const SHOWCASE = {
 const IDS = [
   'main-content', 'avatar', 'display-name', 'class-title', 'intro-headline', 'intro-paragraphs',
   'data-notice', 'hero-stats', 'problems', 'problems-heading', 'problem-index', 'problem-list',
-  'evidence', 'colophon',
-  'evidence-kicker', 'evidence-heading', 'evidence-body', 'colophon-prose', 'principles',
-  'activity-panel', 'github-link', 'campfire-year', 'data-age',
-  'nav-github', 'hero-github',
+  'colophon', 'colophon-prose', 'principles', 'activity-panel', 'github-link', 'campfire-year',
+  'data-age', 'nav-github', 'hero-github', 'campfire',
 ];
 
 function jsonResponse(value) {
@@ -42,11 +39,16 @@ function prepare(dom) {
   for (const id of IDS) register(dom.document, id);
   registerQuery(dom.document, '.intro-actions', element());
   registerQuery(dom.document, '.nav-links', element());
+  registerQuery(dom.document, 'meta[name="description"]', element('meta'));
+  registerQuery(dom.document, 'meta[property="og:title"]', element('meta'));
+  registerQuery(dom.document, 'meta[property="og:description"]', element('meta'));
+  registerQuery(dom.document, 'meta[name="twitter:title"]', element('meta'));
+  registerQuery(dom.document, 'meta[name="twitter:description"]', element('meta'));
   const article = element('article');
   article.id = 'problem-tool-a';
   const box = element('div');
   box.className = 'problem-demo';
-  box.setAttribute('data-demo', 'trace');
+  box.setAttribute('data-demo', 'git');
   article.appendChild(box);
   dom.document.getElementById('problem-list').appendChild(article);
 }
@@ -81,8 +83,8 @@ test('the boot path falls back to the error state when the data cannot be fetche
     await flush();
     assert.equal(dom.document.getElementById('intro-headline').textContent, 'This page could not load its data.');
     assert.equal(dom.document.getElementById('problems').hidden, true);
-    assert.equal(dom.document.getElementById('evidence').hidden, true);
     assert.equal(dom.document.getElementById('colophon').hidden, true);
+    assert.equal(dom.document.getElementById('activity-panel').hidden, true);
     const actions = dom.document.querySelector('.intro-actions');
     assert.equal(actions.children[0].textContent, 'Try again');
   }, { fetch: async () => ({ ok: false, status: 404, json: async () => null }) });

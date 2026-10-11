@@ -38,20 +38,18 @@ assets/js/
   view-model.js     pure derivations: rows, headings, notices, JSON-LD
   render.js         hydration and DOM construction, no data math
   lazy.js           lazy mounting behind IntersectionObserver
-  charts.js         benchmark, matrix, trend, and history panels
+  charts.js         the history and growth charts
   demo-registry.js  demo id to a dynamic module loader
-  demos.js          the five card demos
-  playground.js     the hashline guided run, built on hashline.js
-  hashline.js       the anchored-edit session model
+  demos.js          the five card demos (transcripts and diagrams)
   avatar.js         avatar src and alt hydration
   fetch-json.js     retrying JSON fetch with a timeout
   main.js           boot, fetch, navigation, error state
 ```
 
-Keep derivations in `view-model.js` or `hashline.js` so they can be tested
-without a DOM. Keep DOM work in `render.js` and the demo builders. Browser
-modules must not read `data/site-data.json` directly; `main.js` fetches and
-passes the parsed documents down.
+Keep derivations in `view-model.js` so they can be tested without a DOM. Keep
+DOM work in `render.js` and the demo builders. Browser modules must not read
+`data/site-data.json` directly; `main.js` fetches and passes the parsed documents
+down.
 
 Scripts follow the same split: `scripts/refresh-lib.mjs` holds the pure
 arithmetic, and `scripts/refresh-data.mjs` only performs I/O and gating.
@@ -64,8 +62,7 @@ files, and `scripts/serve.mjs` serves the tree for local work.
    `data/showcase.json`. `validate:data` rejects a project without a showcase
    entry, a duplicate name, or a duplicate npm package.
 2. Name a `demo` only if you implement it: register it in `assets/js/demos.js`
-   and it becomes a valid id automatically. The `hashline` demo lives in
-   `assets/js/playground.js`.
+   and it becomes a valid id automatically.
 3. Add the repository to the `<noscript>` list in `index.html` with its install
    command. `validate:site` checks both directions.
 4. Run `npm run build:llms`, `npm run build:static`, and `npm run check`.
@@ -77,7 +74,7 @@ These are derived. Edit the inputs, then regenerate:
 | file | regenerate with |
 | --- | --- |
 | `llms.txt`, `index.md`, `agent-readability.json`, `feed.json` | `npm run build:llms` |
-| the pre-rendered page content in `index.html` (hero stats, intro, the problems heading, problem cards, evidence, colophon, and the JSON-LD block) | `npm run build:static` |
+| the pre-rendered page content in `index.html` (hero stats, intro, the problems heading, problem cards, colophon, and the JSON-LD block) | `npm run build:static` |
 | the CSP hash in `index.html` (also refreshed by `npm run build:static`) | `npm run csp` |
 | `sitemap.xml` lastmod | `npm run refresh` |
 
@@ -92,11 +89,9 @@ failure before re-running; each validator prints every problem it found.
 
 CI runs the same command on Node 22 and 24, and on pushes and scheduled runs it
 also checks freshness: a history snapshot older than two days fails until the
-daily refresh heals it, and a benchmark report older than fourteen days only
-warns because the site publishes it as a dated snapshot. Pull
-requests skip the freshness gate so an outage cannot block an unrelated
-contribution. Two more workflows gate a change: Lighthouse
-(`.lighthouserc.json`) audits the committed page for accessibility and layout
-stability, and zizmor audits the workflows themselves (`.github/zizmor.yml`).
-Keep the README file listing in step with the tree, since `validate:site` reads
-it.
+daily refresh heals it. Pull requests skip the freshness gate so an outage
+cannot block an unrelated contribution. Two more workflows gate a change:
+Lighthouse (`.lighthouserc.json`) audits the committed page for accessibility
+and layout stability, and zizmor audits the workflows themselves
+(`.github/zizmor.yml`). Keep the README file listing in step with the tree,
+since `validate:site` reads it.

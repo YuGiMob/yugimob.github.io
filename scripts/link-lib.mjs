@@ -42,11 +42,6 @@ export function collectLinks(site, showcase, documents = []) {
     add(project.url, project.name);
     if (project.npm) add(`https://registry.npmjs.org/${project.npm}`, `${project.name} on npm`);
   }
-  if (site.benchmark) {
-    add(site.benchmark.source, 'benchmark');
-    add(site.benchmark.reportUrl, 'benchmark report');
-    add(site.benchmark.tracesUrl, 'benchmark traces');
-  }
   for (const problem of showcase.problems ?? []) {
     const project = (site.projects ?? []).find((entry) => entry.name === problem.name);
     add(project?.url, `${problem.name} showcase`);

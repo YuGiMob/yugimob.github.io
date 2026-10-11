@@ -5,7 +5,7 @@ import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { problemsHeading, sectionVisibility } from '../assets/js/view-model.js';
 import { colorDistance, contrastRatio, paletteFrom, rootPaletteSource, simulateDichromacy } from './contrast-lib.mjs';
-import { buildColophonProseBlock, buildEvidenceBlock, buildHeroStatsBlock, buildIntroParagraphs, buildPrinciplesBlock, buildProblemIndexBlock, buildProblemListBlock, buildStructuredDataBlock, readBlock, readHeroStatsBlock, readIntroParagraphs } from './site-html-lib.mjs';
+import { buildColophonProseBlock, buildHeroStatsBlock, buildIntroParagraphs, buildPrinciplesBlock, buildProblemIndexBlock, buildProblemListBlock, buildStructuredDataBlock, readBlock, readHeroStatsBlock, readIntroParagraphs } from './site-html-lib.mjs';
 import { scriptSrcHash } from './csp-lib.mjs';
 import { SITE_REPOSITORY, SITE_URL } from './llms-lib.mjs';
 
@@ -372,7 +372,7 @@ if (siteData) {
   if (heroBlock !== buildHeroStatsBlock(siteData)) fail('index.html: the hero stat block does not match the machine data');
 }
 
-for (const [rel, target] of [['describedby', 'llms.txt'], ['describedby', 'agent-readability.json'], ['describedby', 'data/benchmark-matrix.json'], ['alternate', 'index.md'], ['alternate', 'feed.json']]) {
+for (const [rel, target] of [['describedby', 'llms.txt'], ['describedby', 'agent-readability.json'], ['alternate', 'index.md'], ['alternate', 'feed.json']]) {
   const pattern = new RegExp(`<link[^>]*rel="${rel}"[^>]*href="${target.replace('.', '\\.')}"`);
   if (!pattern.test(indexSource)) fail(`index.html: missing the rel=${rel} link to ${target}`);
 }
@@ -393,7 +393,7 @@ if (readability) {
   if (readability.license !== 'MIT') fail('agent-readability.json: license is not MIT');
   if (readability.updated !== (siteData?.activity?.fetchedAt ?? null)) fail('agent-readability.json: updated does not match the activity date');
   const artifacts = readability.artifacts && typeof readability.artifacts === 'object' ? Object.values(readability.artifacts) : [];
-  for (const file of ['llms.txt', 'index.md', 'feed.json', 'data/site-data.json', 'data/showcase.json', 'data/benchmark-matrix.json', 'sitemap.xml']) {
+  for (const file of ['llms.txt', 'index.md', 'feed.json', 'data/site-data.json', 'data/showcase.json', 'sitemap.xml']) {
     if (!artifacts.some((url) => typeof url === 'string' && url.endsWith(`/${file}`))) {
       fail(`agent-readability.json: does not list ${file}`);
     }
@@ -463,7 +463,6 @@ if (siteData && showcase) {
   const blocks = [
     ['problem-index', 'ol', buildProblemIndexBlock(showcase, projects)],
     ['problem-list', 'div', buildProblemListBlock(showcase, projects)],
-    ['evidence-body', 'div', buildEvidenceBlock(showcase, projects, siteData.externalBenchmark ?? null)],
     ['colophon-prose', 'div', buildColophonProseBlock(showcase)],
     ['principles', 'ul', buildPrinciplesBlock(showcase)],
   ];
@@ -474,12 +473,6 @@ if (siteData && showcase) {
   const canonicalHref = indexSource.match(/<link rel="canonical" href="([^"]+)"/)?.[1] ?? `${SITE_URL}/`;
   if (structuredData?.[0] !== buildStructuredDataBlock(siteData, showcase, canonicalHref)) {
     fail('index.html: the inline JSON-LD block does not match the data files');
-  }
-  if (elementText(indexSource, 'evidence-kicker') !== (showcase.evidence?.kicker ?? '')) {
-    fail('index.html: #evidence-kicker does not match the showcase');
-  }
-  if (elementText(indexSource, 'evidence-heading') !== (showcase.evidence?.headline ?? '')) {
-    fail('index.html: #evidence-heading does not match the showcase');
   }
   const visibility = sectionVisibility(siteData.sections, showcase);
   for (const [id, shown] of Object.entries(visibility)) {
@@ -524,7 +517,7 @@ if (siteData) {
     if (elementText(indexSource, 'problems-heading') !== expectedHeading) {
       fail(`index.html: #problems-heading should read "${expectedHeading}"`);
     }
-    const showcased = new Set([...showcase.problems.map((problem) => problem?.name), showcase.evidence?.name].filter(Boolean));
+    const showcased = new Set(showcase.problems.map((problem) => problem?.name).filter(Boolean));
     for (const project of siteData.projects) {
       if (!showcased.has(project.name)) fail(`data/showcase.json: no entry for the manifest project ${project.name}`);
     }

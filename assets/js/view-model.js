@@ -21,27 +21,18 @@ export function problemEntries(showcase, projects) {
 }
 
 export function problemIndexRows(showcase, projects) {
-  const rows = problemEntries(showcase, projects).map(({ entry, number }) => ({
+  return problemEntries(showcase, projects).map(({ entry, number }) => ({
     href: `#${problemId(entry.name)}`,
     headline: entry.headline,
     tool: entry.name,
     number,
   }));
-  if (showcase?.evidence?.name) {
-    rows.push({
-      href: '#evidence',
-      headline: showcase.evidence.headline,
-      tool: showcase.evidence.name,
-      number: numbered(rows.length),
-    });
-  }
-  return rows;
 }
 
 export function problemsHeading(showcase, projects) {
-  const count = problemEntries(showcase, projects).length + (showcase?.evidence ? 1 : 0);
+  const count = problemEntries(showcase, projects).length;
   const word = countWord(count);
-  return `${word.charAt(0).toUpperCase()}${word.slice(1)} things that kept going wrong`;
+  return `${word.charAt(0).toUpperCase()}${word.slice(1)} rules the tools enforce`;
 }
 
 export function heroStatRows(data) {
@@ -82,10 +73,8 @@ export function repositoryFacts(stats) {
 
 export function sectionVisibility(sections = {}, showcase = null) {
   const showProblems = sections.showProblems ?? true;
-  const showEvidence = sections.showEvidence ?? true;
   return {
-    problems: showProblems,
-    evidence: showProblems && showEvidence && (showcase ? Boolean(showcase.evidence) : true),
+    problems: showProblems && (showcase ? showcase.problems.length > 0 : true),
     colophon: sections.showAbout ?? true,
     campfire: sections.showCampfire ?? true,
     'hero-stats': sections.showHeroStats ?? true,
@@ -123,10 +112,9 @@ function resolvedUrl(value, baseUrl) {
 }
 
 export function structuredData(data, showcase, baseUrl = '') {
-  const names = new Set([
-    ...(Array.isArray(showcase?.problems) ? showcase.problems.map((problem) => problem.name) : []),
-    ...(showcase?.evidence ? [showcase.evidence.name] : []),
-  ]);
+  const names = new Set(
+    Array.isArray(showcase?.problems) ? showcase.problems.map((problem) => problem.name) : [],
+  );
   const byName = new Map(data.projects.map((project) => [project.name, project]));
   const items = [...names]
     .map((name) => byName.get(name))

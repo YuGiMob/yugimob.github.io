@@ -19,11 +19,3 @@ export function withRepoCopy(run, mutate) {
     rmSync(directory, { recursive: true, force: true });
   }
 }
-
-export function seededRandom(seed) {
-  let state = seed;
-  return () => {
-    state = (state * 1103515245 + 12345) % 2147483648;
-    return state / 2147483648;
-  };
-}

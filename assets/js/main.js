@@ -1,11 +1,10 @@
 import { el, link, setText } from './ui.js';
 import { fetchJson } from './fetch-json.js';
-import { isValidSiteData, isValidBenchmark, isValidShowcase, fallbackShowcase } from './site-data.js';
+import { isValidSiteData, isValidShowcase, fallbackShowcase } from './site-data.js';
 import {
   applyVisibility,
   renderActivity,
   renderDegradedNotice,
-  renderEvidence,
   renderFooter,
   renderHeroStats,
   renderIdentity,
@@ -121,15 +120,12 @@ async function init() {
   if (!isValidSiteData(data)) throw new Error('invalid site data');
   const curatedShowcase = isValidShowcase(showcaseRaw) ? showcaseRaw : null;
   const showcase = curatedShowcase ?? fallbackShowcase(data);
-  const benchmark = isValidBenchmark(data.benchmark) ? data.benchmark : null;
-  if (data.benchmark != null && !benchmark) console.warn('YuGiMob: ignoring an unusable benchmark block');
 
   applyVisibility(data.sections, showcase);
   renderIdentity(data);
   renderIntro(showcase);
   renderHeroStats(data);
   renderProblems();
-  renderEvidence(showcase, benchmark, data.benchmarkHistory);
   await renderActivity(data);
   renderFooter(data);
   document.getElementById('main-content')?.removeAttribute('aria-busy');

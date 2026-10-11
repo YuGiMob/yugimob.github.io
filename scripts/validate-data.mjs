@@ -3,8 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEMO_IDS } from '../assets/js/demos.js';
-import { PLAYGROUND_ID } from '../assets/js/playground.js';
-import { BENCHMARK_FOCI, BENCHMARK_HISTORY_LIMIT, HISTORY_LIMIT, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS, benchmarkSnapshot, holmAdjust, isTimestamp, mcnemarExact, newcombePairedInterval, scenarioMatrixMatchesBenchmark, wilsonInterval } from './refresh-lib.mjs';
+import { HISTORY_LIMIT, isTimestamp, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS } from './refresh-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -12,8 +11,6 @@ const dataPath = args[0] ? resolve(args[0]) : join(ROOT, 'data', 'site-data.json
 const showcasePath = args[1] ? resolve(args[1]) : join(ROOT, 'data', 'showcase.json');
 const schemaPath = join(ROOT, 'data', 'site-data.schema.json');
 const showcaseSchemaPath = join(ROOT, 'data', 'showcase.schema.json');
-const matrixPath = args[2] ? resolve(args[2]) : join(ROOT, 'data', 'benchmark-matrix.json');
-const matrixSchemaPath = join(ROOT, 'data', 'benchmark-matrix.schema.json');
 
 class ValidationError extends Error {}
 
@@ -264,7 +261,7 @@ function checkSortedDates(entries, label) {
 function checkDemo(item, prefix) {
   if (!('demo' in item)) return;
   needString(item.demo, `${prefix} demo`);
-  if (!DEMO_IDS.has(item.demo) && item.demo !== PLAYGROUND_ID) fail(`${prefix} demo unknown: ${item.demo}`);
+  if (!DEMO_IDS.has(item.demo)) fail(`${prefix} demo unknown: ${item.demo}`);
 }
 
 function validateProblem(item, knownNames) {
@@ -273,66 +270,6 @@ function validateProblem(item, knownNames) {
   if (usedShowcaseNames.has(item.name)) fail(`showcase problem duplicated: ${item.name}`);
   usedShowcaseNames.add(item.name);
   checkDemo(item, `showcase problem ${item.name}`);
-}
-
-function validateContender(contender, labels, reference) {
-  if (!isPlainObject(contender)) return;
-  if (labels.has(contender.label)) fail(`benchmark contender duplicated: ${contender.label}`);
-  labels.add(contender.label);
-  const name = `benchmark contender ${contender.label}`;
-  if (Number.isInteger(contender.passed) && Number.isInteger(contender.runs) && contender.passed > contender.runs) {
-    fail(`${name} passed exceeds runs`);
-  }
-  if (Number.isInteger(contender.runs) && Number.isFinite(contender.overall)) {
-    const expected = contender.runs > 0 ? Math.round((contender.passed / contender.runs) * 1000) / 10 : 0;
-    if (Math.abs(contender.overall - expected) > 0.05) fail(`${name} overall does not match passed/runs`);
-  }
-  if (Number.isFinite(contender.low) && Number.isFinite(contender.high) && Number.isFinite(contender.overall)) {
-    if (contender.low > contender.overall + 0.05 || contender.high < contender.overall - 0.05) {
-      fail(`${name} interval does not bracket the pass rate`);
-    }
-  }
-  if (Number.isInteger(contender.passed) && Number.isInteger(contender.runs) && Number.isFinite(contender.low) && Number.isFinite(contender.high)) {
-    const expected = wilsonInterval(contender.passed, contender.runs);
-    if (Math.abs(contender.low - expected.low) > 0.11 || Math.abs(contender.high - expected.high) > 0.11) {
-      fail(`${name} interval does not match the Wilson interval for passed/runs`);
-    }
-  }
-  if (isPlainObject(contender.outcomes) && Number.isInteger(contender.runs)) {
-    const total = Object.values(contender.outcomes).reduce((sum, count) => sum + count, 0);
-    if (total !== contender.runs) fail(`${name} outcomes do not sum to runs`);
-  }
-  if (contender.vsHighlight != null) {
-    if (contender.highlight === true) fail(`${name} is highlighted and cannot compare itself to the highlight`);
-    const comparison = contender.vsHighlight;
-    if (!isPlainObject(comparison) || !Number.isInteger(comparison.b) || !Number.isInteger(comparison.c) || !Number.isInteger(comparison.bothPassed) || !Number.isInteger(comparison.bothFailed)) {
-      fail(`${name} vsHighlight invalid`);
-    } else {
-      if (comparison.b < 0 || comparison.c < 0 || comparison.bothPassed < 0 || comparison.bothFailed < 0) fail(`${name} vsHighlight invalid`);
-      const pairs = comparison.b + comparison.c + comparison.bothPassed + comparison.bothFailed;
-      if (Number.isInteger(contender.runs) && pairs > contender.runs) fail(`${name} vsHighlight exceeds runs`);
-      if (Number.isInteger(contender.passed) && comparison.bothPassed + comparison.c !== contender.passed) {
-        fail(`${name} vsHighlight does not reconstruct the contender pass count`);
-      }
-      if (reference && Number.isInteger(reference.runs)) {
-        if (pairs !== reference.runs) fail(`${name} vsHighlight does not cover the reference runs`);
-        if (Number.isInteger(reference.passed) && comparison.bothPassed + comparison.b !== reference.passed) {
-          fail(`${name} vsHighlight does not reconstruct the reference pass count`);
-        }
-      }
-      if (Math.abs(comparison.p - mcnemarExact(comparison.b, comparison.c)) > 0.000001) {
-        fail(`${name} vsHighlight p does not match the exact McNemar test`);
-      }
-      if (!Number.isFinite(comparison.low) || !Number.isFinite(comparison.high) || comparison.low > comparison.high) {
-        fail(`${name} vsHighlight interval invalid`);
-      } else if (reference && Number.isInteger(reference.runs)) {
-        const expected = newcombePairedInterval(comparison.bothPassed, comparison.bothFailed, comparison.b, comparison.c, reference.runs);
-        if (!expected || Math.abs(comparison.low - expected.low) > 0.05 || Math.abs(comparison.high - expected.high) > 0.05) {
-          fail(`${name} vsHighlight interval does not match the paired-difference interval`);
-        }
-      }
-    }
-  }
 }
 
 function validateProjects(projects) {
@@ -347,95 +284,11 @@ function validateProjects(projects) {
   }
 }
 
-function validateComparisons(benchmark) {
-  const rivals = benchmark.contenders.filter((contender) => isPlainObject(contender) && isPlainObject(contender.vsHighlight));
-  const adjusted = holmAdjust(rivals.map((contender) => contender.vsHighlight.p));
-  rivals.forEach((contender, index) => {
-    const stored = contender.vsHighlight.pAdjusted;
-    if (!Number.isFinite(stored) || Math.abs(stored - adjusted[index]) > 0.000001) {
-      fail(`benchmark contender ${contender.label} vsHighlight pAdjusted does not match the Holm adjustment`);
-    }
-  });
-}
-
-function validateCosts(benchmark) {
-  const costs = benchmark.contenders.map((contender) => (isPlainObject(contender) ? contender.costUsd : undefined));
-  if (!Number.isFinite(benchmark.costUsd) || costs.some((cost) => !Number.isFinite(cost))) return;
-  const total = costs.reduce((sum, cost) => sum + cost, 0);
-  if (Math.abs(total - benchmark.costUsd) > 0.01) {
-    fail(`benchmark costUsd ${benchmark.costUsd} does not match the contender total ${Math.round(total * 10000) / 10000}`);
-  }
-}
-
-function validateBenchmark(benchmark) {
-  if (!isPlainObject(benchmark) || !Array.isArray(benchmark.contenders)) return;
-  const labels = new Set();
-  let highlighted = 0;
-  const reference = benchmark.contenders.find((entry) => isPlainObject(entry) && entry.highlight === true) ?? null;
-  for (const contender of benchmark.contenders) {
-    run(() => validateContender(contender, labels, reference));
-    if (isPlainObject(contender) && contender.highlight === true) highlighted += 1;
-  }
-  if (highlighted === 0) fail('benchmark has no highlighted contender');
-  if (highlighted > 1) fail('benchmark has more than one highlighted contender');
-  if (benchmark.contenderCount !== benchmark.contenders.length) fail('benchmark contenderCount does not match contenders');
-  if (benchmark.models * benchmark.scenarios !== benchmark.runsPerContender) {
-    fail('benchmark runsPerContender does not match models × scenarios');
-  }
-  if (benchmark.contenderCount * benchmark.runsPerContender !== benchmark.totalRuns) {
-    fail('benchmark totalRuns does not match contenderCount × runsPerContender');
-  }
-  if (isPlainObject(benchmark.focusCounts)) {
-    const total = BENCHMARK_FOCI.reduce((sum, focus) => sum + (benchmark.focusCounts[focus] ?? 0), 0);
-    if (total !== benchmark.scenarios) fail('benchmark focusCounts do not sum to scenarios');
-  } else {
-    fail('benchmark focusCounts invalid');
-  }
-  validateComparisons(benchmark);
-  validateCosts(benchmark);
-}
-
-function validateExternalBenchmark(external) {
-  if (!isPlainObject(external)) fail('externalBenchmark must be an object');
-  const derived = external.observations / external.tasks;
-  if (!Number.isInteger(derived) || derived !== external.configurationCount) {
-    fail('externalBenchmark configurationCount does not match observations / tasks');
-  }
-  if (external.finalExact < external.firstExact) fail('externalBenchmark finalExact is below firstExact');
-  const balanced = 0.75 * external.firstExact + 0.25 * external.finalExact;
-  if (Math.abs(balanced - external.quality) > 1) {
-    fail('externalBenchmark quality is not within one point of 0.75 × firstExact + 0.25 × finalExact');
-  }
-}
-
-function validateBenchmarkHistory(benchmark, history) {
-  if (!Array.isArray(history) || history.length === 0) return;
-  const snapshot = benchmarkSnapshot(benchmark);
-  if (!snapshot) return;
-  const newest = history[history.length - 1];
-  if (!isPlainObject(newest)) return;
-  if (newest.date !== snapshot.date) fail(`benchmarkHistory newest entry is dated ${newest.date}, not the benchmark report date ${snapshot.date}`);
-  if (newest.overall !== snapshot.overall || newest.safety !== snapshot.safety) {
-    fail('benchmarkHistory newest entry does not match the highlighted contender');
-  }
-  if (newest.models !== snapshot.models || newest.scenarios !== snapshot.scenarios || newest.runsPerContender !== snapshot.runsPerContender) {
-    fail('benchmarkHistory newest entry does not match the benchmark grid');
-  }
-}
-
 function validateShowcase(showcase, knownNames) {
   if (!isPlainObject(showcase)) return;
   run(() => {
     if (!Array.isArray(showcase.problems)) return;
     for (const item of showcase.problems) run(() => validateProblem(item, knownNames));
-  });
-  run(() => {
-    const evidence = showcase.evidence;
-    if (!isPlainObject(evidence)) return;
-    if (knownNames && !knownNames.has(evidence.name)) fail(`showcase evidence missing from site-data: ${evidence.name}`);
-    if (usedShowcaseNames.has(evidence.name)) fail(`showcase evidence duplicated: ${evidence.name}`);
-    usedShowcaseNames.add(evidence.name);
-    checkDemo(evidence, 'showcase evidence');
   });
 }
 
@@ -443,28 +296,17 @@ const data = readJson(dataPath, relative(ROOT, dataPath));
 const showcase = readJson(showcasePath, relative(ROOT, showcasePath));
 const dataSchema = readJson(schemaPath, relative(ROOT, schemaPath));
 const showcaseSchema = readJson(showcaseSchemaPath, relative(ROOT, showcaseSchemaPath));
-const matrix = readJson(matrixPath, relative(ROOT, matrixPath));
-const matrixSchema = readJson(matrixSchemaPath, relative(ROOT, matrixSchemaPath));
 
 if (data !== undefined && dataSchema !== undefined) reportSchema(data, dataSchema, 'site-data');
 if (showcase !== undefined && showcaseSchema !== undefined) reportSchema(showcase, showcaseSchema, 'showcase');
 if (dataSchema !== undefined) checkSchemaDocument(dataSchema, '', 'site-data', (message) => errors.push(message));
 if (showcaseSchema !== undefined) checkSchemaDocument(showcaseSchema, '', 'showcase', (message) => errors.push(message));
-if (matrix !== undefined && matrixSchema !== undefined) reportSchema(matrix, matrixSchema, 'benchmark-matrix');
-if (matrixSchema !== undefined) checkSchemaDocument(matrixSchema, '', 'benchmark-matrix', (message) => errors.push(message));
-if (matrix !== undefined && isPlainObject(data) && isPlainObject(data.benchmark)) {
-  run(() => {
-    if (!scenarioMatrixMatchesBenchmark(matrix, data.benchmark)) fail('benchmark-matrix does not match the benchmark block');
-  });
-}
 
 const declaredNames = isPlainObject(data) && Array.isArray(data.projects) && data.projects.length > 0
   ? new Set(data.projects.filter((project) => isPlainObject(project) && typeof project.name === 'string').map((project) => project.name))
   : null;
 
 if (isPlainObject(data)) run(() => validateProjects(data.projects));
-if (isPlainObject(data)) run(() => validateBenchmark(data.benchmark));
-if (isPlainObject(data) && data.externalBenchmark !== undefined) run(() => validateExternalBenchmark(data.externalBenchmark));
 if (isPlainObject(showcase)) run(() => validateShowcase(showcase, declaredNames));
 if (isPlainObject(data)) {
   run(() => {
@@ -482,13 +324,6 @@ if (isPlainObject(data)) {
       fail(`history has ${data.history.length} entries; the cap is ${HISTORY_LIMIT}`);
     }
   });
-  run(() => {
-    if (Array.isArray(data.benchmarkHistory)) checkSortedDates(data.benchmarkHistory, 'benchmarkHistory');
-    if (Array.isArray(data.benchmarkHistory) && data.benchmarkHistory.length > BENCHMARK_HISTORY_LIMIT) {
-      fail(`benchmarkHistory has ${data.benchmarkHistory.length} entries; the cap is ${BENCHMARK_HISTORY_LIMIT}`);
-    }
-  });
-  run(() => validateBenchmarkHistory(data.benchmark, data.benchmarkHistory));
 }
 
 if (errors.length > 0) {

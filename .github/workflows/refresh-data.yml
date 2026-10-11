@@ -61,12 +61,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if git diff --quiet data/site-data.json data/benchmark-matrix.json sitemap.xml index.html llms.txt index.md agent-readability.json feed.json; then
+          if git diff --quiet data/site-data.json sitemap.xml index.html llms.txt index.md agent-readability.json feed.json; then
             echo "No changes"
           else
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add data/site-data.json data/benchmark-matrix.json sitemap.xml index.html llms.txt index.md agent-readability.json feed.json
+            git add data/site-data.json sitemap.xml index.html llms.txt index.md agent-readability.json feed.json
             git commit -m "chore(site): refresh data from GitHub API"
             git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}"
             git pull --rebase --autostash

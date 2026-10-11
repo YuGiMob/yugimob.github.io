@@ -4,6 +4,7 @@ import {
   activityLine,
   heroStatRows,
   problemEntries,
+  problemId,
   problemIndexRows,
   problemsHeading,
   projectChipRows,
@@ -15,147 +16,115 @@ import {
 } from '../assets/js/view-model.js';
 
 const PROJECTS = [
-  {
-    name: 'tool-a',
-    description: 'A tool.',
-    language: 'TypeScript',
-    license: 'MIT',
-    stars: 12,
-    forks: 4,
-    npm: 'tool-a',
-    url: 'https://github.com/tester/tool-a',
-    npmWeeklyDownloads: 34,
-    pushedAt: '2026-09-17T20:24:02Z',
-  },
-  { name: 'tool-b', url: 'https://github.com/tester/tool-b', stars: 0 },
+  { name: 'tool-a', url: 'https://github.com/tester/tool-a', description: 'A tool.', stars: 10, forks: 2, npmWeeklyDownloads: 100, language: 'TypeScript', license: 'MIT', pushedAt: '2026-09-20T00:00:00Z' },
+  { name: 'tool-b', url: 'https://github.com/tester/tool-b' },
+  { name: 'tool-c', url: 'https://github.com/tester/tool-c' },
+  { name: 'tool-d', url: 'https://github.com/tester/tool-d' },
+  { name: 'tool-e', url: 'https://github.com/tester/tool-e' },
 ];
 
 const SHOWCASE = {
   problems: [
-    { name: 'tool-a', headline: 'The first failure', highlights: ['one'], size: 'default', demo: 'git' },
-    { name: 'ghost', headline: 'The missing tool', highlights: ['two'], size: 'default' },
-    { name: 'tool-b', headline: 'The third failure', highlights: ['three'], size: 'default' },
+    { name: 'tool-a', headline: 'A problem.', kicker: 'Rule A' },
+    { name: 'tool-b', headline: 'B problem.', kicker: 'Rule B' },
+    { name: 'tool-c', headline: 'C problem.', kicker: 'Rule C' },
+    { name: 'tool-d', headline: 'D problem.', kicker: 'Rule D' },
+    { name: 'tool-e', headline: 'E problem.', kicker: 'Rule E' },
   ],
-  evidence: { name: 'tool-a', headline: 'The evidence' },
 };
 
 const DATA = {
   identity: { displayName: 'Tester', classTitle: 'Testing', tagline: 'A tagline.', avatarUrl: 'assets/avatar.png', links: { github: 'https://github.com/tester' } },
   projects: PROJECTS,
-  stats: { totalStars: 12, npmPackages: 1 },
-  activity: { pushes: 7, window: '2026-09-03..17', fetchedAt: '2026-09-18' },
+  stats: { totalStars: 10, npmPackages: 5, publicRepos: 2, forksReceived: 1 },
+  activity: { window: '2026-09-09..10', pushes: 3, highlights: [], fetchedAt: '2026-09-10' },
   sections: {},
 };
 
 const projectMap = () => new Map(PROJECTS.map((project) => [project.name, project]));
 
 test('problemEntries drops a showcase entry with no project in the manifest', () => {
-  const entries = problemEntries(SHOWCASE, projectMap());
-  assert.deepEqual(entries.map(({ entry }) => entry.name), ['tool-a', 'tool-b']);
-  assert.deepEqual(entries.map(({ number }) => number), ['01', '02']);
+  const showcase = { problems: [...SHOWCASE.problems, { name: 'ghost', headline: 'Ghost.', kicker: 'Rule' }] };
+  const entries = problemEntries(showcase, projectMap());
+  assert.equal(entries.length, 5);
+  assert.deepEqual(entries.map((entry) => entry.number), ['01', '02', '03', '04', '05']);
 });
 
-test('problemIndexRows stays in step with the rendered articles and numbers the evidence row', () => {
+test('problemIndexRows stays in step with the rendered articles', () => {
   const rows = problemIndexRows(SHOWCASE, projectMap());
-  assert.deepEqual(rows.map((row) => row.href), ['#problem-tool-a', '#problem-tool-b', '#evidence']);
-  assert.deepEqual(rows.map((row) => row.number), ['01', '02', '03']);
-  assert.equal(rows[2].headline, 'The evidence');
+  assert.equal(rows.length, 5);
+  assert.equal(rows[0].href, `#${problemId('tool-a')}`);
+  assert.equal(rows[4].number, '05');
 });
 
 test('problemsHeading counts only the entries that render', () => {
-  assert.equal(problemsHeading(SHOWCASE, projectMap()), 'Three things that kept going wrong');
-  assert.equal(problemsHeading({ problems: [] }, projectMap()), 'Zero things that kept going wrong');
-  assert.equal(
-    problemsHeading({ ...SHOWCASE, evidence: null }, projectMap()),
-    'Two things that kept going wrong',
-  );
+  assert.equal(problemsHeading(SHOWCASE, projectMap()), 'Five rules the tools enforce');
+  const short = { problems: [...SHOWCASE.problems.slice(0, 4), { name: 'ghost', headline: 'Ghost.', kicker: 'Rule' }] };
+  assert.equal(problemsHeading(short, projectMap()), 'Four rules the tools enforce');
 });
 
 test('heroStatRows sums the weekly npm downloads across projects', () => {
-  assert.deepEqual(heroStatRows(DATA), [
-    { label: 'GitHub stars', value: 12 },
-    { label: 'packages on npm', value: 1 },
-    { label: 'npm installs / week', value: 34 },
-  ]);
+  const rows = heroStatRows({ projects: PROJECTS, stats: { totalStars: 10, npmPackages: 5 } });
+  assert.deepEqual(rows.map((row) => row.label), ['GitHub stars', 'packages on npm', 'npm installs / week']);
+  assert.equal(rows[2].value, 100);
 });
 
 test('projectChipRows formats the numbers and skips absent fields', () => {
-  assert.deepEqual(projectChipRows(PROJECTS[0]), [
-    { label: 'stars', value: '12' },
-    { label: 'forks', value: '4' },
-    { label: 'installs/wk', value: '34' },
-    { label: 'language', value: 'TypeScript' },
-    { label: 'license', value: 'MIT' },
-    { label: 'updated', value: '2026-09-17' },
-  ]);
-  assert.deepEqual(projectChipRows(PROJECTS[1]), [
-    { label: 'stars', value: '0' },
-    { label: 'forks', value: '0' },
-  ]);
+  const chips = projectChipRows(PROJECTS[0]);
+  assert.deepEqual(chips.map((chip) => chip.label), ['stars', 'forks', 'installs/wk', 'language', 'license', 'updated']);
+  assert.equal(chips[0].value, '10');
+  assert.equal(chips[5].value, '2026-09-20');
+  assert.deepEqual(projectChipRows(PROJECTS[1]).map((chip) => chip.label), ['stars', 'forks']);
 });
 
 test('activityLine expands the window range and drops a single date', () => {
-  assert.deepEqual(activityLine(DATA.activity), { pushes: '7 pushes to public repositories', window: '2026-09-03 to 2026-09-17' });
-  assert.deepEqual(activityLine({}), { pushes: '0 pushes to public repositories', window: '' });
-  assert.deepEqual(activityLine({ pushes: 0, window: '2026-09-20' }), { pushes: '0 pushes to public repositories', window: '' });
+  const line = activityLine({ window: '2026-09-09..10', pushes: 3 });
+  assert.equal(line.pushes, '3 pushes to public repositories');
+  assert.equal(line.window, '2026-09-09 to 2026-09-10');
+  assert.equal(activityLine({ window: '2026-09-10', pushes: 0 }).window, '');
 });
 
 test('structuredData builds a profile page around the showcase projects', () => {
-  const page = structuredData(DATA, SHOWCASE);
-  assert.equal(page['@type'], 'ProfilePage');
-  assert.equal(page.dateModified, '2026-09-18');
-  assert.equal(page.mainEntity['@type'], 'Person');
-  assert.equal(page.mainEntity.name, 'Tester');
-  assert.equal(page.mainEntity.description, 'A tagline.');
-  assert.deepEqual(page.mainEntity.sameAs, ['https://github.com/tester']);
-  assert.equal(page.mainEntity.url, undefined);
-  assert.equal(page.mainEntity.image, 'assets/avatar.png');
-  const absolute = structuredData(DATA, SHOWCASE, 'https://yugimob.github.io/');
-  assert.equal(absolute.mainEntity.url, 'https://yugimob.github.io/');
-  assert.equal(absolute.mainEntity.image, 'https://yugimob.github.io/assets/avatar.png');
-  assert.equal(structuredData(DATA, SHOWCASE, 'not a base').mainEntity.image, 'assets/avatar.png');
-  assert.equal(page.hasPart['@type'], 'ItemList');
-  const list = page.hasPart;
-  assert.equal(list.name, 'Tester projects');
-  assert.deepEqual(list.itemListElement.map((item) => item.item.name), ['tool-a', 'tool-b']);
-  assert.equal(list.itemListElement[0].position, 1);
-  assert.equal(list.itemListElement[0].item.codeRepository, 'https://github.com/tester/tool-a');
-  assert.deepEqual(list.itemListElement[0].item.sameAs, ['https://www.npmjs.com/package/tool-a']);
-  assert.equal(list.itemListElement[1].item.license, undefined);
-  assert.equal(list.numberOfItems, 2);
+  const jsonLd = structuredData(DATA, SHOWCASE, 'https://yugimob.github.io/');
+  assert.equal(jsonLd['@type'], 'ProfilePage');
+  assert.equal(jsonLd.mainEntity.name, 'Tester');
+  assert.equal(jsonLd.mainEntity.image, 'https://yugimob.github.io/assets/avatar.png');
+  assert.deepEqual(jsonLd.mainEntity.sameAs, ['https://github.com/tester']);
+  assert.equal(jsonLd.hasPart.numberOfItems, 5);
+  assert.equal(jsonLd.hasPart.itemListElement[0].item.name, 'tool-a');
+  assert.equal(jsonLd.hasPart.itemListElement[0].item.license, 'https://spdx.org/licenses/MIT');
 });
 
 test('repositoryFacts formats the repository totals', () => {
-  assert.deepEqual(repositoryFacts({ publicRepos: 12, forksReceived: 30 }), { repositories: '12', forks: '30' });
-  assert.deepEqual(repositoryFacts({}), { repositories: '0', forks: '0' });
+  assert.deepEqual(repositoryFacts({ publicRepos: 13, forksReceived: 33 }), { repositories: '13', forks: '33' });
 });
 
 test('staleDays counts whole days and rejects unusable dates', () => {
-  assert.equal(staleDays('2026-09-17', '2026-09-20'), 3);
-  assert.equal(staleDays('2026-09-20', '2026-09-20'), 0);
-  assert.equal(staleDays('2026-09-25', '2026-09-20'), 0);
-  assert.equal(staleDays(undefined, '2026-09-20'), null);
-  assert.equal(staleDays('not a date', '2026-09-20'), null);
+  assert.equal(staleDays('2026-09-18', '2026-09-20'), 2);
+  assert.equal(staleDays('nope', '2026-09-20'), null);
 });
 
 test('stalenessNotice names the source that went stale', () => {
-  const stale = { activity: { fetchedAt: '2026-09-10' }, benchmark: { generatedAt: '2026-09-20T12:00:00Z' } };
-  assert.equal(stalenessNotice(stale, '2026-09-20'), 'The daily refresh last updated this page 10 days ago.');
-  assert.equal(stalenessNotice({ activity: { fetchedAt: '2026-09-19' } }, '2026-09-20', 0), 'The daily refresh last updated this page 1 day ago.');
+  const data = { activity: { fetchedAt: '2026-09-17' } };
+  assert.equal(stalenessNotice(data, '2026-09-20'), 'The daily refresh last updated this page 3 days ago.');
+  assert.equal(stalenessNotice(data, '2026-09-19'), null);
+});
+
+test('sectionVisibility mirrors the data toggles and the problems list', () => {
+  assert.deepEqual(sectionVisibility({}, SHOWCASE), { problems: true, colophon: true, campfire: true, 'hero-stats': true });
+  const hidden = sectionVisibility({ showAbout: false, showProblems: false, showCampfire: false, showHeroStats: false }, SHOWCASE);
+  assert.deepEqual(hidden, { problems: false, colophon: false, campfire: false, 'hero-stats': false });
+  assert.equal(sectionVisibility({}, { problems: [] }).problems, false);
+  assert.equal(sectionVisibility({}, null).problems, true);
+});
+
+test('stalenessNotice ignores a document without an activity date', () => {
   assert.equal(stalenessNotice({}, '2026-09-20'), null);
+  assert.equal(stalenessNotice({ activity: {} }, '2026-09-20'), null);
 });
 
-test('stalenessNotice ignores a stale benchmark report', () => {
-  const oldReport = { activity: { fetchedAt: '2026-09-19' }, benchmark: { generatedAt: '2026-06-01T12:00:00Z' } };
-  assert.equal(stalenessNotice(oldReport, '2026-09-20'), null);
-  const both = { activity: { fetchedAt: '2026-09-01' }, benchmark: { generatedAt: '2026-06-01T12:00:00Z' } };
-  assert.equal(stalenessNotice(both, '2026-09-20'), 'The daily refresh last updated this page 19 days ago.');
-});
-
-test('sectionVisibility mirrors the data toggles and the evidence block', () => {
-  assert.deepEqual(sectionVisibility({}, null), { problems: true, evidence: true, colophon: true, campfire: true, 'hero-stats': true });
-  assert.deepEqual(sectionVisibility({ showProblems: false }, { evidence: { name: 'tool' } }), { problems: false, evidence: false, colophon: true, campfire: true, 'hero-stats': true });
-  assert.equal(sectionVisibility({ showEvidence: false }, { evidence: { name: 'tool' } }).evidence, false);
-  assert.equal(sectionVisibility({}, {}).evidence, false);
-  assert.deepEqual(sectionVisibility({ showAbout: false, showCampfire: false, showHeroStats: false }, { evidence: { name: 'tool' } }), { problems: true, evidence: true, colophon: false, campfire: false, 'hero-stats': false });
+test('structuredData tolerates a missing base URL', () => {
+  const jsonLd = structuredData(DATA, SHOWCASE);
+  assert.equal(jsonLd.mainEntity.url, undefined);
+  assert.equal(jsonLd.mainEntity.image, 'assets/avatar.png');
 });

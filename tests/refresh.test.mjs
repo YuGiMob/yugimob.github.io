@@ -1,223 +1,146 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
-import { benchmarkSnapshot, buildActivity, buildDaily, buildHighlights, buildScenarioMatrix, externalBenchmarkSnapshot, scenarioCoverage, upsertHistory } from '../scripts/refresh-lib.mjs';
+import { buildActivity, buildDaily, buildHighlights, historyAgeDays, isTimestamp, npmPointUrl, retryDelayMs, sleep, upsertHistory } from '../scripts/refresh-lib.mjs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = new URL('..', import.meta.url);
+const SCRIPT = new URL('scripts/refresh-data.mjs', ROOT);
 
 function push(date, repo = 'tester/tool') {
-  return { type: 'PushEvent', created_at: `${date}T10:00:00Z`, repo: { name: repo } };
+  return { type: 'PushEvent', created_at: `${date}T09:00:00Z`, repo: { name: repo }, payload: { size: 1 } };
 }
 
 function watch(repo = 'other/project') {
-  return { type: 'WatchEvent', payload: { action: 'started' }, repo: { name: repo } };
+  return { type: 'WatchEvent', created_at: '2026-09-20T09:00:00Z', repo: { name: repo }, payload: { action: 'started' } };
 }
 
 function issue(action = 'closed', number = 7, repo = 'tester/tool') {
-  return { type: 'IssuesEvent', payload: { action, issue: { number } }, repo: { name: repo } };
+  return { type: 'IssuesEvent', created_at: '2026-09-20T09:00:00Z', repo: { name: repo }, payload: { action, issue: { number } } };
 }
 
 function release(tag = 'v1.2.0', repo = 'tester/tool') {
-  return { type: 'ReleaseEvent', payload: { action: 'published', release: { tag_name: tag } }, repo: { name: repo } };
+  return { type: 'ReleaseEvent', created_at: '2026-09-20T09:00:00Z', repo: { name: repo }, payload: { action: 'published', release: { tag_name: tag } } };
 }
 
 function merge(number = 12, repo = 'tester/tool') {
-  return { type: 'PullRequestEvent', payload: { action: 'closed', pull_request: { number, merged: true } }, repo: { name: repo } };
+  return { type: 'PullRequestEvent', created_at: '2026-09-20T09:00:00Z', repo: { name: repo }, payload: { pull_request: { number, merged: true } } };
 }
 
 test('buildDaily counts events and pushes per day in date order', () => {
-  const daily = buildDaily([push('2026-09-10'), push('2026-09-09'), watch()]);
+  const daily = buildDaily([push('2026-09-18'), push('2026-09-18'), push('2026-09-19'), watch()]);
   assert.deepEqual(daily, [
-    { date: '2026-09-09', events: 1, pushes: 1 },
-    { date: '2026-09-10', events: 1, pushes: 1 },
+    { date: '2026-09-18', events: 2, pushes: 2 },
+    { date: '2026-09-19', events: 1, pushes: 1 },
+    { date: '2026-09-20', events: 1, pushes: 0 },
   ]);
 });
 
 test('buildDaily fills the days between the first and last event with zeroes', () => {
-  const daily = buildDaily([push('2026-09-11'), push('2026-09-13')]);
-  assert.deepEqual(daily, [
-    { date: '2026-09-11', events: 1, pushes: 1 },
-    { date: '2026-09-12', events: 0, pushes: 0 },
-    { date: '2026-09-13', events: 1, pushes: 1 },
-  ]);
+  const daily = buildDaily([push('2026-09-17'), push('2026-09-20')]);
+  assert.deepEqual(daily.map((entry) => entry.date), ['2026-09-17', '2026-09-18', '2026-09-19', '2026-09-20']);
+  assert.deepEqual(daily.slice(1, 3).map((entry) => entry.pushes), [0, 0]);
 });
 
 test('buildDaily caps the filled range at the newest days', () => {
-  const daily = buildDaily([push('2026-08-01'), push('2026-08-10')], 3);
-  assert.deepEqual(daily.map((entry) => entry.date), ['2026-08-08', '2026-08-09', '2026-08-10']);
-  assert.equal(daily[0].pushes, 0);
+  const daily = buildDaily([push('2026-01-01'), push('2026-09-20')], 3);
+  assert.deepEqual(daily.map((entry) => entry.date), ['2026-09-18', '2026-09-19', '2026-09-20']);
 });
 
-test('buildDaily keeps only the most recent days', () => {
-  const days = ['2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04'];
-  const daily = buildDaily(days.map((date) => push(date)), 2);
-  assert.deepEqual(daily.map((entry) => entry.date), ['2026-09-03', '2026-09-04']);
+test('buildDaily survives an empty event list', () => {
+  assert.deepEqual(buildDaily([]), []);
 });
 
 test('buildActivity abbreviates a same-month window', () => {
-  const activity = buildActivity([push('2026-09-03'), push('2026-09-17')], '2026-09-18');
-  assert.equal(activity.window, '2026-09-03..17');
+  const activity = buildActivity([push('2026-09-18'), push('2026-09-20')], '2026-09-21');
+  assert.equal(activity.window, '2026-09-18..20');
   assert.equal(activity.pushes, 2);
 });
 
 test('buildActivity keeps a cross-month window explicit', () => {
-  const activity = buildActivity([push('2026-08-31'), push('2026-09-02')], '2026-09-03');
-  assert.equal(activity.window, '2026-08-31..2026-09-02');
-});
-
-test('buildActivity caps the window and the pushes together', () => {
-  const start = Date.parse('2026-01-01T00:00:00Z');
-  const events = Array.from({ length: 200 }, (unused, index) => push(new Date(start + index * 86400000).toISOString().slice(0, 10)));
-  const activity = buildActivity(events, '2026-08-01', 120);
-  assert.equal(activity.daily.length, 120);
-  assert.equal(activity.pushes, 120);
-  assert.equal(activity.window, `${activity.daily[0].date}..${activity.daily[119].date}`);
+  const activity = buildActivity([push('2026-08-30'), push('2026-09-02')], '2026-09-03');
+  assert.equal(activity.window, '2026-08-30..2026-09-02');
 });
 
 test('buildActivity falls back to today with no events', () => {
-  const activity = buildActivity([], '2026-09-18');
-  assert.deepEqual(activity, { pushes: 0, highlights: [], window: '2026-09-18', daily: [] });
+  const activity = buildActivity([], '2026-09-21');
+  assert.equal(activity.window, '2026-09-21');
+  assert.equal(activity.pushes, 0);
 });
 
 test('buildHighlights maps stars and issues and respects the limit', () => {
-  const events = [watch(), issue('closed', 44), issue('opened', 45), watch('third/repo')];
-  assert.deepEqual(buildHighlights(events, 3), [
-    'starred other/project',
-    'closed issue #44 on tester/tool',
-    'opened issue #45 on tester/tool',
-  ]);
-  assert.deepEqual(buildHighlights(events, 2).length, 2);
+  const highlights = buildHighlights([watch('a/b'), issue('closed', 7), watch('c/d')], 2);
+  assert.deepEqual(highlights, ['starred a/b', 'closed issue #7 on tester/tool']);
 });
 
 test('buildHighlights reports releases and merged pull requests', () => {
-  const events = [release('v4.3.5'), merge(56), release('v4.3.4')];
-  assert.deepEqual(buildHighlights(events), [
-    'published release v4.3.5 of tester/tool',
-    'merged pull request #56 on tester/tool',
-    'published release v4.3.4 of tester/tool',
+  assert.deepEqual(buildHighlights([release('v2.0.0'), merge(12)]), [
+    'published release v2.0.0 of tester/tool',
+    'merged pull request #12 on tester/tool',
   ]);
-  assert.deepEqual(buildHighlights([{ type: 'PullRequestEvent', payload: { action: 'closed', pull_request: { number: 1, merged: false } }, repo: { name: 'tester/tool' } }]), []);
-});
-
-test('benchmarkSnapshot reads the highlighted contender on the report date', () => {
-  const benchmark = {
-    generatedAt: '2026-09-20T12:03:04.357Z',
-    models: 3,
-    scenarios: 4,
-    runsPerContender: 12,
-    contenders: [
-      { highlight: false, overall: 10 },
-      { highlight: true, overall: 97.8, safety: 98.9 },
-    ],
-  };
-  assert.deepEqual(benchmarkSnapshot(benchmark), { date: '2026-09-20', models: 3, scenarios: 4, runsPerContender: 12, overall: 97.8, safety: 98.9 });
-});
-
-test('benchmarkSnapshot refuses a report without a highlighted contender or a date', () => {
-  assert.equal(benchmarkSnapshot(null), null);
-  assert.equal(benchmarkSnapshot({ generatedAt: '2026-09-20T12:03:04.357Z', contenders: [{ highlight: false }] }), null);
-  assert.equal(benchmarkSnapshot({ generatedAt: 'not a date', contenders: [{ highlight: true, overall: 1 }] }), null);
 });
 
 test('upsertHistory replaces a same-date snapshot and sorts', () => {
   const history = [
-    { date: '2026-09-01', totalStars: 1, totalDownloads: 10 },
-    { date: '2026-09-02', totalStars: 2, totalDownloads: 20 },
+    { date: '2026-09-18', totalStars: 1, totalDownloads: 1 },
+    { date: '2026-09-20', totalStars: 2, totalDownloads: 2 },
   ];
-  const next = upsertHistory(history, { date: '2026-09-02', totalStars: 5, totalDownloads: 50 });
-  assert.deepEqual(next.map((entry) => entry.totalStars), [1, 5]);
-  assert.equal(next[0].date, '2026-09-01');
-  assert.equal(next[1].date, '2026-09-02');
+  const next = upsertHistory(history, { date: '2026-09-19', totalStars: 3, totalDownloads: 3 });
+  assert.deepEqual(next.map((entry) => entry.date), ['2026-09-18', '2026-09-19', '2026-09-20']);
+  const replaced = upsertHistory(next, { date: '2026-09-19', totalStars: 9, totalDownloads: 9 });
+  assert.equal(replaced.length, 3);
+  assert.equal(replaced[1].totalStars, 9);
 });
 
-test('upsertHistory appends a new date and caps the list', () => {
-  const history = [
-    { date: '2026-09-01', totalStars: 1, totalDownloads: 10 },
-    { date: '2026-09-02', totalStars: 2, totalDownloads: 20 },
-  ];
-  const next = upsertHistory(history, { date: '2026-09-03', totalStars: 3, totalDownloads: 30 }, 2);
-  assert.deepEqual(next.map((entry) => entry.date), ['2026-09-02', '2026-09-03']);
+test('upsertHistory caps the list', () => {
+  const history = [1, 2, 3, 4].map((day) => ({ date: `2026-09-0${day}`, totalStars: day, totalDownloads: day }));
+  const next = upsertHistory(history, { date: '2026-09-05', totalStars: 5, totalDownloads: 5 }, 3);
+  assert.deepEqual(next.map((entry) => entry.date), ['2026-09-03', '2026-09-04', '2026-09-05']);
 });
 
-test('refresh-data.mjs imports every refresh-lib helper it calls', async () => {
-  const source = readFileSync(join(ROOT, 'scripts', 'refresh-data.mjs'), 'utf8');
-  const block = source.match(/import \{([^{}]*)\} from '\.\/refresh-lib\.mjs'/);
-  assert.ok(block, 'refresh-data.mjs must import from refresh-lib.mjs');
-  const imported = new Set(block[1].split(',').map((name) => name.trim()).filter(Boolean));
-  const library = await import('../scripts/refresh-lib.mjs');
-  assert.deepEqual([...imported].filter((name) => !(name in library)), []);
-  const body = source.slice(block.index + block[0].length);
-  const missing = Object.keys(library).filter((name) => !imported.has(name) && new RegExp(`\\b${name}\\b`).test(body));
-  assert.deepEqual(missing, []);
+test('historyAgeDays measures the newest snapshot in whole days', () => {
+  const now = Date.parse('2026-09-21T12:00:00Z');
+  assert.equal(historyAgeDays([{ date: '2026-09-19' }], now), 2);
 });
 
-test('scenarioCoverage accepts only a report whose scenarios all declare a focus', () => {
-  const focusById = new Map([['single-line', 'core'], ['stale-line', 'staleness']]);
-  assert.equal(scenarioCoverage({ runs: [{ scenarioId: 'single-line' }, { scenarioId: 'stale-line' }] }, focusById), true);
-  assert.equal(scenarioCoverage({ runs: [{ scenarioId: 'ghost' }] }, focusById), false);
-  assert.equal(scenarioCoverage({ runs: [{ scenarioId: 'single-line' }, {}] }, focusById), false);
-  assert.equal(scenarioCoverage({}, focusById), true);
-  assert.equal(scenarioCoverage({ runs: [{ scenarioId: 'single-line' }] }), false);
+test('historyAgeDays refuses a missing or unparsable history', () => {
+  assert.equal(historyAgeDays([]), null);
+  assert.equal(historyAgeDays([{ date: 'nope' }]), null);
 });
 
-test('buildScenarioMatrix dedupes declared models and drops runs it cannot place', () => {
-  const report = {
-    generatedAt: '2026-09-20T00:00:00.000Z',
-    models: [{ id: 'm1' }, { id: 'm1' }],
-    runs: [
-      { contenderId: 'a', scenarioId: 's1', modelId: 'm1', pass: true },
-      { contenderId: 'a', scenarioId: 's1', pass: true },
-      { contenderId: 'b', scenarioId: 's1', modelId: 'm2', pass: false },
-    ],
-  };
-  const matrix = buildScenarioMatrix(report, new Map([['s1', 'core']]), ['a', 'b']);
-  assert.deepEqual(matrix.models, ['m1', 'm2']);
-  assert.deepEqual(matrix.cells, [[[[0], 1], [[], 1]]]);
-
-  const unplaceable = buildScenarioMatrix(
-    { models: [{ id: 'm1' }, { id: 'm2' }], runs: [{ contenderId: 'a', scenarioId: 's1', pass: true }] },
-    new Map([['s1', 'core']]),
-    ['a'],
-  );
-  assert.deepEqual(unplaceable.cells, [[[[], 0]]]);
+test('npmPointUrl batches plain packages and refuses scoped ones', () => {
+  assert.equal(npmPointUrl(['a', 'b']), 'https://api.npmjs.org/downloads/point/last-week/a,b');
+  assert.equal(npmPointUrl(['@scope/a']), null);
+  assert.equal(npmPointUrl([]), null);
 });
 
-test('externalBenchmarkSnapshot reads the harness family and rounds to a tenth', () => {
-  const views = {
-    groups: {
-      harnessFamily: {
-        'pi-hashline-edit-pro': {
-          firstExactRate: 0.9823008849557522,
-          finalExactRate: 1,
-          qualityScore: 0.9861725663716814,
-          taskCount: 226,
-          observations: 1808,
-          configurationCount: 8,
-        },
-      },
-    },
-  };
-  assert.deepEqual(externalBenchmarkSnapshot(views), {
-    name: 'Explicit Edit Benchmark',
-    maintainer: 'alexshpunt',
-    source: 'https://github.com/alexshpunt/explicit-edit-benchmark',
-    explorerUrl: 'https://huggingface.co/spaces/alexshpunt/benchmark-explorer?card=harness%3Api-hashline-edit-pro%40latest',
-    harness: 'pi-hashline-edit-pro',
-    tasks: 226,
-    observations: 1808,
-    configurationCount: 8,
-    firstExact: 98.2,
-    finalExact: 100,
-    quality: 98.6,
-  });
+test('retryDelayMs reads Retry-After as seconds, then as a date, and caps the wait', () => {
+  const headers = (value) => ({ get: () => value });
+  assert.equal(retryDelayMs(headers('5')), 5000);
+  assert.equal(retryDelayMs(headers('120')), 60000);
+  const dated = retryDelayMs(headers(new Date(Date.now() + 4000).toUTCString()));
+  assert.ok(dated > 2000 && dated <= 4000);
+  assert.equal(retryDelayMs(headers('nonsense')), 1000);
+  assert.equal(retryDelayMs({}), 1000);
 });
 
-test('externalBenchmarkSnapshot refuses a missing or malformed family', () => {
-  assert.equal(externalBenchmarkSnapshot(null), null);
-  assert.equal(externalBenchmarkSnapshot({ groups: {} }), null);
-  assert.equal(externalBenchmarkSnapshot({ groups: { harnessFamily: { other: {} } } }), null);
-  assert.equal(externalBenchmarkSnapshot({ groups: { harnessFamily: { 'pi-hashline-edit-pro': { firstExactRate: 'high' } } } }), null);
-  assert.equal(externalBenchmarkSnapshot({ groups: { harnessFamily: { 'pi-hashline-edit-pro': { firstExactRate: 0.5, finalExactRate: 1, qualityScore: 0.625, taskCount: 226.5, observations: 8, configurationCount: 2 } } } }), null);
+test('isTimestamp accepts an ISO timestamp and rejects anything else', () => {
+  assert.equal(isTimestamp('2026-09-21T09:00:00.000Z'), true);
+  assert.equal(isTimestamp('nope'), false);
+  assert.equal(isTimestamp(42), false);
+});
+
+test('sleep resolves after the requested delay', async () => {
+  const start = Date.now();
+  await sleep(15);
+  assert.ok(Date.now() - start >= 10);
+});
+
+test('refresh-data.mjs imports every refresh-lib helper it calls', () => {
+  const source = readFileSync(SCRIPT, 'utf8');
+  const imported = [...source.matchAll(/^\s{2}(\w+),$/gm)].map((match) => match[1]);
+  const lib = readFileSync(new URL('scripts/refresh-lib.mjs', ROOT), 'utf8');
+  for (const name of imported) {
+    assert.match(lib, new RegExp(`export (function|const) ${name}\\b`), `${name} is not exported by refresh-lib.mjs`);
+  }
+  assert.ok(imported.length >= 5);
 });

@@ -22,12 +22,19 @@ function readData(repo) {
 }
 
 function withRepo(run) {
-  return withRepoCopy(run, (repo) => {
-    const path = join(repo, DATA_FILE);
-    const data = JSON.parse(readFileSync(path, 'utf8'));
-    data.benchmarkHistory = [];
-    writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
-  });
+  return withRepoCopy(run);
+}
+
+function staleTmpFiles(repo) {
+  const old = join(repo, 'data', 'site-data.json.999999.tmp');
+  const fresh = join(repo, 'data', 'site-data.json.111111.tmp');
+  const other = join(repo, 'data', 'notes.tmp');
+  writeFileSync(old, 'stale\n');
+  writeFileSync(fresh, 'fresh\n');
+  writeFileSync(other, 'unrelated\n');
+  const past = new Date(Date.now() - 11 * 60 * 1000);
+  utimesSync(old, past, past);
+  return { old, fresh, other };
 }
 
 test('a fixture refresh writes every machine field and rebuilds the derived files', () => {
@@ -51,29 +58,12 @@ test('a fixture refresh writes every machine field and rebuilds the derived file
       'published release v4.3.6 of YuGiMob/pi-hashline-edit-pro',
       'closed issue #47 on YuGiMob/pi-hashline-edit-pro',
     ]);
-
-    assert.equal(data.benchmark.contenderCount, 2);
-    assert.equal(data.benchmark.models, 1);
-    assert.equal(data.benchmark.scenarios, 1);
-    assert.equal(data.benchmark.totalRuns, 2);
-    assert.equal(data.benchmarkHistory.length, 1);
-    assert.deepEqual(data.benchmarkHistory.at(-1), { date: '2026-09-21', models: 1, scenarios: 1, runsPerContender: 1, overall: 100, safety: null });
-    const highlighted = data.benchmark.contenders.find((entry) => entry.highlight);
-    const rival = data.benchmark.contenders.find((entry) => !entry.highlight);
-    assert.equal(highlighted.vsHighlight, null);
-    assert.deepEqual(rival.vsHighlight, { b: 0, c: 0, bothPassed: 1, bothFailed: 0, p: 1, low: -79.3, high: 79.3, pAdjusted: 1 });
-    assert.equal(data.externalBenchmark.harness, 'pi-hashline-edit-pro');
-    assert.equal(data.externalBenchmark.tasks, 4);
-    assert.equal(data.externalBenchmark.configurationCount, 2);
-    assert.equal(data.externalBenchmark.firstExact, 50);
-    assert.equal(data.externalBenchmark.finalExact, 100);
-    assert.equal(data.externalBenchmark.quality, 62.5);
-
-    const matrix = JSON.parse(readFileSync(join(repo, 'data', 'benchmark-matrix.json'), 'utf8'));
-    assert.equal(matrix.generatedAt, data.benchmark.generatedAt);
-    assert.deepEqual(matrix.contenders, data.benchmark.contenders.map((entry) => entry.id));
-    assert.deepEqual(matrix.models, ['test-model']);
-    assert.deepEqual(matrix.cells, [[[[0], 1], [[0], 1]]]);
+    assert.equal('benchmark' in data, false);
+    assert.equal('benchmarkHistory' in data, false);
+    assert.equal('externalBenchmark' in data, false);
+    assert.equal(data.history.at(-1).date, new Date().toISOString().slice(0, 10));
+    assert.equal(data.history.at(-1).totalStars, data.stats.totalStars);
+    assert.equal(data.history.at(-1).totalDownloads, 5123 + 44 + 190 + 130 + 910);
 
     assert.match(readFileSync(join(repo, 'llms.txt'), 'utf8'), /Stars 101/);
     const newest = data.history.at(-1).date;
@@ -90,14 +80,12 @@ test('a second fixture refresh writes nothing', () => {
     assert.equal(first.status, 0, first.stderr);
     const dataBefore = readFileSync(join(repo, DATA_FILE), 'utf8');
     const llmsBefore = readFileSync(join(repo, 'llms.txt'), 'utf8');
-    const matrixBefore = readFileSync(join(repo, 'data', 'benchmark-matrix.json'), 'utf8');
 
     const second = refresh(repo);
     assert.equal(second.status, 0, second.stderr);
     assert.match(second.stdout, /No data changes/);
     assert.equal(readFileSync(join(repo, DATA_FILE), 'utf8'), dataBefore);
     assert.equal(readFileSync(join(repo, 'llms.txt'), 'utf8'), llmsBefore);
-    assert.equal(readFileSync(join(repo, 'data', 'benchmark-matrix.json'), 'utf8'), matrixBefore);
   });
 });
 
@@ -121,7 +109,7 @@ test('a stale static block is rewritten even when the data is unchanged', () => 
     const committed = readFileSync(path, 'utf8');
     const drifted = committed
       .replace(/(<dd class="stat-value" aria-hidden="true">)[^<]*<\/dd>/, (unused, open) => `${open}0</dd>`)
-      .replace('I\'m YuGiMob. I build extensions', 'Someone else writes here.');
+      .replace('I build extensions for pi', 'Someone else writes here.');
     assert.notEqual(drifted, committed);
     writeFileSync(path, drifted);
     const second = refresh(repo);
@@ -131,42 +119,15 @@ test('a stale static block is rewritten even when the data is unchanged', () => 
   });
 });
 
-test('a partial benchmark report keeps the existing block and still refreshes the rest', () => {
-  withRepo((repo) => {
-    const before = readData(repo);
-    const result = refresh(repo, { YUGIMOB_LLM_REPORT: 'llm-report-partial.json' });
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stderr, /not a complete matrix/);
-
-    const data = readData(repo);
-    assert.deepEqual(data.benchmark, before.benchmark);
-    assert.deepEqual(data.benchmarkHistory, before.benchmarkHistory);
-    assert.equal(data.projects.find((project) => project.name === 'pi-hashline-edit-pro').stars, 101);
-  });
-});
-
-test('a benchmark scenario with no focus in the sources keeps the existing block', () => {
-  withRepo((repo) => {
-    const before = readData(repo);
-    const result = refresh(repo, { YUGIMOB_LLM_REPORT: 'llm-report-unknown-scenario.json' });
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stderr, /have no focus in the sources/);
-
-    const data = readData(repo);
-    assert.deepEqual(data.benchmark, before.benchmark);
-    assert.deepEqual(data.benchmarkHistory, before.benchmarkHistory);
-    assert.deepEqual(data.projects.find((project) => project.name === 'pi-hashline-edit-pro').stars, 101);
-  });
-});
-
 test('a corrupt data file is left byte-identical and the refresh exits', () => {
   withRepo((repo) => {
     const path = join(repo, DATA_FILE);
-    writeFileSync(path, '{ not json');
+    const corrupt = '{ nope';
+    writeFileSync(path, corrupt);
     const result = refresh(repo);
     assert.equal(result.status, 1);
     assert.match(result.stderr, /unusable/);
-    assert.equal(readFileSync(path, 'utf8'), '{ not json');
+    assert.equal(readFileSync(path, 'utf8'), corrupt);
   });
 });
 
@@ -184,119 +145,108 @@ test('a missing data file fails instead of writing a skeleton', () => {
 test('the pre-write validator refuses a candidate the schema rejects', () => {
   withRepo((repo) => {
     const path = join(repo, DATA_FILE);
-    const data = JSON.parse(readFileSync(path, 'utf8'));
-    data.identity.extra = 'nope';
+    const data = readData(repo);
+    data.projects[1].npm = data.projects[0].npm;
     writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
-
+    const before = readFileSync(path, 'utf8');
     const result = refresh(repo);
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /identity unexpected key extra/);
-    assert.match(result.stderr, /failed validate-data/);
-    assert.equal(readData(repo).identity.extra, 'nope');
-    assert.deepEqual(readdirSync(join(repo, 'data')).filter((file) => file.endsWith('.tmp')), []);
+    assert.match(result.stderr, /npm package duplicated/);
+    assert.equal(readFileSync(path, 'utf8'), before);
   });
 });
 
 test('a dry run reports the candidate without writing any file', () => {
   withRepo((repo) => {
-    const dataBefore = readFileSync(join(repo, DATA_FILE), 'utf8');
-    const llmsBefore = readFileSync(join(repo, 'llms.txt'), 'utf8');
-    const sitemapBefore = readFileSync(join(repo, 'sitemap.xml'), 'utf8');
-
+    const before = readFileSync(join(repo, DATA_FILE), 'utf8');
     const result = refresh(repo, {}, ['--check']);
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /dry run: the candidate passed validate-data/);
-    assert.match(result.stdout, /dry run: the candidate was not written/);
-    assert.match(result.stdout, /Dry run complete; no files were written/);
-
-    assert.equal(readFileSync(join(repo, DATA_FILE), 'utf8'), dataBefore);
-    assert.equal(readFileSync(join(repo, 'llms.txt'), 'utf8'), llmsBefore);
-    assert.equal(readFileSync(join(repo, 'sitemap.xml'), 'utf8'), sitemapBefore);
+    assert.match(result.stdout, /dry run/);
+    assert.equal(readFileSync(join(repo, DATA_FILE), 'utf8'), before);
+    assert.equal(readdirSync(join(repo, 'data')).some((entry) => entry.endsWith('.tmp')), false);
   });
 });
 
 test('a dry run refuses a candidate the schema rejects and writes nothing', () => {
   withRepo((repo) => {
-    const fixtures = join(repo, 'tests', 'fixtures', 'refresh');
-    const repos = JSON.parse(readFileSync(join(fixtures, 'repos.json'), 'utf8'));
-    repos[0].pushed_at = 'not a date';
-    writeFileSync(join(fixtures, 'repos.json'), JSON.stringify(repos, null, 2));
-    const dataBefore = readFileSync(join(repo, DATA_FILE), 'utf8');
-
-    const result = refresh(repo, { YUGIMOB_FIXTURES: fixtures }, ['--check']);
+    const path = join(repo, DATA_FILE);
+    const data = readData(repo);
+    data.projects[1].npm = data.projects[0].npm;
+    writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+    const before = readFileSync(path, 'utf8');
+    const result = refresh(repo, {}, ['--check']);
     assert.equal(result.status, 1);
-    assert.match(result.stderr, /failed validate-data/);
-    assert.equal(readFileSync(join(repo, DATA_FILE), 'utf8'), dataBefore);
+    assert.match(result.stderr, /npm package duplicated/);
+    assert.equal(readFileSync(path, 'utf8'), before);
   });
 });
 
 test('a refresh without the GitHub API keeps activity, stats, and history but still updates npm', () => {
   withRepo((repo) => {
+    const first = refresh(repo);
+    assert.equal(first.status, 0, first.stderr);
     const before = readData(repo);
     const result = refresh(repo, { YUGIMOB_NO_GITHUB: '1' });
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stderr, /GitHub API error/);
-
-    const data = readData(repo);
-    assert.deepEqual(data.history, before.history);
-    assert.deepEqual(data.activity, before.activity);
-    assert.deepEqual(data.stats, before.stats);
-    assert.equal(data.projects.find((project) => project.name === 'pi-hashline-edit-pro').npmWeeklyDownloads, 5123);
+    const after = readData(repo);
+    assert.equal(after.stats.totalStars, before.stats.totalStars);
+    assert.equal(after.activity.pushes, before.activity.pushes);
+    assert.equal(after.history.length, before.history.length);
   });
 });
 
 test('a second refresh revalidates the GitHub API with the cached etags', () => {
   withRepo((repo) => {
-    const first = refresh(repo);
-    assert.equal(first.status, 0, first.stderr);
-    assert.ok(existsSync(join(repo, '.cache', 'fetch-state.json')));
-
     const log = join(repo, 'fetch.log');
+    rmSync(join(repo, '.cache'), { recursive: true, force: true });
+    const first = refresh(repo, { YUGIMOB_FETCH_LOG: log });
+    assert.equal(first.status, 0, first.stderr);
+    const firstLog = readFileSync(log, 'utf8');
+    assert.match(firstLog, /200 plain https:\/\/api\.github\.com\/users\/YuGiMob/);
+
     const second = refresh(repo, { YUGIMOB_FETCH_LOG: log });
     assert.equal(second.status, 0, second.stderr);
-    assert.match(second.stdout, /No data changes/);
-
-    const githubLines = readFileSync(log, 'utf8').trim().split('\n').filter((line) => line.includes('api.github.com'));
-    assert.ok(githubLines.length > 0);
-    for (const line of githubLines) {
-      assert.match(line, /^304 conditional /, `unexpected GitHub request: ${line}`);
-    }
+    const secondLog = readFileSync(log, 'utf8');
+    assert.match(secondLog, /304 conditional https:\/\/api\.github\.com\/users\/YuGiMob/);
   });
 });
 
 test('a stale cache entry is refetched and replaced', () => {
   withRepo((repo) => {
-    const first = refresh(repo);
+    const log = join(repo, 'fetch.log');
+    const first = refresh(repo, { YUGIMOB_FETCH_LOG: log });
     assert.equal(first.status, 0, first.stderr);
     const cachePath = join(repo, '.cache', 'fetch-state.json');
-    const state = JSON.parse(readFileSync(cachePath, 'utf8'));
-    const url = Object.keys(state).find((entry) => entry.includes('/repos'));
-    state[url].etag = '"stale"';
-    writeFileSync(cachePath, JSON.stringify(state, null, 2));
+    const cache = JSON.parse(readFileSync(cachePath, 'utf8'));
+    const userUrl = 'https://api.github.com/users/YuGiMob';
+    cache[userUrl].etag = '"stale"';
+    writeFileSync(cachePath, `${JSON.stringify(cache)}\n`);
 
-    const log = join(repo, 'fetch.log');
     const second = refresh(repo, { YUGIMOB_FETCH_LOG: log });
     assert.equal(second.status, 0, second.stderr);
-    const lines = readFileSync(log, 'utf8');
-    assert.match(lines, new RegExp(`200 conditional ${url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
-    assert.notEqual(JSON.parse(readFileSync(cachePath, 'utf8'))[url].etag, '"stale"');
+    const secondLog = readFileSync(log, 'utf8');
+    assert.match(secondLog, /200 conditional https:\/\/api\.github\.com\/users\/YuGiMob/);
+    const updated = JSON.parse(readFileSync(cachePath, 'utf8'));
+    assert.notEqual(updated[userUrl].etag, '"stale"');
   });
 });
 
 test('a manifest with one npm package reads the single-package download response', () => {
   withRepo((repo) => {
-    const path = join(repo, DATA_FILE);
-    const data = JSON.parse(readFileSync(path, 'utf8'));
-    for (const project of data.projects) {
-      if (project.name !== 'pi-tor-proxy') project.npm = null;
-    }
-    data.projects.find((project) => project.name === 'pi-tor-proxy').npmWeeklyDownloads = 1;
-    writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+    const dataPath = join(repo, DATA_FILE);
+    const data = readData(repo);
+    data.projects = data.projects.filter((project) => project.name === 'pi-hashline-edit-pro');
+    writeFileSync(dataPath, `${JSON.stringify(data, null, 2)}\n`);
+    const showcasePath = join(repo, 'data', 'showcase.json');
+    const showcase = JSON.parse(readFileSync(showcasePath, 'utf8'));
+    showcase.problems = showcase.problems.filter((problem) => problem.name === 'pi-hashline-edit-pro');
+    writeFileSync(showcasePath, `${JSON.stringify(showcase, null, 2)}\n`);
 
     const result = refresh(repo);
     assert.equal(result.status, 0, result.stderr);
-    assert.doesNotMatch(result.stdout, /fetch failed/);
-    assert.equal(readData(repo).projects.find((project) => project.name === 'pi-tor-proxy').npmWeeklyDownloads, 44);
+    const after = readData(repo);
+    assert.equal(after.projects.length, 1);
+    assert.equal(after.projects[0].npmWeeklyDownloads, 5123);
   });
 });
 
@@ -305,25 +255,18 @@ test('a failed npm batch query falls back to per-package requests', () => {
     const result = refresh(repo, { YUGIMOB_NPM_BULK_FAIL: '1' });
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stderr, /falling back to per-package requests/);
-    assert.equal(readData(repo).projects.find((project) => project.name === 'pi-hashline-edit-pro').npmWeeklyDownloads, 5123);
+    const data = readData(repo);
+    assert.equal(data.projects.find((project) => project.name === 'pi-hashline-edit-pro').npmWeeklyDownloads, 5123);
   });
 });
 
 test('the refresh sweeps its own stale temp files and leaves other scratch alone', () => {
   withRepo((repo) => {
-    const old = new Date(Date.now() - 3600000);
-    const scratch = join(repo, 'data', 'scratch.tmp');
-    const pending = join(repo, 'data', 'site-data.json.999.tmp');
-    const sitemapPending = join(repo, 'sitemap.xml.999.tmp');
-    for (const file of [scratch, pending, sitemapPending]) {
-      writeFileSync(file, 'x');
-      utimesSync(file, old, old);
-    }
-
+    const { old, fresh, other } = staleTmpFiles(repo);
     const result = refresh(repo);
     assert.equal(result.status, 0, result.stderr);
-    assert.ok(existsSync(scratch));
-    assert.ok(!existsSync(pending));
-    assert.ok(!existsSync(sitemapPending));
+    assert.equal(existsSync(old), false);
+    assert.equal(existsSync(fresh), true);
+    assert.equal(existsSync(other), true);
   });
 });

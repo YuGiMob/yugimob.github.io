@@ -1,1073 +1,685 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, withRepoCopy } from './helpers.mjs';
-import { isValidSiteData } from '../assets/js/site-data.js';
 
-const DATA = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.json'), 'utf8'));
-const SHOWCASE = JSON.parse(readFileSync(join(ROOT, 'data', 'showcase.json'), 'utf8'));
-
-function runValidator(data, showcase, matrix = null) {
-  const dir = mkdtempSync(join(tmpdir(), 'yugimob-validate-'));
-  try {
-    const dataPath = join(dir, 'site-data.json');
-    const showcasePath = join(dir, 'showcase.json');
-    writeFileSync(dataPath, JSON.stringify(data, null, 2));
-    writeFileSync(showcasePath, JSON.stringify(showcase, null, 2));
-    const args = [join(ROOT, 'scripts', 'validate-data.mjs'), dataPath, showcasePath];
-    if (matrix) {
-      const matrixPath = join(dir, 'benchmark-matrix.json');
-      writeFileSync(matrixPath, JSON.stringify(matrix, null, 2));
-      args.push(matrixPath);
-    }
-    return spawnSync(process.execPath, args, { encoding: 'utf8' });
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+function readJson(copy, relativePath) {
+  return JSON.parse(readFileSync(join(copy, relativePath), 'utf8'));
 }
 
-function runSiteValidator(mutate) {
-  return withRepoCopy((copy) => spawnSync(process.execPath, [join(ROOT, 'scripts', 'validate-site.mjs'), copy], { encoding: 'utf8' }), mutate);
+function writeJson(copy, relativePath, value) {
+  writeFileSync(join(copy, relativePath), `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function patch(copy, relativePath, from, to) {
+  const path = join(copy, relativePath);
+  const source = readFileSync(path, 'utf8');
+  assert.ok(source.includes(from), `expected ${relativePath} to contain ${from}`);
+  writeFileSync(path, source.replace(from, to));
+}
+
+function schemaMutated(copy) {
+  for (const file of ['data/site-data.schema.json', 'data/showcase.schema.json']) {
+    if (readFileSync(join(copy, file), 'utf8') !== readFileSync(join(ROOT, file), 'utf8')) return true;
+  }
+  return false;
+}
+
+function runData(copy) {
+  const local = schemaMutated(copy);
+  const script = local ? join(copy, 'scripts', 'validate-data.mjs') : join(ROOT, 'scripts', 'validate-data.mjs');
+  const args = local ? [] : [join(copy, 'data', 'site-data.json'), join(copy, 'data', 'showcase.json')];
+  return spawnSync(process.execPath, [script, ...args], { cwd: copy, encoding: 'utf8' });
+}
+
+function runSite(copy) {
+  return spawnSync(process.execPath, [join(ROOT, 'scripts', 'validate-site.mjs'), copy], { cwd: copy, encoding: 'utf8' });
+}
+
+function expectData(mutate, pattern) {
+  withRepoCopy((copy) => {
+    mutate(copy);
+    const result = runData(copy);
+    assert.equal(result.status, 1, `expected validate-data to fail\n${result.stdout}`);
+    assert.match(result.stderr, pattern);
+  });
+}
+
+function expectSite(mutate, pattern) {
+  withRepoCopy((copy) => {
+    mutate(copy);
+    const result = runSite(copy);
+    assert.equal(result.status, 1, `expected validate-site to fail\n${result.stdout}`);
+    assert.match(result.stderr, pattern);
+  });
 }
 
 test('the committed data files pass the validator', () => {
-  const output = execFileSync(process.execPath, [join(ROOT, 'scripts', 'validate-data.mjs')], { encoding: 'utf8' });
-  assert.equal(output.trim(), 'validate: ok');
+  const result = spawnSync(process.execPath, [join(ROOT, 'scripts', 'validate-data.mjs')], { cwd: ROOT, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /validate: ok/);
 });
 
 test('the committed site structure passes the validator', () => {
-  const output = execFileSync(process.execPath, [join(ROOT, 'scripts', 'validate-site.mjs')], { encoding: 'utf8' });
-  assert.equal(output.trim(), 'validate:site: ok');
-});
-
-test('the site validator checks every id the scripts address with setText', () => {
-  const healthy = runSiteValidator(null);
-  assert.equal(healthy.status, 0, healthy.stderr);
-  const broken = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('id="display-name"', 'id="data-name"'));
-  });
-  assert.equal(broken.status, 1);
-  assert.match(broken.stderr, /missing #display-name referenced by scripts/);
-});
-
-test('the validator refuses an unknown demo id', () => {
-  const showcase = structuredClone(SHOWCASE);
-  showcase.problems[0].demo = 'not-a-demo';
-  const result = runValidator(DATA, showcase);
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /demo unknown: not-a-demo/);
-});
-
-test('the validator refuses a showcase name missing from the manifest', () => {
-  const showcase = structuredClone(SHOWCASE);
-  showcase.problems[0].name = 'ghost-tool';
-  const result = runValidator(DATA, showcase);
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /showcase problem missing from site-data: ghost-tool/);
-});
-
-test('the validator reports every failure in one run', () => {
-  const data = structuredClone(DATA);
-  const showcase = structuredClone(SHOWCASE);
-  showcase.problems[0].demo = 'not-a-demo';
-  data.benchmark.contenderCount = 1;
-  const result = runValidator(data, showcase);
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /demo unknown: not-a-demo/);
-  assert.match(result.stderr, /contenderCount does not match contenders/);
-});
-
-test('the validator refuses unsorted history dates', () => {
-  const data = structuredClone(DATA);
-  data.history[1].date = data.history[0].date;
-  const result = runValidator(data, SHOWCASE);
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /history dates must be unique and sorted/);
-});
-
-test('the validator refuses non-object documents instead of accepting them', () => {
-  const nullData = runValidator(null, SHOWCASE);
-  assert.equal(nullData.status, 1);
-  assert.match(nullData.stderr, /site-data invalid/);
-  const primitiveData = runValidator(5, SHOWCASE);
-  assert.equal(primitiveData.status, 1);
-  assert.match(primitiveData.stderr, /site-data invalid/);
-  const nullShowcase = runValidator(DATA, null);
-  assert.equal(nullShowcase.status, 1);
-  assert.match(nullShowcase.stderr, /showcase invalid/);
-});
-
-test('a broken manifest does not cascade invented showcase failures', () => {
-  const data = structuredClone(DATA);
-  delete data.projects;
-  const result = runValidator(data, SHOWCASE);
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /missing projects/);
-  assert.doesNotMatch(result.stderr, /showcase problem missing from site-data/);
-});
-
-test('cross-references use declared names when a project entry is invalid', () => {
-  const data = structuredClone(DATA);
-  data.projects[0].url = 'not a uri';
-  const result = runValidator(data, SHOWCASE);
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /url invalid/);
-  assert.doesNotMatch(result.stderr, /showcase problem missing from site-data: pi-hashline-edit-pro/);
-});
-
-test('the schema drives required keys, types, and unknown keys', () => {
-  const missing = structuredClone(DATA);
-  delete missing.stats.npmPackages;
-  const missingResult = runValidator(missing, SHOWCASE);
-  assert.equal(missingResult.status, 1);
-  assert.match(missingResult.stderr, /stats missing npmPackages/);
-
-  const wrongType = structuredClone(DATA);
-  wrongType.projects[0].stars = '12';
-  const wrongTypeResult = runValidator(wrongType, SHOWCASE);
-  assert.equal(wrongTypeResult.status, 1);
-  assert.match(wrongTypeResult.stderr, /projects\.0\.stars invalid/);
-
-  const extraKey = structuredClone(DATA);
-  extraKey.identity.color = 'red';
-  const extraKeyResult = runValidator(extraKey, SHOWCASE);
-  assert.equal(extraKeyResult.status, 1);
-  assert.match(extraKeyResult.stderr, /identity unexpected key color/);
-});
-
-test('the validator accepts a data file without the optional showEvidence toggle', () => {
-  const optional = structuredClone(DATA);
-  delete optional.sections.showEvidence;
-  const result = runValidator(optional, SHOWCASE);
+  const result = spawnSync(process.execPath, [join(ROOT, 'scripts', 'validate-site.mjs')], { cwd: ROOT, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /validate:site: ok/);
 });
 
-test('the validator refuses a benchmark block that contradicts itself', () => {
-  const mismatched = structuredClone(DATA);
-  mismatched.benchmark.focusCounts.staleness += 1;
-  assert.match(runValidator(mismatched, SHOWCASE).stderr, /focusCounts do not sum to scenarios/);
-
-  const badOutcomes = structuredClone(DATA);
-  badOutcomes.benchmark.contenders[0].outcomes.applied += 1;
-  assert.match(runValidator(badOutcomes, SHOWCASE).stderr, /outcomes do not sum to runs/);
-
-  const badRate = structuredClone(DATA);
-  badRate.benchmark.contenders[0].overall = 12;
-  assert.match(runValidator(badRate, SHOWCASE).stderr, /overall does not match passed\/runs/);
-
-  const noHighlight = structuredClone(DATA);
-  for (const contender of noHighlight.benchmark.contenders) contender.highlight = false;
-  assert.match(runValidator(noHighlight, SHOWCASE).stderr, /benchmark has no highlighted contender/);
+test('the data validator refuses a missing required key', () => {
+  expectData((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    delete data.identity;
+    writeJson(copy, 'data/site-data.json', data);
+  }, /missing identity/);
 });
 
-test('the validator re-derives the benchmark cost total from the contenders', () => {
-  const drifted = structuredClone(DATA);
-  drifted.benchmark.contenders[0].costUsd += 1;
-  const result = runValidator(drifted, SHOWCASE);
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /costUsd .* does not match the contender total/);
+test('the data validator refuses an unknown key', () => {
+  expectData((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.extra = true;
+    writeJson(copy, 'data/site-data.json', data);
+  }, /unexpected key extra/);
 });
 
-test('the validator refuses an external benchmark that cannot come from the dataset', () => {
-  const mismatch = structuredClone(DATA);
-  mismatch.externalBenchmark.configurationCount = 9;
-  const mismatchResult = runValidator(mismatch, SHOWCASE);
-  assert.equal(mismatchResult.status, 1);
-  assert.match(mismatchResult.stderr, /externalBenchmark configurationCount does not match observations \/ tasks/);
-
-  const inverted = structuredClone(DATA);
-  inverted.externalBenchmark.firstExact = 100;
-  inverted.externalBenchmark.finalExact = 90;
-  const invertedResult = runValidator(inverted, SHOWCASE);
-  assert.equal(invertedResult.status, 1);
-  assert.match(invertedResult.stderr, /externalBenchmark finalExact is below firstExact/);
-
-  const unbalanced = structuredClone(DATA);
-  unbalanced.externalBenchmark.quality = 20;
-  const unbalancedResult = runValidator(unbalanced, SHOWCASE);
-  assert.equal(unbalancedResult.status, 1);
-  assert.match(unbalancedResult.stderr, /externalBenchmark quality is not within one point/);
+test('the data validator refuses a duplicated project and a duplicated npm package', () => {
+  expectData((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.projects.push({ ...data.projects[0] });
+    writeJson(copy, 'data/site-data.json', data);
+  }, /project duplicated/);
+  expectData((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.projects[1].npm = data.projects[0].npm;
+    writeJson(copy, 'data/site-data.json', data);
+  }, /npm package duplicated/);
 });
 
-test('the validator refuses a duplicated project and a malformed fetchedAt', () => {
-  const duplicate = structuredClone(DATA);
-  duplicate.projects.push(structuredClone(duplicate.projects[0]));
-  const duplicateResult = runValidator(duplicate, SHOWCASE);
-  assert.equal(duplicateResult.status, 1);
-  assert.match(duplicateResult.stderr, /project duplicated: pi-hashline-edit-pro/);
-
-  const fetchedAt = structuredClone(DATA);
-  fetchedAt.activity.fetchedAt = '2026-9-20';
-  const fetchedAtResult = runValidator(fetchedAt, SHOWCASE);
-  assert.equal(fetchedAtResult.status, 1);
-  assert.match(fetchedAtResult.stderr, /activity\.fetchedAt invalid/);
+test('the data validator refuses a showcase name missing from the manifest', () => {
+  expectData((copy) => {
+    const showcase = readJson(copy, 'data/showcase.json');
+    showcase.problems[0].name = 'ghost';
+    writeJson(copy, 'data/showcase.json', showcase);
+  }, /showcase problem missing from site-data: ghost/);
 });
 
-test('the schema walker refuses types, enums, patterns, and nested unknown keys', () => {
-  const emptyAvatar = structuredClone(DATA);
-  emptyAvatar.identity.avatarUrl = '';
-  assert.match(runValidator(emptyAvatar, SHOWCASE).stderr, /identity\.avatarUrl invalid/);
-
-  const emptyName = structuredClone(DATA);
-  emptyName.identity.displayName = '';
-  assert.match(runValidator(emptyName, SHOWCASE).stderr, /identity\.displayName invalid/);
-
-  const wrongLinksType = structuredClone(DATA);
-  wrongLinksType.identity.links = [];
-  assert.match(runValidator(wrongLinksType, SHOWCASE).stderr, /identity\.links invalid/);
-
-  const emptyProjects = structuredClone(DATA);
-  emptyProjects.projects = [];
-  assert.match(runValidator(emptyProjects, SHOWCASE).stderr, /projects invalid/);
-
-  const badDaily = structuredClone(DATA);
-  badDaily.activity.daily[0].date = '2026-9-1';
-  assert.match(runValidator(badDaily, SHOWCASE).stderr, /activity\.daily\.0\.date invalid/);
-
-  const zeroOutcome = structuredClone(DATA);
-  zeroOutcome.benchmark.contenders[0].outcomes.applied = 0;
-  assert.match(runValidator(zeroOutcome, SHOWCASE).stderr, /contenders\.0\.outcomes\.applied invalid/);
-
-  const badSize = structuredClone(SHOWCASE);
-  badSize.problems[0].size = 'wide';
-  assert.match(runValidator(DATA, badSize).stderr, /problems\.0\.size invalid/);
-
-  const badHighlight = structuredClone(SHOWCASE);
-  badHighlight.evidence.highlight = true;
-  assert.match(runValidator(DATA, badHighlight).stderr, /unexpected key highlight/);
+test('the data validator refuses a duplicated showcase name and an unknown demo', () => {
+  expectData((copy) => {
+    const showcase = readJson(copy, 'data/showcase.json');
+    showcase.problems[1].name = showcase.problems[0].name;
+    writeJson(copy, 'data/showcase.json', showcase);
+  }, /showcase problem duplicated/);
+  expectData((copy) => {
+    const showcase = readJson(copy, 'data/showcase.json');
+    showcase.problems[0].demo = 'ghost';
+    writeJson(copy, 'data/showcase.json', showcase);
+  }, /demo unknown: ghost/);
 });
 
-test('the validator reports unreadable and unparsable input files', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'yugimob-broken-'));
-  try {
-    const dataPath = join(dir, 'site-data.json');
-    const showcasePath = join(dir, 'showcase.json');
-    writeFileSync(dataPath, '{ not json');
-    writeFileSync(showcasePath, '{ not json');
-    const result = spawnSync(process.execPath, [join(ROOT, 'scripts', 'validate-data.mjs'), dataPath, showcasePath], { encoding: 'utf8' });
-    assert.equal(result.status, 1);
-    assert.match(result.stderr, /site-data\.json unparsable/);
-    assert.match(result.stderr, /showcase\.json unparsable/);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+test('the data validator refuses unsorted history and history beyond the cap', () => {
+  expectData((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.history = [
+      { date: '2026-09-20', totalStars: 1, totalDownloads: 1 },
+      { date: '2026-09-19', totalStars: 1, totalDownloads: 1 },
+    ];
+    writeJson(copy, 'data/site-data.json', data);
+  }, /history dates must be unique and sorted/);
+  expectData((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.history = Array.from({ length: 121 }, (unused, index) => ({
+      date: new Date(Date.UTC(2025, 0, 1) + index * 86400000).toISOString().slice(0, 10),
+      totalStars: 1,
+      totalDownloads: 1,
+    }));
+    writeJson(copy, 'data/site-data.json', data);
+  }, /history has 121 entries; the cap is 120/);
 });
 
-test('the validator refuses benchmark totals that contradict each other', () => {
-  const badRate = structuredClone(DATA);
-  badRate.benchmark.runsPerContender += 1;
-  assert.match(runValidator(badRate, SHOWCASE).stderr, /runsPerContender does not match models × scenarios/);
-
-  const badTotal = structuredClone(DATA);
-  badTotal.benchmark.totalRuns += 1;
-  assert.match(runValidator(badTotal, SHOWCASE).stderr, /totalRuns does not match contenderCount × runsPerContender/);
-
-  const passedExceeds = structuredClone(DATA);
-  passedExceeds.benchmark.contenders[0].passed = passedExceeds.benchmark.contenders[0].runs + 1;
-  assert.match(runValidator(passedExceeds, SHOWCASE).stderr, /passed exceeds runs/);
-
-  const badInterval = structuredClone(DATA);
-  badInterval.benchmark.contenders[0].low = 99;
-  badInterval.benchmark.contenders[0].high = 99;
-  assert.match(runValidator(badInterval, SHOWCASE).stderr, /interval does not bracket the pass rate/);
-
-  const badFocus = structuredClone(DATA);
-  badFocus.benchmark.focusCounts = 5;
-  assert.match(runValidator(badFocus, SHOWCASE).stderr, /benchmark focusCounts invalid/);
+test('the data validator refuses daily and highlight lists beyond the caps', () => {
+  expectData((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.activity.daily = Array.from({ length: 121 }, (unused, index) => ({
+      date: new Date(Date.UTC(2025, 0, 1) + index * 86400000).toISOString().slice(0, 10),
+      events: 0,
+      pushes: 0,
+    }));
+    writeJson(copy, 'data/site-data.json', data);
+  }, /activity\.daily has 121 entries; the cap is 120/);
+  expectData((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.activity.highlights = ['a', 'b', 'c', 'd', 'e', 'f'];
+    writeJson(copy, 'data/site-data.json', data);
+  }, /activity\.highlights has 6 entries; the cap is 5/);
 });
 
-test('the validator refuses history, daily, and highlight counts beyond the caps', () => {
-  const day = 86400000;
-  const start = Date.parse('2026-01-01');
-  const dateAt = (index) => new Date(start + index * day).toISOString().slice(0, 10);
-  const longHistory = structuredClone(DATA);
-  longHistory.history = Array.from({ length: 121 }, (unused, index) => ({ date: dateAt(index), totalStars: 1, totalDownloads: 1 }));
-  assert.match(runValidator(longHistory, SHOWCASE).stderr, /history has 121 entries; the cap is 120/);
-
-  const longDaily = structuredClone(DATA);
-  longDaily.activity.daily = Array.from({ length: 121 }, (unused, index) => ({ date: dateAt(index), events: 1, pushes: 1 }));
-  assert.match(runValidator(longDaily, SHOWCASE).stderr, /activity\.daily has 121 entries; the cap is 120/);
-
-  const manyHighlights = structuredClone(DATA);
-  manyHighlights.activity.highlights = ['a', 'b', 'c', 'd', 'e', 'f'];
-  assert.match(runValidator(manyHighlights, SHOWCASE).stderr, /activity\.highlights has 6 entries; the cap is 5/);
+test('the data validator refuses non-object documents instead of accepting them', () => {
+  expectData((copy) => {
+    writeFileSync(join(copy, 'data/site-data.json'), '[]\n');
+  }, /invalid|missing/);
+  expectData((copy) => {
+    writeFileSync(join(copy, 'data/showcase.json'), '"nope"\n');
+  }, /invalid|missing/);
 });
 
-test('the validator refuses benchmark history beyond the cap and out of order', () => {
-  const day = 86400000;
-  const start = Date.parse('2026-01-01');
-  const dateAt = (index) => new Date(start + index * day).toISOString().slice(0, 10);
-  const snapshot = (index) => ({ date: dateAt(index), models: 9, scenarios: 35, runsPerContender: 315, overall: 1, safety: null });
-  const longHistory = structuredClone(DATA);
-  longHistory.benchmarkHistory = Array.from({ length: 121 }, (unused, index) => snapshot(index));
-  assert.match(runValidator(longHistory, SHOWCASE).stderr, /benchmarkHistory has 121 entries; the cap is 120/);
-  const unsorted = structuredClone(DATA);
-  unsorted.benchmarkHistory = [snapshot(1), snapshot(0)];
-  assert.match(runValidator(unsorted, SHOWCASE).stderr, /benchmarkHistory dates must be unique and sorted/);
-  const badScore = structuredClone(DATA);
-  badScore.benchmarkHistory = [{ date: '2026-01-01', models: 9, scenarios: 35, runsPerContender: 315, overall: 101, safety: null }];
-  assert.match(runValidator(badScore, SHOWCASE).stderr, /benchmarkHistory\.0\.overall invalid/);
+test('the data validator reports unreadable and unparsable input files', () => {
+  expectData((copy) => {
+    writeFileSync(join(copy, 'data/site-data.json'), '{ nope');
+  }, /unparsable/);
 });
 
-test('the validator refuses benchmark history that drifts from the current report', () => {
-  const drifted = structuredClone(DATA);
-  drifted.benchmarkHistory[drifted.benchmarkHistory.length - 1].overall = 42;
-  assert.match(runValidator(drifted, SHOWCASE).stderr, /benchmarkHistory newest entry does not match the highlighted contender/);
-  const misdated = structuredClone(DATA);
-  misdated.benchmarkHistory[misdated.benchmarkHistory.length - 1].date = '2026-09-19';
-  assert.match(runValidator(misdated, SHOWCASE).stderr, /benchmarkHistory newest entry is dated 2026-09-19/);
-  const regridded = structuredClone(DATA);
-  regridded.benchmarkHistory[regridded.benchmarkHistory.length - 1].scenarios = DATA.benchmark.scenarios + 1;
-  assert.match(runValidator(regridded, SHOWCASE).stderr, /benchmarkHistory newest entry does not match the benchmark grid/);
+test('the schema walker refuses a keyword it cannot enforce', () => {
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName.minContains = 1;
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /unsupported keyword minContains/);
 });
 
-test('the validator accepts benchmark history from before the grid fields', () => {
-  const legacy = structuredClone(DATA);
-  legacy.benchmarkHistory = [{ date: '2026-01-01', overall: 42, safety: null }, ...legacy.benchmarkHistory];
-  const result = runValidator(legacy, SHOWCASE);
-  assert.equal(result.status, 0, result.stderr);
+test('the schema walker refuses an unsupported type and format', () => {
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName.type = 'float';
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /unsupported type float/);
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName.format = 'phone';
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /unsupported format phone/);
 });
 
-test('the site validator refuses a stale CSP hash and a mis-preloaded module', () => {
-  const staleHash = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace(/'sha256-[A-Za-z0-9+/=]+'/, "'sha256-AAAA'"));
-  });
-  assert.equal(staleHash.status, 1);
-  assert.match(staleHash.stderr, /CSP hash for the inline JSON-LD block is stale/);
-
-  const missingPreload = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('  <link rel="modulepreload" href="assets/js/view-model.js">\n', ''));
-  });
-  assert.equal(missingPreload.status, 1);
-  assert.match(missingPreload.stderr, /assets\/js\/view-model\.js is statically imported but not preloaded/);
-
-  const eagerDynamic = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace(
-      '<link rel="modulepreload" href="assets/js/render.js">',
-      '<link rel="modulepreload" href="assets/js/render.js">\n  <link rel="modulepreload" href="assets/js/demos.js">',
-    ));
-  });
-  assert.equal(eagerDynamic.status, 1);
-  assert.match(eagerDynamic.stderr, /assets\/js\/demos\.js is loaded on demand but preloaded/);
+test('the schema walker enforces const, oneOf, not, and uniqueItems', () => {
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName = { type: 'string', const: 'Nobody' };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity\.displayName invalid/);
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName = { oneOf: [{ type: 'number' }, { type: 'boolean' }] };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity\.displayName invalid/);
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName = { not: { type: 'string' } };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity\.displayName invalid/);
+  expectData((copy) => {
+    const showcase = readJson(copy, 'data/showcase.json');
+    showcase.principles.push(showcase.principles[0]);
+    writeJson(copy, 'data/showcase.json', showcase);
+    const schema = readJson(copy, 'data/showcase.schema.json');
+    schema.properties.principles.uniqueItems = true;
+    writeJson(copy, 'data/showcase.schema.json', schema);
+  }, /duplicates an earlier item/);
 });
 
-test('the site validator refuses third-party assets, README ghosts, and noscript strays', () => {
-  const thirdParty = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('<link rel="stylesheet" href="assets/css/style.css">', '<link rel="stylesheet" href="https://cdn.example.com/x.css">'));
-  });
-  assert.equal(thirdParty.status, 1);
-  assert.match(thirdParty.stderr, /third-party stylesheet/);
-
-  const readme = runSiteValidator((dir) => {
-    const path = join(dir, 'README.md');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('assets/js/main.js               boot', 'assets/js/ghost.js              boot'));
-  });
-  assert.equal(readme.status, 1);
-  assert.match(readme.stderr, /listed path assets\/js\/ghost\.js does not exist/);
-
-  const noscript = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('<li><a href="https://github.com/YuGiMob/pi-tor-proxy">', '<li><a href="https://github.com/YuGiMob/pi-ghost">'));
-  });
-  assert.equal(noscript.status, 1);
-  assert.match(noscript.stderr, /noscript link pi-ghost is not in site-data\.json/);
+test('the schema walker resolves a missing $ref and reports it', () => {
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName = { $ref: '#/definitions/nope' };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /references the missing schema #\/definitions\/nope/);
 });
 
-test('the site validator refuses an image without alt text', () => {
-  const noAlt = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace(' alt="YuGiMob" width="72"', ' width="72"'));
-  });
-  assert.equal(noAlt.status, 1);
-  assert.match(noAlt.stderr, /<img> is missing an alt attribute/);
+test('the site validator refuses a duplicate id and a missing fragment target', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<p class="intro-handle" id="display-name">', '<div id="avatar"></div><p class="intro-handle" id="display-name">');
+  }, /duplicate id avatar/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', 'href="#colophon" data-nav="colophon"', 'href="#ghost" data-nav="colophon"');
+  }, /missing fragment target #ghost/);
 });
 
-test('the site validator refuses a jumped heading order and a broken aria reference', () => {
-  const jump = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    const source = readFileSync(path, 'utf8');
-    writeFileSync(path, source.replace('<section id="problems"', '<h3>jump</h3><section id="problems"'));
-  });
-  assert.equal(jump.status, 1);
-  assert.match(jump.stderr, /heading level jumps from h1 to h3/);
-
-  const aria = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('aria-labelledby="problems-heading"', 'aria-labelledby="problems-ghost"'));
-  });
-  assert.equal(aria.status, 1);
-  assert.match(aria.stderr, /aria reference to missing id problems-ghost/);
+test('the site validator refuses a missing nav target and a missing local file', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', 'data-nav="problems"', 'data-nav="ghost"');
+  }, /missing nav target ghost/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', 'href="llms.txt"', 'href="missing.txt"');
+  }, /missing local file missing\.txt/);
 });
 
-test('the site validator refuses a target=_blank link without rel and a missing lang', () => {
-  const blank = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('target="_blank" rel="me noopener noreferrer" aria-label="YuGiMob on GitHub"', 'target="_blank" aria-label="YuGiMob on GitHub"'));
-  });
-  assert.equal(blank.status, 1);
-  assert.match(blank.stderr, /target="_blank" link has no rel=noopener/);
-
-  const lang = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('<html lang="en">', '<html>'));
-  });
-  assert.equal(lang.status, 1);
-  assert.match(lang.stderr, /<html> is missing a lang attribute/);
+test('the site validator refuses third-party assets', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '</head>', '<script src="https://evil.test/x.js"></script></head>');
+  }, /third-party script/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', '</head>', '<link rel="stylesheet" href="https://evil.test/x.css"></head>');
+  }, /third-party stylesheet/);
 });
 
-test('the site validator refuses a CSP without Trusted Types and a DOM sink', () => {
-  const noTrustedTypes = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace("; require-trusted-types-for 'script'", ''));
-  });
-  assert.equal(noTrustedTypes.status, 1);
-  assert.match(noTrustedTypes.stderr, /CSP is missing require-trusted-types-for 'script'/);
-
-  const noPolicyBan = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace("; trusted-types 'none'", ''));
-  });
-  assert.equal(noPolicyBan.status, 1);
-  assert.match(noPolicyBan.stderr, /CSP is missing trusted-types 'none'/);
-
-  const noFrames = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace("frame-src 'none'; ", ''));
-  });
-  assert.equal(noFrames.status, 1);
-  assert.match(noFrames.stderr, /CSP is missing frame-src 'none'/);
-
-  const sink = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'js', 'ui.js');
-    writeFileSync(path, `${readFileSync(path, 'utf8')}\ndocument.body.innerHTML = 'x';\n`);
-  });
-  assert.equal(sink.status, 1);
-  assert.match(sink.stderr, /uses a DOM sink that Trusted Types forbids/);
-
-  const fragment = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'js', 'ui.js');
-    writeFileSync(path, `${readFileSync(path, 'utf8')}\nrange.createContextualFragment('<b>x</b>');\n`);
-  });
-  assert.equal(fragment.status, 1);
-  assert.match(fragment.stderr, /uses a DOM sink that Trusted Types forbids \(createContextualFragment\)/);
-
-  const handler = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'js', 'ui.js');
-    writeFileSync(path, `${readFileSync(path, 'utf8')}\nnode.setAttribute("onclick", "x");\n`);
-  });
-  assert.equal(handler.status, 1);
-  assert.match(handler.stderr, /uses a DOM sink that Trusted Types forbids \(setAttribute\("onclick"\)/);
-
-  const styleAttribute = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'js', 'ui.js');
-    writeFileSync(path, `${readFileSync(path, 'utf8')}\nnode.setAttribute("style", "color: red");\n`);
-  });
-  assert.equal(styleAttribute.status, 1);
-  assert.match(styleAttribute.stderr, /sets an inline style attribute, which the CSP forbids \(setAttribute\("style"\)/);
-
-  const scriptText = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'js', 'ui.js');
-    writeFileSync(path, `${readFileSync(path, 'utf8')}\nconst scriptNode = {};\nscriptNode.textContent = 'x';\n`);
-  });
-  assert.equal(scriptText.status, 1);
-  assert.match(scriptText.stderr, /uses a DOM sink that Trusted Types forbids \(scriptNode\.textContent\)/);
-
-  const createdScript = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'js', 'ui.js');
-    writeFileSync(path, `${readFileSync(path, 'utf8')}\nconst loader = document.createElement('script');\n`);
-  });
-  assert.equal(createdScript.status, 1);
-  assert.match(createdScript.stderr, /uses a DOM sink that Trusted Types forbids \(createElement\('script'\)\)/);
+test('the site validator refuses a stale CSP hash and a missing directive', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', "script-src 'self' ", "script-src 'self' 'sha256-OLD=' ");
+  }, /CSP hash for the inline JSON-LD block is stale/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', "require-trusted-types-for 'script'; trusted-types 'none'", "trusted-types 'none'");
+  }, /CSP is missing require-trusted-types-for 'script'/);
 });
 
-test('the site validator refuses a missing or incomplete llms.txt', () => {
-  const missing = runSiteValidator((dir) => {
-    rmSync(join(dir, 'llms.txt'));
-  });
-  assert.equal(missing.status, 1);
-  assert.match(missing.stderr, /llms\.txt unreadable/);
-
-  const stray = runSiteValidator((dir) => {
-    const path = join(dir, 'llms.txt');
-    writeFileSync(path, readFileSync(path, 'utf8').replaceAll('pi-tor-proxy', 'ghost-tool'));
-  });
-  assert.equal(stray.status, 1);
-  assert.match(stray.stderr, /llms\.txt: missing project pi-tor-proxy/);
-
-  const noBlockquote = runSiteValidator((dir) => {
-    const path = join(dir, 'llms.txt');
-    writeFileSync(path, readFileSync(path, 'utf8').replace(/^> .*$/m, ''));
-  });
-  assert.equal(noBlockquote.status, 1);
-  assert.match(noBlockquote.stderr, /llms\.txt: missing the summary blockquote/);
-
-  const badLink = runSiteValidator((dir) => {
-    const path = join(dir, 'llms.txt');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('- [Markdown mirror](https://yugimob.github.io/index.md)', '- [Markdown mirror](index.md)'));
-  });
-  assert.equal(badLink.status, 1);
-  assert.match(badLink.stderr, /llms\.txt: the link line is not in the spec form/);
-
+test('the site validator refuses a DOM sink and a mis-preloaded module', () => {
+  expectSite((copy) => {
+    patch(copy, 'assets/js/render.js', 'export function renderIdentity', 'function sink(node) { node.innerHTML = "<b>x</b>"; }\nexport function renderIdentity');
+  }, /DOM sink that Trusted Types forbids/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<link rel="modulepreload" href="assets/js/ui.js">', '');
+  }, /ui\.js is statically imported but not preloaded/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<link rel="modulepreload" href="assets/js/ui.js">', '<link rel="modulepreload" href="assets/js/ui.js"><link rel="modulepreload" href="assets/js/demos.js">');
+  }, /demos\.js is loaded on demand but preloaded/);
 });
 
-test('the site validator refuses a title and description outside their length limits', () => {
-  const short = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    const source = readFileSync(path, 'utf8');
-    writeFileSync(path, source.replace('<title>YuGiMob · Coding-agent extensions that fail loudly</title>', '<title>x</title>').replace(/content="Extensions for the pi coding agent[^"]*"/, 'content="short"'));
-  });
-  assert.equal(short.status, 1);
-  assert.match(short.stderr, /title length 1 is outside 5-70/);
-  assert.match(short.stderr, /meta description length 5 is outside 50-200/);
+test('the site validator refuses a missing runtime preload', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<link rel="preload" as="fetch" href="data/site-data.json" crossorigin>', '');
+  }, /data\/site-data\.json is fetched at runtime but not preloaded/);
 });
 
-test('the site validator refuses a drifted sitemap lastmod and a missing avatar file', () => {
-  const sitemap = runSiteValidator((dir) => {
-    const path = join(dir, 'sitemap.xml');
-    const source = readFileSync(path, 'utf8');
-    writeFileSync(path, source.replace(new RegExp('<lastmod>[^<]*</lastmod>'), '<lastmod>2020-01-01</lastmod>'));
-  });
-  assert.equal(sitemap.status, 1);
-  assert.match(sitemap.stderr, /does not match the newest history date/);
-
-  const avatar = runSiteValidator((dir) => {
-    const path = join(dir, 'data', 'site-data.json');
-    const data = JSON.parse(readFileSync(path, 'utf8'));
-    data.identity.avatarUrl = 'assets/ghost.png';
-    writeFileSync(path, JSON.stringify(data, null, 2));
-  });
-  assert.equal(avatar.status, 1);
-  assert.match(avatar.stderr, /points at a missing file/);
+test('the site validator refuses README ghosts and missing entries', () => {
+  expectSite((copy) => {
+    patch(copy, 'README.md', 'assets/js/demos.js', 'assets/js/ghost.js');
+  }, /listed path assets\/js\/ghost\.js does not exist/);
+  expectSite((copy) => {
+    patch(copy, 'README.md', 'scripts/serve.mjs', 'scripts/ghost.mjs');
+  }, /scripts\/serve\.mjs is not listed in the Files block/);
 });
 
-test('the site validator refuses a robots.txt without content signals', () => {
-  const missing = runSiteValidator((dir) => {
-    const path = join(dir, 'robots.txt');
-    writeFileSync(path, readFileSync(path, 'utf8').replace(/^Content-Signal: .*$/m, ''));
-  });
-  assert.equal(missing.status, 1);
-  assert.match(missing.stderr, /robots.txt: missing a Content-Signal line/);
+test('the site validator refuses a noscript list missing a project and a stray', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<li><a href="https://github.com/YuGiMob/pi-git-commit">pi-git-commit</a> <code>pi install npm:pi-git-commit</code></li>', '');
+  }, /noscript list is missing pi-git-commit/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<li>Read the page as', '<li><a href="https://github.com/YuGiMob/ghost">ghost</a></li><li>Read the page as');
+  }, /noscript link ghost is not in site-data\.json/);
+});
 
-  const partial = runSiteValidator((dir) => {
-    const path = join(dir, 'robots.txt');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('ai-train=yes', 'ai-train'));
-  });
-  assert.equal(partial.status, 1);
-  assert.match(partial.stderr, /the Content-Signal line is missing ai-train=/);
+test('the site validator refuses a missing image alt and a jumped heading order', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', 'id="avatar" src="assets/avatar.png" alt="YuGiMob"', 'id="avatar" src="assets/avatar.png"');
+  }, /<img> is missing an alt attribute/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<h2 class="section-title" id="problems-heading">', '<h4 class="section-title" id="problems-heading">');
+  }, /heading level jumps/);
+});
+
+test('the site validator refuses a missing lang and a missing main', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<html lang="en">', '<html>');
+  }, /<html> is missing a lang attribute/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<main id="main-content"', '<div id="main-content"');
+  }, /expected exactly one <main>/);
+});
+
+test('the site validator refuses a broken aria reference and an unrel blank link', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', 'aria-labelledby="problems-heading"', 'aria-labelledby="ghost"');
+  }, /aria reference to missing id ghost/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', '</main>', '<a href="https://x.test" target="_blank">x</a></main>');
+  }, /target="_blank" link has no rel=noopener/);
+});
+
+test('the site validator refuses inline styles and event handlers', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '</main>', '<p style="color:red">x</p></main>');
+  }, /uses an inline style/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', '</main>', '<p onclick="x()">x</p></main>');
+  }, /uses an inline event handler/);
+});
+
+test('the site validator refuses a title or description outside its length limits', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<title>YuGiMob · Extensions for the pi coding agent</title>', '<title>x</title>');
+  }, /title length 1 is outside 5-70/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', 'content="Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, review workflows, and a human gate in front of every commit."', 'content="short"');
+  }, /meta description length 5 is outside 50-200/);
 });
 
 test('the site validator refuses a nav order that does not match the section order', () => {
-  const nav = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    const source = readFileSync(path, 'utf8');
-    writeFileSync(path, source
-      .replace('<a href="#problems" data-nav="problems">The problems</a>', '<a href="#swap" data-nav="swap">swap</a>')
-      .replace('<a href="#evidence" data-nav="evidence">The evidence</a>', '<a href="#problems" data-nav="problems">The problems</a>')
-      .replace('<a href="#swap" data-nav="swap">swap</a>', '<a href="#evidence" data-nav="evidence">The evidence</a>'));
-  });
-  assert.equal(nav.status, 1);
-  assert.match(nav.stderr, /nav order does not match the section order/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<a href="#problems" data-nav="problems">The tools</a>\n        <a href="#colophon" data-nav="colophon">About</a>', '<a href="#colophon" data-nav="colophon">About</a>\n        <a href="#problems" data-nav="problems">The tools</a>');
+  }, /nav order does not match the section order/);
 });
 
-function runDataValidatorOnCopy(mutate) {
-  return withRepoCopy((copy) => spawnSync(process.execPath, [join(copy, 'scripts', 'validate-data.mjs')], { encoding: 'utf8' }), mutate);
-}
-
-test('the data validator refuses schema keywords it cannot enforce', () => {
-  const keyword = runDataValidatorOnCopy((dir) => {
-    const path = join(dir, 'data', 'site-data.schema.json');
-    const schema = JSON.parse(readFileSync(path, 'utf8'));
-    schema.properties.identity.properties.displayName.patternProperties = { '^x': { type: 'string' } };
-    writeFileSync(path, JSON.stringify(schema, null, 2));
-  });
-  assert.equal(keyword.status, 1);
-  assert.match(keyword.stderr, /identity\.displayName schema uses an unsupported keyword patternProperties/);
-
-  const format = runDataValidatorOnCopy((dir) => {
-    const path = join(dir, 'data', 'showcase.schema.json');
-    const schema = JSON.parse(readFileSync(path, 'utf8'));
-    schema.properties.intro.properties.headline.format = 'slug';
-    writeFileSync(path, JSON.stringify(schema, null, 2));
-  });
-  assert.equal(format.status, 1);
-  assert.match(format.stderr, /intro\.headline schema uses an unsupported format slug/);
-
-  const type = runDataValidatorOnCopy((dir) => {
-    const path = join(dir, 'data', 'showcase.schema.json');
-    const schema = JSON.parse(readFileSync(path, 'utf8'));
-    schema.properties.principles.items.type = 'text';
-    writeFileSync(path, JSON.stringify(schema, null, 2));
-  });
-  assert.equal(type.status, 1);
-  assert.match(type.stderr, /principles\.items schema uses an unsupported type text/);
+test('the site validator refuses a drifted sitemap lastmod', () => {
+  expectSite((copy) => {
+    patch(copy, 'sitemap.xml', /<lastmod>[^<]+<\/lastmod>/.exec(readFileSync(join(copy, 'sitemap.xml'), 'utf8'))[0], '<lastmod>2026-01-01</lastmod>');
+  }, /does not match the newest history date/);
 });
 
-function rewriteSchema(copy, file, mutate) {
-  const path = join(copy, 'data', file);
-  const schema = JSON.parse(readFileSync(path, 'utf8'));
-  mutate(schema);
-  writeFileSync(path, `${JSON.stringify(schema, null, 2)}\n`);
-}
-
-test('the data validator enforces const, oneOf, anyOf, not, minProperties, and uniqueItems', () => {
-  const constant = runDataValidatorOnCopy((dir) => {
-    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
-      schema.properties.identity.properties.displayName.const = 'Someone else';
-    });
-  });
-  assert.equal(constant.status, 1);
-  assert.match(constant.stderr, /identity\.displayName invalid/);
-
-  const exclusive = runDataValidatorOnCopy((dir) => {
-    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
-      schema.properties.identity.properties.displayName.oneOf = [{ type: 'string' }, { type: 'string' }];
-    });
-  });
-  assert.equal(exclusive.status, 1);
-  assert.match(exclusive.stderr, /identity\.displayName invalid/);
-
-  const permissive = runDataValidatorOnCopy((dir) => {
-    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
-      schema.properties.identity.properties.displayName.anyOf = [{ type: 'number' }, { type: 'string' }];
-    });
-  });
-  assert.equal(permissive.status, 0, permissive.stderr);
-
-  const negated = runDataValidatorOnCopy((dir) => {
-    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
-      schema.properties.identity.properties.displayName.not = { type: 'string' };
-    });
-  });
-  assert.equal(negated.status, 1);
-  assert.match(negated.stderr, /identity\.displayName invalid/);
-
-  const tooFewKeys = runDataValidatorOnCopy((dir) => {
-    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
-      schema.properties.stats.minProperties = 5;
-    });
-  });
-  assert.equal(tooFewKeys.status, 1);
-  assert.match(tooFewKeys.stderr, /stats invalid/);
-
-  const duplicated = runDataValidatorOnCopy((dir) => {
-    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
-      schema.properties.activity.properties.highlights.uniqueItems = true;
-    });
-    const dataPath = join(dir, 'data', 'site-data.json');
-    const data = JSON.parse(readFileSync(dataPath, 'utf8'));
-    data.activity.highlights[1] = data.activity.highlights[0];
-    writeFileSync(dataPath, `${JSON.stringify(data, null, 2)}\n`);
-  });
-  assert.equal(duplicated.status, 1);
-  assert.match(duplicated.stderr, /activity\.highlights\.1 duplicates an earlier item/);
-});
-
-test('the data validator resolves $ref definitions and reports a missing one', () => {
-  const resolvable = runDataValidatorOnCopy((dir) => {
-    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
-      schema.definitions = { name: { type: 'string', minLength: 1 } };
-      schema.properties.identity.properties.displayName = { $ref: '#/definitions/name' };
-    });
-  });
-  assert.equal(resolvable.status, 0, resolvable.stderr);
-
-  const dangling = runDataValidatorOnCopy((dir) => {
-    rewriteSchema(dir, 'site-data.schema.json', (schema) => {
-      schema.properties.identity.properties.displayName = { $ref: '#/definitions/missing' };
-    });
-  });
-  assert.equal(dangling.status, 1);
-  assert.match(dangling.stderr, /identity\.displayName references the missing schema #\/definitions\/missing/);
-});
-
-test('the data validator refuses an interval that is not the Wilson interval', () => {
-  const data = structuredClone(DATA);
-  data.benchmark.contenders[0].low = 90;
-  data.benchmark.contenders[0].high = 100;
-  const result = runValidator(data, SHOWCASE);
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /interval does not match the Wilson interval for passed\/runs/);
-});
-
-test('the site validator refuses static copy that drifts from the data files', () => {
-  const title = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('Coding-agent extensions that fail loudly</title>', 'A stale title</title>'));
-  });
-  assert.equal(title.status, 1);
-  assert.match(title.stderr, /the title should read/);
-
-  const heading = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('Six things that kept going wrong', 'Five things'));
-  });
-  assert.equal(heading.status, 1);
-  assert.match(heading.stderr, /#problems-heading should read/);
-
-  const inline = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('<dl class="intro-stats" id="hero-stats">', '<dl class="intro-stats" id="hero-stats" style="color:red">'));
-  });
-  assert.equal(inline.status, 1);
-  assert.match(inline.stderr, /uses an inline style/);
-
-  const jsonLd = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('"@context":"https://schema.org"', '"@context":"https://example.org"'));
-  });
-  assert.equal(jsonLd.status, 1);
-  assert.match(jsonLd.stderr, /the inline JSON-LD block does not match the data files/);
-
-  const problemBlock = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('Anchors survive inserts, deletes, and re-reads', 'A stale highlight'));
-  });
-  assert.equal(problemBlock.status, 1);
-  assert.match(problemBlock.stderr, /the #problem-list block does not match the data files/);
-
-  const evidenceHeading = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('id="evidence-heading">One benchmark I did not write, one I did<', 'id="evidence-heading">A stale evidence heading<'));
-  });
-  assert.equal(evidenceHeading.status, 1);
-  assert.match(evidenceHeading.stderr, /#evidence-heading does not match the showcase/);
-
-  const sectionHidden = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('<section id="colophon"', '<section hidden id="colophon"'));
-  });
-  assert.equal(sectionHidden.status, 1);
-  assert.match(sectionHidden.stderr, /#colophon hidden state does not match the data sections/);
-});
-
-test('the site validator refuses a manifest project with no showcase entry', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, 'data', 'showcase.json');
-    const showcase = JSON.parse(readFileSync(path, 'utf8'));
-    showcase.problems = showcase.problems.filter((problem) => problem.name !== 'pi-tor-proxy');
-    writeFileSync(path, JSON.stringify(showcase, null, 2));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /no entry for the manifest project pi-tor-proxy/);
+test('the site validator refuses a robots.txt without content signals', () => {
+  expectSite((copy) => {
+    patch(copy, 'robots.txt', 'Content-Signal: search=yes, ai-input=yes, ai-train=yes', '');
+  }, /missing a Content-Signal line/);
 });
 
 test('the site validator refuses an expiring security.txt', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, '.well-known', 'security.txt');
-    writeFileSync(path, readFileSync(path, 'utf8').replace(/^Expires: .*$/m, 'Expires: 2020-01-01T00:00:00.000Z'));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /Expires is less than 60 days away/);
+  expectSite((copy) => {
+    patch(copy, '.well-known/security.txt', /Expires: \S+/.exec(readFileSync(join(copy, '.well-known/security.txt'), 'utf8'))[0], 'Expires: 2026-10-12T00:00:00.000Z');
+  }, /Expires is less than 60 days away/);
 });
 
-test('the site validator refuses a palette pair below the contrast minimum', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'css', 'style.css');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('--ink: #1b1814;', '--ink: #b9b3a8;'));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /light ink on paper is \d+\.\d+:1, below 4\.5:1/);
+test('the site validator refuses a missing avatar and a CSP that does not allow its origin', () => {
+  expectSite((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.identity.avatarUrl = 'assets/nope.png';
+    writeJson(copy, 'data/site-data.json', data);
+  }, /points at a missing file assets\/nope\.png/);
+  expectSite((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.identity.avatarUrl = 'https://cdn.test/avatar.png';
+    writeJson(copy, 'data/site-data.json', data);
+  }, /CSP img-src does not allow the avatar origin https:\/\/cdn\.test/);
 });
 
-test('the contrast check measures the base palette, not a prefers-contrast override', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'css', 'style.css');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('--ink-3: #71695b;', '--ink-3: #b9b3a8;'));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /light ink-3 on paper is \d+\.\d+:1, below 4\.5:1/);
+test('the site validator refuses an incomplete llms.txt and a drifted agent manifest', () => {
+  expectSite((copy) => {
+    patch(copy, 'llms.txt', '- [pi-hashline-edit-pro]', '- [pi-hashline-edit-pro] (broken)');
+  }, /link line is not in the spec form/);
+  expectSite((copy) => {
+    const path = join(copy, 'llms.txt');
+    writeFileSync(path, readFileSync(path, 'utf8').split('pi-hashline-edit-pro').join('ghost-tool'));
+  }, /missing project pi-hashline-edit-pro/);
+  expectSite((copy) => {
+    patch(copy, 'agent-readability.json', '"name": "YuGiMob"', '"name": "Nobody"');
+  }, /name does not match the display name/);
 });
 
-test('the contrast check measures the base dark palette, not the nested prefers-contrast override', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'css', 'style.css');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('--ink-3: #9e9484;', '--ink-3: #5a5348;'));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /dark ink-3 on paper is \d+\.\d+:1, below 4\.5:1/);
+test('the site validator refuses a feed that is not a current JSON feed', () => {
+  expectSite((copy) => {
+    patch(copy, 'feed.json', '"version": "https://jsonfeed.org/version/1.1"', '"version": "https://jsonfeed.org/version/1"');
+  }, /version is not JSON Feed 1\.1/);
 });
 
-test('the validator refuses two chart colors that collapse under a dichromacy', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'css', 'style.css');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('--red: #8b1a1a;', '--red: #b03d19;'));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /light accent and red chart colors are \d+\.\d+ apart under normal vision; the minimum is 15/);
+test('the site validator refuses a markdown mirror missing a project', () => {
+  expectSite((copy) => {
+    const path = join(copy, 'index.md');
+    writeFileSync(path, readFileSync(path, 'utf8').split('pi-hashline-edit-pro').join('ghost-tool'));
+  }, /index\.md: missing project pi-hashline-edit-pro/);
 });
 
-test('the validator refuses a chart color that cannot be measured', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'css', 'style.css');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('  --red: #8b1a1a;\n', ''));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /cannot measure the light accent and red chart colors under normal vision/);
-});
-
-test('the validator refuses a palette token that is neither measured nor declared decorative', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'css', 'style.css');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('  --ink: #1b1814;\n', '  --ink: #1b1814;\n  --ghost: #123456;\n'));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /palette token --ghost is neither measured for contrast nor declared decorative/);
-});
-
-test('the site validator refuses a stylesheet without the sticky-bar scroll padding', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'css', 'style.css');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('  scroll-padding-top: 84px;\n', ''));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /the html rule has no scroll-padding-top/);
-});
-
-test('the runtime guard rejects a document missing any schema-required key', () => {
-  const schema = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.schema.json'), 'utf8'));
-  const data = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.json'), 'utf8'));
-  assert.equal(isValidSiteData(data), true);
-  for (const key of schema.required) {
-    const broken = structuredClone(data);
-    delete broken[key];
-    assert.equal(isValidSiteData(broken), false, `the guard accepted a document without ${key}`);
-  }
-});
-
-const MATRIX = JSON.parse(readFileSync(join(ROOT, 'data', 'benchmark-matrix.json'), 'utf8'));
-
-test('the data validator re-derives the paired McNemar p-value', () => {
-  const drifted = structuredClone(DATA);
-  const compared = drifted.benchmark.contenders.find((entry) => entry.vsHighlight != null);
-  compared.vsHighlight.p = 0.5;
-  const result = runValidator(drifted, SHOWCASE, MATRIX);
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /vsHighlight p does not match the exact McNemar test/);
-});
-
-test('the data validator re-derives the Holm adjustment across the rivals', () => {
-  const drifted = structuredClone(DATA);
-  const compared = drifted.benchmark.contenders.find((entry) => entry.vsHighlight != null);
-  compared.vsHighlight.pAdjusted = 0.5;
-  const result = runValidator(drifted, SHOWCASE, MATRIX);
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /vsHighlight pAdjusted does not match the Holm adjustment/);
-});
-
-test('the data validator re-derives the paired-difference interval', () => {
-  const drifted = structuredClone(DATA);
-  const compared = drifted.benchmark.contenders.find((entry) => entry.vsHighlight != null);
-  compared.vsHighlight.low -= 1;
-  const result = runValidator(drifted, SHOWCASE, MATRIX);
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /vsHighlight interval does not match the paired-difference interval/);
-
-  const missing = structuredClone(DATA);
-  delete missing.benchmark.contenders.find((entry) => entry.vsHighlight != null).vsHighlight.high;
-  const missingResult = runValidator(missing, SHOWCASE, MATRIX);
-  assert.equal(missingResult.status, 1);
-  assert.match(missingResult.stderr, /vsHighlight missing high/);
-});
-
-test('the data validator refuses a pair that contradicts the highlight and the run count', () => {
-  const highlighted = structuredClone(DATA);
-  highlighted.benchmark.contenders.find((entry) => entry.highlight).vsHighlight = { b: 1, c: 1, p: 1, low: -1, high: 1 };
-  const highlightResult = runValidator(highlighted, SHOWCASE, MATRIX);
-  assert.equal(highlightResult.status, 1);
-  assert.match(highlightResult.stderr, /is highlighted and cannot compare itself to the highlight/);
-
-  const oversized = structuredClone(DATA);
-  const compared = oversized.benchmark.contenders.find((entry) => entry.vsHighlight != null);
-  compared.vsHighlight = { b: compared.runs, c: compared.runs, bothPassed: 0, bothFailed: 0, p: 1, low: -1, high: 1 };
-  const oversizedResult = runValidator(oversized, SHOWCASE, MATRIX);
-  assert.equal(oversizedResult.status, 1);
-  assert.match(oversizedResult.stderr, /vsHighlight exceeds runs/);
-
-  const malformed = structuredClone(DATA);
-  malformed.benchmark.contenders.find((entry) => entry.vsHighlight != null).vsHighlight = { b: 'one', c: 0, p: 1, low: -1, high: 1 };
-  const malformedResult = runValidator(malformed, SHOWCASE, MATRIX);
-  assert.equal(malformedResult.status, 1);
-  assert.match(malformedResult.stderr, /vsHighlight invalid/);
-});
-
-test('the data validator refuses a scenario matrix that drifted from the benchmark block', () => {
-  const cellDrift = structuredClone(MATRIX);
-  cellDrift.cells[0][0][1] += 1;
-  const cellResult = runValidator(DATA, SHOWCASE, cellDrift);
-  assert.equal(cellResult.status, 1);
-  assert.match(cellResult.stderr, /benchmark-matrix does not match the benchmark block/);
-
-  const shortScenarios = structuredClone(MATRIX);
-  shortScenarios.scenarios = shortScenarios.scenarios.slice(1);
-  shortScenarios.cells = shortScenarios.cells.slice(1);
-  const shortResult = runValidator(DATA, SHOWCASE, shortScenarios);
-  assert.equal(shortResult.status, 1);
-  assert.match(shortResult.stderr, /benchmark-matrix does not match the benchmark block/);
-});
-
-test('the matrix schema refuses an unknown focus and a malformed cell', () => {
-  const badFocus = structuredClone(MATRIX);
-  badFocus.scenarios[0].focus = 'speed';
-  const focusResult = runValidator(DATA, SHOWCASE, badFocus);
-  assert.equal(focusResult.status, 1);
-  assert.match(focusResult.stderr, /scenarios\.0\.focus invalid/);
-
-  const badCell = structuredClone(MATRIX);
-  badCell.cells[0][0] = [1];
-  const cellResult = runValidator(DATA, SHOWCASE, badCell);
-  assert.equal(cellResult.status, 1);
-  assert.match(cellResult.stderr, /cells\.0\.0 invalid/);
-
-  const badIndex = structuredClone(MATRIX);
-  badIndex.cells[0][0] = [['x'], 9];
-  const indexResult = runValidator(DATA, SHOWCASE, badIndex);
-  assert.equal(indexResult.status, 1);
-  assert.match(indexResult.stderr, /cells\.0\.0\.0\.0 invalid/);
-
-  const noModels = structuredClone(MATRIX);
-  delete noModels.models;
-  const modelsResult = runValidator(DATA, SHOWCASE, noModels);
-  assert.equal(modelsResult.status, 1);
-  assert.match(modelsResult.stderr, /missing models/);
-});
-
-test('the data validator accepts a manifest without a benchmark block', () => {
-  const data = structuredClone(DATA);
-  delete data.benchmark;
-  delete data.benchmarkHistory;
-  const result = runValidator(data, SHOWCASE);
-  assert.equal(result.status, 0, result.stderr);
-});
-
-test('the site validator refuses a missing markdown link and a drifted agent manifest', () => {
-  const noAlternate = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('  <link rel="alternate" type="text/markdown" href="index.md">\n', ''));
-  });
-  assert.equal(noAlternate.status, 1);
-  assert.match(noAlternate.stderr, /missing the rel=alternate link to index\.md/);
-
-  const noIndex = runSiteValidator((dir) => {
-    rmSync(join(dir, 'index.md'));
-  });
-  assert.equal(noIndex.status, 1);
-  assert.match(noIndex.stderr, /index\.md unreadable/);
-
-  const strayArtifact = runSiteValidator((dir) => {
-    const path = join(dir, 'agent-readability.json');
-    const manifest = JSON.parse(readFileSync(path, 'utf8'));
-    manifest.artifacts.markdown = 'https://yugimob.github.io/ghost.md';
-    writeFileSync(path, JSON.stringify(manifest, null, 2));
-  });
-  assert.equal(strayArtifact.status, 1);
-  assert.match(strayArtifact.stderr, /agent-readability\.json: .*ghost\.md does not exist/);
-
-  const missingArtifact = runSiteValidator((dir) => {
-    const path = join(dir, 'agent-readability.json');
-    const manifest = JSON.parse(readFileSync(path, 'utf8'));
-    delete manifest.artifacts.sitemap;
-    writeFileSync(path, JSON.stringify(manifest, null, 2));
-  });
-  assert.equal(missingArtifact.status, 1);
-  assert.match(missingArtifact.stderr, /agent-readability\.json: does not list sitemap\.xml/);
-
-  const noReadabilityLink = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('  <link rel="describedby" href="agent-readability.json" type="application/json">\n', ''));
-  });
-  assert.equal(noReadabilityLink.status, 1);
-  assert.match(noReadabilityLink.stderr, /missing the rel=describedby link to agent-readability\.json/);
-
-  const manifestDrift = runSiteValidator((dir) => {
-    const path = join(dir, 'agent-readability.json');
-    const manifest = JSON.parse(readFileSync(path, 'utf8'));
-    manifest.repository = 'https://github.com/attacker/evil';
-    writeFileSync(path, JSON.stringify(manifest, null, 2));
-  });
-  assert.equal(manifestDrift.status, 1);
-  assert.match(manifestDrift.stderr, /repository is not the site repository/);
-});
-
-test('the site validator refuses a hero stat block that drifted from the data', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace(/(<dd class="stat-value" aria-hidden="true">)\d+(<\/dd>)/, '$10$2'));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /the hero stat block does not match the machine data/);
+test('the site validator refuses a drifted hero stat block', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<dd class="stat-value" aria-hidden="true">118</dd>', '<dd class="stat-value" aria-hidden="true">0</dd>');
+  }, /hero stat block does not match the machine data/);
 });
 
 test('the site validator refuses intro paragraphs that drifted from the showcase', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace(/<p class="intro-paragraph">[^<]*<\/p>/, '<p class="intro-paragraph">drifted</p>'));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /the intro paragraphs do not match the showcase/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', 'I build extensions for pi', 'Someone else writes here');
+  }, /intro paragraphs do not match the showcase/);
 });
 
-test('the site validator refuses a noscript list missing a project', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace(/\s*<li><a href="https:\/\/github\.com\/YuGiMob\/pi-tor-proxy">[\s\S]*?<\/li>/, ''));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /the noscript list is missing pi-tor-proxy/);
+test('the site validator refuses a drifted problem block and static copy', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', 'Every line a tool serves gets its own four-letter anchor.', 'A different answer.');
+  }, /#problem-list block does not match the data files/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<p class="intro-handle" id="display-name">YuGiMob</p>', '<p class="intro-handle" id="display-name">Nobody</p>');
+  }, /#display-name does not match identity\.displayName/);
 });
 
-test('the site validator refuses a README that does not list a script', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, 'README.md');
-    writeFileSync(path, readFileSync(path, 'utf8').replace(/scripts\/site-html-lib\.mjs[^\n]*\n/, ''));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /scripts\/site-html-lib\.mjs is not listed in the Files block/);
+test('the site validator refuses inline JSON-LD that drifted from the data', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '"@type":"ProfilePage"', '"@type":"Thing"');
+  }, /inline JSON-LD block does not match the data files/);
 });
 
-test('the validator refuses a chart color that collapses with green', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, 'assets', 'css', 'style.css');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('--green: #92e8a3;', '--green: #e5836a;'));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /dark accent and green chart colors are [\d.]+ apart/);
+test('the site validator refuses a drifted hidden state and a missing scroll padding', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<section id="problems" class="section"', '<section id="problems" class="section" hidden');
+  }, /#problems hidden state does not match the data sections/);
+  expectSite((copy) => {
+    patch(copy, 'assets/css/style.css', 'scroll-padding-top: 92px;', '');
+  }, /has no scroll-padding-top/);
 });
 
-test('the validator refuses a feed that is not a current JSON feed', () => {
-  const version = runSiteValidator((dir) => {
-    const path = join(dir, 'feed.json');
-    const feed = JSON.parse(readFileSync(path, 'utf8'));
-    feed.version = 'https://jsonfeed.org/version/1';
-    writeFileSync(path, JSON.stringify(feed, null, 2));
-  });
-  assert.equal(version.status, 1);
-  assert.match(version.stderr, /feed\.json: version is not JSON Feed 1\.1/);
-
-  const broken = runSiteValidator((dir) => {
-    const path = join(dir, 'feed.json');
-    const feed = JSON.parse(readFileSync(path, 'utf8'));
-    delete feed.items[1].content_text;
-    feed.items.push(structuredClone(feed.items[0]));
-    writeFileSync(path, JSON.stringify(feed, null, 2));
-  });
-  assert.equal(broken.status, 1);
-  assert.match(broken.stderr, /feed\.json: an item is missing id, url, or content_text/);
-  assert.match(broken.stderr, /feed\.json: duplicated item id/);
+test('the site validator refuses a palette pair below the contrast minimum', () => {
+  expectSite((copy) => {
+    patch(copy, 'assets/css/style.css', '--ink: #1b1814;', '--ink: #c9c9c9;');
+  }, /below 4\.5:1/);
 });
 
-test('the validator refuses inline JSON-LD that drifted from the data', () => {
-  const result = runSiteValidator((dir) => {
-    const path = join(dir, 'index.html');
-    writeFileSync(path, readFileSync(path, 'utf8').replace('"name":"YuGiMob"', '"name":"Someone Else"'));
-  });
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /the JSON-LD name does not match identity\.displayName/);
+test('the site validator refuses an unmeasured palette token', () => {
+  expectSite((copy) => {
+    patch(copy, 'assets/css/style.css', '--shadow:', '--mystery: #123456;\n  --shadow:');
+  }, /--mystery is neither measured for contrast nor declared decorative/);
+});
+
+test('the site validator refuses chart colors that collapse under a dichromacy', () => {
+  expectSite((copy) => {
+    patch(copy, 'assets/css/style.css', '--green: #2f7d46;', '--green: #8b1a1a;');
+  }, /chart colors are 0\.0 apart under normal vision|chart colors are .* apart under/);
+});
+
+test('the site validator refuses an image whose declared size is wrong', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', 'property="og:image:width" content="1200"', 'property="og:image:width" content="100"');
+  }, /is 1200×630 but the page declares 100×630/);
+});
+
+test('the site validator refuses a stylesheet reference to a missing file', () => {
+  expectSite((copy) => {
+    patch(copy, 'assets/css/style.css', "url('../fonts/cY9AfjOCX1hbuyalUrK4397yjA.woff2')", "url('../fonts/ghost.woff2')");
+  }, /missing file \.\.\/fonts\/ghost\.woff2/);
+});
+
+test('the site validator refuses a JSON-LD person that drifts from the identity', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '"name":"YuGiMob"', '"name":"Nobody"');
+  }, /JSON-LD name does not match identity\.displayName|inline JSON-LD block does not match the data files/);
+});
+
+test('the site validator checks every id the scripts address', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<div id="live-region"', '<div id="ghost-region"');
+  }, /missing #live-region referenced by scripts/);
+});
+
+test('the schema walker covers every supported type and format', () => {
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName = { type: ['string', 'null'], format: 'uri' };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity\.displayName invalid/);
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName = { type: 'null' };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity\.displayName invalid/);
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName = { type: 'string', format: 'email' };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity\.displayName invalid/);
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName = { type: 'boolean' };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity\.displayName invalid/);
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName = { type: 'number' };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity\.displayName invalid/);
+});
+
+test('the schema walker enforces string, number, and array limits', () => {
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName = { type: 'string', minLength: 100, pattern: '^Z' };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity\.displayName invalid/);
+  expectData((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.stats.totalStars = 1000;
+    writeJson(copy, 'data/site-data.json', data);
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.stats.properties.totalStars.maximum = 10;
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /stats\.totalStars invalid/);
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.projects.maxItems = 1;
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /projects invalid/);
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.minProperties = 10;
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity invalid/);
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.maxProperties = 1;
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity invalid/);
+});
+
+test('the schema walker enforces allOf, anyOf, and enum', () => {
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName = { allOf: [{ type: 'number' }] };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity\.displayName invalid/);
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName = { anyOf: [{ type: 'number' }, { type: 'boolean' }] };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity\.displayName invalid/);
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.displayName = { type: 'string', enum: ['Nobody'] };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity\.displayName invalid/);
+});
+
+test('the schema walker resolves definitions and validates object additional properties', () => {
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.definitions = { name: { type: 'string', const: 'Nobody' } };
+    schema.properties.identity.properties.displayName = { $ref: '#/definitions/name' };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+  }, /identity\.displayName invalid/);
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/site-data.schema.json');
+    schema.properties.identity.properties.extra = { type: 'string' };
+    schema.properties.identity.additionalProperties = { type: 'string' };
+    writeJson(copy, 'data/site-data.schema.json', schema);
+    const data = readJson(copy, 'data/site-data.json');
+    data.identity.extra = 42;
+    writeJson(copy, 'data/site-data.json', data);
+  }, /identity\.extra invalid/);
+});
+
+test('the schema walker validates an array-form items list', () => {
+  expectData((copy) => {
+    const schema = readJson(copy, 'data/showcase.schema.json');
+    schema.properties.principles.items = [{ type: 'string', const: 'Nobody' }];
+    writeJson(copy, 'data/showcase.schema.json', schema);
+  }, /principles\.0 invalid/);
+});
+
+test('the site validator refuses a robots sitemap on another origin and a future lastmod', () => {
+  expectSite((copy) => {
+    patch(copy, 'robots.txt', 'Sitemap: https://yugimob.github.io/sitemap.xml', 'Sitemap: https://example.com/sitemap.xml');
+  }, /is not on the canonical origin/);
+  expectSite((copy) => {
+    patch(copy, 'sitemap.xml', /<lastmod>[^<]+<\/lastmod>/.exec(readFileSync(join(copy, 'sitemap.xml'), 'utf8'))[0], '<lastmod>2099-01-01</lastmod>');
+  }, /is in the future/);
+});
+
+test('the site validator refuses a security.txt without a usable Expires', () => {
+  expectSite((copy) => {
+    patch(copy, '.well-known/security.txt', /Expires: \S+\n/.exec(readFileSync(join(copy, '.well-known/security.txt'), 'utf8'))[0], '');
+  }, /missing or unparsable Expires/);
+});
+
+test('the site validator refuses a feed without items and an item missing its fields', () => {
+  expectSite((copy) => {
+    const feed = readJson(copy, 'feed.json');
+    feed.items = [];
+    writeJson(copy, 'feed.json', feed);
+  }, /has no items/);
+  expectSite((copy) => {
+    patch(copy, 'feed.json', '"content_text":', '"content_text_x":');
+  }, /missing id, url, or content_text/);
+});
+
+test('the site validator refuses a drifted agent manifest', () => {
+  expectSite((copy) => {
+    patch(copy, 'agent-readability.json', '"feed": "https://yugimob.github.io/feed.json"', '"feed": "https://yugimob.github.io/ghost.json"');
+  }, /does not exist/);
+  expectSite((copy) => {
+    patch(copy, 'agent-readability.json', '"site": "https://yugimob.github.io"', '"site": "https://example.com"');
+  }, /site is not the canonical URL/);
+});
+
+test('the site validator refuses an llms.txt and a markdown mirror without a title', () => {
+  expectSite((copy) => {
+    patch(copy, 'llms.txt', '# YuGiMob', 'YuGiMob');
+  }, /missing an H1 title/);
+  expectSite((copy) => {
+    patch(copy, 'index.md', '# YuGiMob', 'YuGiMob');
+  }, /index\.md: missing an H1 title/);
+});
+
+test('the site validator refuses a missing inline JSON-LD block and a drifted title', () => {
+  expectSite((copy) => {
+    const path = join(copy, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, ''));
+  }, /missing the inline JSON-LD block/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<title>YuGiMob · Extensions for the pi coding agent</title>', '<title>A different page title entirely</title>');
+  }, /title does not contain the display name/);
+});
+
+test('the site validator refuses drifted social tags and JSON-LD identity fields', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', 'property="og:title" content="YuGiMob · Extensions for the pi coding agent"', 'property="og:title" content="Something else"');
+  }, /social titles do not match/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', '"sameAs":["https://github.com/YuGiMob"]', '"sameAs":["https://github.com/other"]');
+  }, /sameAs does not include identity\.links\.github|inline JSON-LD block does not match/);
+});
+
+test('the site validator refuses a missing avatar URL and an invalid one', () => {
+  expectSite((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.identity.avatarUrl = 'not a url';
+    writeJson(copy, 'data/site-data.json', data);
+  }, /is not a URL|points at a missing file/);
+});
+
+test('the site validator refuses a manifest project with no showcase entry and a jumped first heading', () => {
+  expectSite((copy) => {
+    const showcase = readJson(copy, 'data/showcase.json');
+    showcase.problems[0].name = 'ghost';
+    writeJson(copy, 'data/showcase.json', showcase);
+  }, /no entry for the manifest project pi-hashline-edit-pro/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<h1 class="intro-headline">', '<h2 class="intro-headline">');
+  }, /first heading is h2, not h1/);
+});
+
+test('the site validator refuses a script sink and a JS inline style sink', () => {
+  expectSite((copy) => {
+    patch(copy, 'assets/js/render.js', 'export function renderIdentity', 'function sink() { const node = document.createElement("script"); return node; }\nexport function renderIdentity');
+  }, /DOM sink that Trusted Types forbids/);
+  expectSite((copy) => {
+    patch(copy, 'assets/js/render.js', 'export function renderIdentity', 'function sink(node) { node.setAttribute("style", "color: red"); }\nexport function renderIdentity');
+  }, /sets an inline style attribute/);
+});
+
+test('the site validator refuses a CSP without a script hash', () => {
+  expectSite((copy) => {
+    const path = join(copy, 'index.html');
+    writeFileSync(path, readFileSync(path, 'utf8').replace(/'sha256-[A-Za-z0-9+/=]+'/, ''));
+  }, /has no sha256 hash/);
 });

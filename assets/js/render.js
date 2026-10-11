@@ -74,32 +74,6 @@ export function renderProblems() {
   }
 }
 
-export function renderEvidence(showcase, benchmark, benchmarkHistory) {
-  const section = document.getElementById('evidence');
-  const body = document.getElementById('evidence-body');
-  const evidence = showcase.evidence;
-  if (!section || !body) return;
-  if (!evidence) {
-    section.hidden = true;
-    return;
-  }
-  setText('evidence-kicker', evidence.kicker);
-  setText('evidence-heading', evidence.headline);
-  const article = document.getElementById(problemId(evidence.name));
-  if (!article) return;
-  hydrateInstallCommand(article);
-  const demoBox = article.querySelector('.problem-demo');
-  if (demoBox) {
-    if (benchmark) lazyMount(demoBox, () => import('./charts.js').then((module) => module.benchmarkChart(benchmark, benchmarkHistory)));
-    else demoBox.appendChild(el('p', 'chart-note', 'The benchmark block is missing from the data, so the run rates cannot be shown.'));
-  }
-  const matrixBox = article.querySelector('.evidence-matrix');
-  if (matrixBox && benchmark) {
-    lazyMount(matrixBox, () => fetchJson('data/benchmark-matrix.json', 1).then((data) => import('./charts.js').then((module) => module.benchmarkMatrix(benchmark, data))));
-  }
-  const traceBox = article.querySelector('.evidence-trace[data-demo]');
-  if (traceBox) lazyMount(traceBox, () => loadDemo(traceBox.getAttribute('data-demo')));
-}
 
 export function renderDegradedNotice(message) {
   const notice = document.getElementById('data-notice');

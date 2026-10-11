@@ -11,7 +11,7 @@ house rules; this file is the short version for a coding agent making a change.
 - `npm run validate` — the three validators alone.
 - `npm run refresh:check` — run the daily data pipeline without writing anything.
 - `npm run build:llms` — regenerate `llms.txt`, `index.md`, `agent-readability.json`, and `feed.json` after a change to `data/`.
-- `npm run build:static` — regenerate the pre-rendered page content in `index.html` (hero stats, intro, the problems heading, problem cards, evidence, colophon, and the JSON-LD block) after a change to `data/`.
+- `npm run build:static` — regenerate the pre-rendered page content in `index.html` (hero stats, intro, the problems heading, problem cards, colophon, and the JSON-LD block) after a change to `data/`.
 - `npm run csp` — rewrite the inline JSON-LD hash in `index.html` after editing that block by hand; `npm run build:static` keeps the hash in step with the generated block.
 - `npm run serve` — serve the site locally on port 8123.
 - `npm run test:watch` — rerun the suite as files change.
@@ -22,16 +22,16 @@ house rules; this file is the short version for a coding agent making a change.
 - No dependencies, runtime or dev. The page and the toolchain use the Node standard library and the browser platform.
 - No third-party requests from the page. Fonts, images, and scripts are self-hosted.
 - Machine numbers live in `data/site-data.json`; prose lives in `data/showcase.json`. Never paste a measured number into HTML or prose.
-- `index.html` embeds the hero numbers, the intro paragraphs, the problems heading, the problem cards, the evidence prose, the colophon, the static identity copy, and the JSON-LD block. Edit the data and run `npm run build:static` instead of the HTML; `validate:site` refuses drift.
+- `index.html` embeds the hero numbers, the intro paragraphs, the problems heading, the problem cards, the colophon, the static identity copy, and the JSON-LD block. Edit the data and run `npm run build:static` instead of the HTML; `validate:site` refuses drift.
 - Every file in `assets/js`, `scripts`, `.github/workflows`, and `data` must appear in the README Files block.
 - Every module must be reachable from `assets/js/main.js`. Statically imported modules must be preloaded in `index.html`; modules behind a dynamic `import()` must not be.
-- `scripts/check-freshness.mjs` fails when the newest history snapshot is more than two days old; a benchmark report older than fourteen days only warns, because the site publishes it as a dated snapshot. It runs on push and schedule, not on pull requests.
-- Schema changes live in `data/*.schema.json`; `validate:data` re-derives every number it can, including the Wilson and Newcombe intervals and the third-party benchmark rollup (configuration count, first-exact floor, and the 0.75/0.25 quality blend).
+- `scripts/check-freshness.mjs` fails when the newest history snapshot is more than two days old. It runs on push and schedule, not on pull requests.
+- Schema changes live in `data/*.schema.json`; `validate:data` enforces them and refuses any keyword it cannot check.
 - `.cache/`, `.lighthouseci/`, and `.omo/` are gitignored and never published.
 
 ## Shape of the code
 
-- Pure derivations belong in `assets/js/view-model.js`, `assets/js/hashline.js`, or `scripts/refresh-lib.mjs`.
+- Pure derivations belong in `assets/js/view-model.js` or `scripts/refresh-lib.mjs`.
 - The card markup is pre-rendered by `scripts/site-html-lib.mjs`; `assets/js/render.js` hydrates it (mounts demos and charts), and the demo builders own their own DOM.
 - I/O and gating belong in `scripts/refresh-data.mjs`; validators are `scripts/validate-*.mjs`.
 - Tests live in `tests/` and use `node:test` with the dependency-free DOM double in `tests/dom.mjs`.

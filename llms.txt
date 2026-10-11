@@ -1,46 +1,28 @@
 # YuGiMob
 
-> Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, guarded commits, and a benchmark that publishes the traces.
+> Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, review workflows, and a human gate in front of every commit.
 
-I'm YuGiMob. I build extensions for pi, the terminal coding agent, and publish them on npm. This page is where they live, each with a demo you can run.
+I build extensions for pi, the terminal coding agent. Each one takes a class of mistake that instructions alone cannot reliably prevent and moves it into the tool, where it is impossible, refused, or visible.
 
-The pattern behind all of them is the same. An agent changes a file that looks right and is subtly wrong, or runs a command a human would have paused on. Most fixes are better prompts and good intentions. I would rather move the failure into the tool, where it can be refused, caught, or made impossible.
+Five tools, five rules: edit by identity, fetch without a key, hide the origin, keep the plan outside the conversation, and put a human in front of the commit.
 
-If you run coding agents against real repositories, you have watched at least one of these failures happen. Each tool below starts with the problem it exists to kill; the benchmark at the end was how I checked my own work, including the runs I lose.
+The source is on GitHub, the page is hand-written and static, and the numbers refresh daily from the GitHub and npm APIs.
 
 ## Tools
 
-- [pi-hashline-edit-pro](https://github.com/YuGiMob/pi-hashline-edit-pro): Every served line gets its own four-letter anchor from a table built for tokenizers, and an edit names anchors instead of line numbers or fuzzy text. Install: `pi install npm:pi-hashline-edit-pro`. Stars 108, 3,992 npm installs per week.
-- [pi-unsloth-webtools](https://github.com/YuGiMob/pi-unsloth-webtools): Two tools, both keyless: web_search sweeps DuckDuckGo and Startpage by default, canonicalizes the hrefs, and fuses each engine's own ordering, while web_fetch normalizes the URL, extracts HTML or PDF text to Markdown with page metadata, and retries a refusal through a browser-fingerprint transport. Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 1,069 npm installs per week.
-- [pi-tor-proxy](https://github.com/YuGiMob/pi-tor-proxy): The extension downloads its own Tor binary, verifies it against a SHA-256 hash, and routes every request through it. Install: `pi install npm:pi-tor-proxy`. Stars 3, 16 npm installs per week.
-- [pi-msg-workflow](https://github.com/YuGiMob/pi-msg-workflow): Numbered message and command stores keep the plan outside the conversation, and /workflow-edit changes it in place. Install: `pi install npm:pi-msg-workflow`. Stars 1, 10 npm installs per week.
+- [pi-hashline-edit-pro](https://github.com/YuGiMob/pi-hashline-edit-pro): Every line a tool serves gets its own four-letter anchor. Install: `pi install npm:pi-hashline-edit-pro`. Stars 108, 3,992 npm installs per week.
+- [pi-unsloth-webtools](https://github.com/YuGiMob/pi-unsloth-webtools): Two keyless tools: web_search sweeps DuckDuckGo and Startpage by default and fuses their rankings; web_fetch normalizes a URL, extracts HTML or PDF text to Markdown with page metadata, and retries a refusal through a browser-fingerprint transport. Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 1,069 npm installs per week.
+- [pi-tor-proxy](https://github.com/YuGiMob/pi-tor-proxy): The extension manages its own Tor binary and routes every request through it. Install: `pi install npm:pi-tor-proxy`. Stars 3, 16 npm installs per week.
+- [pi-msg-workflow](https://github.com/YuGiMob/pi-msg-workflow): Numbered message and command stores live in editable files, so the plan does not depend on the context window. Install: `pi install npm:pi-msg-workflow`. Stars 1, 10 npm installs per week.
 - [pi-git-commit](https://github.com/YuGiMob/pi-git-commit): The bash guard blocks mutative git commands before they run. Install: `pi install npm:pi-git-commit`. Stars 2, 382 npm installs per week.
-
-## Evidence
-
-- [Explicit Edit Benchmark (third-party)](https://huggingface.co/spaces/alexshpunt/benchmark-explorer?card=harness%3Api-hashline-edit-pro%40latest): 99.3% median quality over 24 complete model-route configurations, 99.1% first exact and 100% final exact across 226 byte-exact tasks (5,424 observations); maintained by alexshpunt
-- [pi-edit-benchmark](https://github.com/YuGiMob/pi-edit-benchmark): pi-edit-benchmark drives real models through each tool's own tools and scores correctness, safety, and robustness. 9 contenders over 10 models × 34 scenarios, 340 runs each (3,060 total).
-- [hashline-edit-pro](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-hashline-edit-pro-b9-boundary-changed.json) v4.4.1: 99.4% overall, 100.0% staleness across 340 runs
-- [builtin-bash](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/builtin-bash-b10-duplicate-drift.json) v0.87.0: 92.9% overall, 90.9% staleness across 340 runs; -9.7 to -3.7 points, Holm-adjusted p=< 0.001 against the highlighted tool
-- [pix-edit](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/_xynogen_pix-edit-b9-boundary-changed.json) v0.2.5: 91.8% overall, 86.4% staleness across 340 runs; -11.1 to -4.7 points, Holm-adjusted p=< 0.001 against the highlighted tool
-- [built-in edit](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/builtin-edit-b9-boundary-changed.json) v0.87.0: 90.3% overall, 80.9% staleness across 340 runs; -12.8 to -6.0 points, Holm-adjusted p=< 0.001 against the highlighted tool
-- [semantic-edit](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-semantic-edit-b9-boundary-changed.json) v0.4.0: 87.9% overall, 70.0% staleness across 340 runs; -15.4 to -8.0 points, Holm-adjusted p=< 0.001 against the highlighted tool
-- [aft-pi](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/_cortexkit_aft-pi-b10-duplicate-drift.json) v0.57.1: 87.6% overall, 91.8% staleness across 340 runs; -15.7 to -8.4 points, Holm-adjusted p=< 0.001 against the highlighted tool
-- [doompi-edit](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/_agimon-ai_doompi-edit-b9-boundary-changed.json) v0.0.1-alpha.52: 87.4% overall, 87.3% staleness across 340 runs; -16.0 to -8.5 points, Holm-adjusted p=< 0.001 against the highlighted tool
-- [hashline-readmap](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-hashline-readmap-b9-boundary-changed.json) v0.14.0: 87.1% overall, 86.4% staleness across 340 runs; -16.4 to -8.8 points, Holm-adjusted p=< 0.001 against the highlighted tool
-- [edit-guard](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/traces/deepseek-v4.1-flash/pi-edit-guard-b9-boundary-changed.json) v0.1.5: 86.8% overall, 73.6% staleness across 340 runs; -16.7 to -9.2 points, Holm-adjusted p=< 0.001 against the highlighted tool
-- [Run report](https://github.com/YuGiMob/pi-edit-benchmark/blob/main/results/llm-report.json): the committed JSON every figure comes from
-- [Committed traces](https://github.com/YuGiMob/pi-edit-benchmark/tree/main/results/traces): one trace per scored run
 
 ## Data
 
 - [Markdown mirror](https://yugimob.github.io/index.md): the whole page as markdown, generated from the two data files
-- [Interactive demo](https://yugimob.github.io/?step=1): the anchored-edit guide, one step per URL
-- [Machine data](https://yugimob.github.io/data/site-data.json): stars, downloads, activity, history, and benchmark numbers, refreshed daily
-- [Curated showcase](https://yugimob.github.io/data/showcase.json): the narrative behind every tool, one entry per problem
-- [Scenario matrix](https://yugimob.github.io/data/benchmark-matrix.json): pass counts per scenario and contender behind the benchmark chart
+- [Machine data](https://yugimob.github.io/data/site-data.json): stars, downloads, activity, and history, refreshed daily
+- [Curated showcase](https://yugimob.github.io/data/showcase.json): the rules behind every tool, one entry per extension
 - [Agent readability](https://yugimob.github.io/agent-readability.json): the machine-readable entry points this site publishes
-- [Feed](https://yugimob.github.io/feed.json): a JSON Feed of the daily benchmark and install snapshots
+- [Feed](https://yugimob.github.io/feed.json): a JSON Feed of the daily install and star snapshots
 - [Sitemap](https://yugimob.github.io/sitemap.xml): the single canonical page
 
 ## Optional
