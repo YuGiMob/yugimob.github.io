@@ -4,7 +4,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildAgentReadability, buildIndexMd, buildJsonFeed, buildLlmsTxt, writeAgentFiles, writeLlmsFile } from '../scripts/llms-lib.mjs';
+import { buildAgentReadability, buildIndexMd, buildJsonFeed, buildLlmsTxt, writeAgentFiles } from '../scripts/llms-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = JSON.parse(readFileSync(join(ROOT, 'data', 'site-data.json'), 'utf8'));
@@ -54,18 +54,6 @@ test('buildLlmsTxt stays deterministic and survives an empty manifest', () => {
   const empty = buildLlmsTxt(EMPTY, { problems: [], intro: {}, principles: [], colophon: [] });
   assert.match(empty, /^# Nobody/);
   assert.match(empty, /## Tools/);
-});
-
-test('writeLlmsFile writes once and reports no change afterwards', () => {
-  withTemp((directory) => {
-    const dataPath = join(directory, 'data');
-    mkdirSync(dataPath, { recursive: true });
-    writeFileSync(join(dataPath, 'site-data.json'), JSON.stringify(DATA));
-    writeFileSync(join(dataPath, 'showcase.json'), JSON.stringify(SHOWCASE));
-    assert.equal(writeLlmsFile(directory), true);
-    assert.equal(writeLlmsFile(directory), false);
-    assert.equal(readFileSync(join(directory, 'llms.txt'), 'utf8'), buildLlmsTxt(DATA, SHOWCASE));
-  });
 });
 
 test('the committed index.md matches the generator output', () => {
@@ -129,17 +117,15 @@ test('writeAgentFiles writes every agent file once and reports no change afterwa
   });
 });
 
-test('writeLlmsFile cleans up and rethrows when a write fails', () => {
+test('writeAgentFiles cleans up and rethrows when a write fails', () => {
   withTemp((directory) => {
     const dataPath = join(directory, 'data');
     mkdirSync(dataPath, { recursive: true });
     writeFileSync(join(dataPath, 'site-data.json'), JSON.stringify(DATA));
     writeFileSync(join(dataPath, 'showcase.json'), JSON.stringify(SHOWCASE));
-    const target = join(directory, 'llms.txt');
-    writeFileSync(target, 'old\n');
     chmodSync(directory, 0o500);
     try {
-      assert.throws(() => writeLlmsFile(directory));
+      assert.throws(() => writeAgentFiles(directory));
     } finally {
       chmodSync(directory, 0o700);
     }

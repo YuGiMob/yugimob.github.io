@@ -1,5 +1,7 @@
 import { countWord, formatWindow } from './site-data.js';
-import { formatNumber } from './ui.js';
+import { elapsedDays, formatNumber } from './numbers.js';
+
+const SPDX_ALIASES = new Map([['AGPL-3.0', 'AGPL-3.0-only']]);
 
 export function problemId(name) {
   return `problem-${name}`;
@@ -81,19 +83,13 @@ export function sectionVisibility(sections = {}, showcase = null) {
   };
 }
 
-const DAY_MS = 86400000;
 export const STALE_AFTER_DAYS = 2;
 
 function dayCount(days) {
   return `${days} ${days === 1 ? 'day' : 'days'}`;
 }
 
-export function staleDays(date, today) {
-  const then = Date.parse(date);
-  const now = Date.parse(today);
-  if (!Number.isFinite(then) || !Number.isFinite(now)) return null;
-  return Math.max(0, Math.round((now - then) / DAY_MS));
-}
+export const staleDays = elapsedDays;
 
 export function stalenessNotice(data, today, limit = STALE_AFTER_DAYS) {
   const activityDays = staleDays(data.activity?.fetchedAt, today);
@@ -128,7 +124,7 @@ export function structuredData(data, showcase, baseUrl = '') {
         description: project.description || undefined,
         codeRepository: project.url,
         programmingLanguage: project.language || undefined,
-        license: project.license ? `https://spdx.org/licenses/${project.license}` : undefined,
+        license: project.license ? `https://spdx.org/licenses/${SPDX_ALIASES.get(project.license) ?? project.license}` : undefined,
         url: project.url,
         sameAs: project.npm ? [`https://www.npmjs.com/package/${project.npm}`] : undefined,
       },

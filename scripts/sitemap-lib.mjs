@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { writeFileAtomic } from './atomic-write.mjs';
 
 export function sitemapWithLastmod(source, date) {
   if (!source.includes('</loc>')) return null;
@@ -14,15 +15,10 @@ export function updateSitemapFile(target, date) {
   const result = sitemapWithLastmod(readFileSync(target, 'utf8'), date);
   if (!result) return { ok: false, reason: 'no-loc' };
   if (!result.changed) return { ok: true, changed: false, previous: result.previous };
-  const tmp = `${target}.${process.pid}.tmp`;
   try {
-    writeFileSync(tmp, result.next);
-    renameSync(tmp, target);
+    writeFileAtomic(target, result.next);
     return { ok: true, changed: true, previous: result.previous };
   } catch (err) {
-    try {
-      unlinkSync(tmp);
-    } catch {}
     return { ok: false, reason: err.message };
   }
 }

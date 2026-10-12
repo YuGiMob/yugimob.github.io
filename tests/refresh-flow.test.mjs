@@ -270,3 +270,24 @@ test('the refresh sweeps its own stale temp files and leaves other scratch alone
     assert.equal(existsSync(other), true);
   });
 });
+
+test('a secondary GitHub rate limit is retried after the retry-after delay', () => {
+  withRepo((repo) => {
+    const log = join(repo, 'fetch.log');
+    const result = refresh(repo, { YUGIMOB_GITHUB_SECONDARY: '1', YUGIMOB_FETCH_LOG: log });
+    assert.equal(result.status, 0, result.stderr);
+    const entries = readFileSync(log, 'utf8');
+    assert.match(entries, /403 plain https:\/\/api\.github\.com\//);
+    assert.match(entries, /200 (conditional|plain) https:\/\/api\.github\.com\/users\/YuGiMob/);
+    assert.equal(readData(repo).stats.publicRepos, 12);
+  });
+});
+
+test('a refresh never rewrites the curated showcase file', () => {
+  withRepo((repo) => {
+    const before = readFileSync(join(repo, 'data', 'showcase.json'), 'utf8');
+    const result = refresh(repo);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(readFileSync(join(repo, 'data', 'showcase.json'), 'utf8'), before);
+  });
+});

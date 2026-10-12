@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { formatNumber } from '../assets/js/ui.js';
+import { formatNumber } from '../assets/js/numbers.js';
+import { writeFileAtomic } from './atomic-write.mjs';
 
 export const SITE_URL = 'https://yugimob.github.io';
 export const SITE_REPOSITORY = 'https://github.com/YuGiMob/yugimob.github.io';
@@ -187,16 +188,7 @@ export function buildAgentReadability(siteData) {
 
 function writeIfChanged(target, text) {
   if (existsSync(target) && readFileSync(target, 'utf8') === text) return false;
-  const tmp = `${target}.${process.pid}.tmp`;
-  try {
-    writeFileSync(tmp, text);
-    renameSync(tmp, target);
-  } catch (err) {
-    try {
-      unlinkSync(tmp);
-    } catch {}
-    throw err;
-  }
+  writeFileAtomic(target, text);
   return true;
 }
 
@@ -204,11 +196,6 @@ export function readAgentInputs(root) {
   const siteData = JSON.parse(readFileSync(join(root, 'data', 'site-data.json'), 'utf8'));
   const showcase = JSON.parse(readFileSync(join(root, 'data', 'showcase.json'), 'utf8'));
   return { siteData, showcase };
-}
-
-export function writeLlmsFile(root) {
-  const { siteData, showcase } = readAgentInputs(root);
-  return writeIfChanged(join(root, 'llms.txt'), buildLlmsTxt(siteData, showcase));
 }
 
 export function writeAgentFiles(root) {

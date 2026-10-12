@@ -65,3 +65,11 @@ test('historyPanel marks a falling series down and a rising series up', () => {
     assert.equal(classes(falling, 'is-down').length, 2);
   });
 });
+
+test('historyPanel separates the delta from the value for assistive reading', () => {
+  withDom(() => {
+    const panel = historyPanel(HISTORY);
+    const value = findAll(panel, (entry) => entry.classList?.contains('growth-value') === true)[0];
+    assert.match(value.textContent, /^\d+ \+\d+$/);
+  });
+});

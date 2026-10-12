@@ -29,10 +29,19 @@ const PAGE = [
   '<html lang="en">',
   '<head>',
   `<link rel="canonical" href="${SITE_URL}/">`,
+  '<title>Old title</title>',
+  '<meta name="description" content="old">',
+  '<meta property="og:title" content="old">',
+  '<meta property="og:description" content="old">',
+  '<meta name="twitter:title" content="old">',
+  '<meta name="twitter:description" content="old">',
   `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">`,
   '<script type="application/ld+json">{}</script>',
   '</head>',
   '<body>',
+  '<p id="display-name">Old</p>',
+  '<p id="class-title">Old</p>',
+  '<h1><span id="intro-headline">Old</span></h1>',
   '<section id="problems"><h2 id="problems-heading"></h2>',
   '<div id="intro-paragraphs"></div>',
   '<dl class="intro-stats" id="hero-stats"><div class="stat"><dd class="stat-value" aria-hidden="true">0</dd></div></dl>',
@@ -77,6 +86,41 @@ test('the committed pre-rendered blocks already match the data files', () => {
   assert.equal(readBlock(source, 'div', 'problem-list'), buildProblemListBlock(SHOWCASE, projects));
   assert.equal(readBlock(source, 'div', 'colophon-prose'), buildColophonProseBlock(SHOWCASE));
   assert.equal(readBlock(source, 'ul', 'principles'), buildPrinciplesBlock(SHOWCASE));
+});
+
+test('the committed identity copy already matches the data', () => {
+  const source = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  assert.equal(applyGeneratedBlocks(source, DATA, SHOWCASE), source);
+});
+
+test('applyGeneratedBlocks rewrites the identity copy from the data', () => {
+  const next = applyGeneratedBlocks(PAGE, DATA, SHOWCASE);
+  assert.match(next, /<title>YuGiMob · Extensions for the pi coding agent<\/title>/);
+  assert.match(next, /<meta name="description" content="Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, review workflows, and a human gate in front of every commit\.">/);
+  assert.match(next, /<meta property="og:title" content="YuGiMob · Extensions for the pi coding agent">/);
+  assert.match(next, /<meta name="twitter:description" content="Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, review workflows, and a human gate in front of every commit\.">/);
+  assert.match(next, /<p id="display-name">YuGiMob<\/p>/);
+  assert.match(next, /<p id="class-title">Extensions for the pi coding agent<\/p>/);
+  assert.match(next, /<span id="intro-headline">Make the wrong operation impossible, not merely discouraged\.<\/span>/);
+});
+
+test('applyGeneratedBlocks rewrites the identity copy whatever the meta attribute order', () => {
+  const reordered = PAGE
+    .replace('<meta name="description" content="old">', '<meta content="old" name="description">')
+    .replace('<meta property="og:title" content="old">', '<meta content="old" property="og:title">');
+  const next = applyGeneratedBlocks(reordered, DATA, SHOWCASE);
+  assert.match(next, /<meta content="Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, review workflows, and a human gate in front of every commit\." name="description">/);
+  assert.match(next, /<meta content="YuGiMob · Extensions for the pi coding agent" property="og:title">/);
+});
+
+test('applyGeneratedBlocks escapes the identity copy and tolerates a missing identity', () => {
+  const hostile = { ...DATA, identity: { ...DATA.identity, displayName: 'A & B', tagline: '"quoted" <tag>' } };
+  const next = applyGeneratedBlocks(PAGE, hostile, null);
+  assert.match(next, /<p id="display-name">A &amp; B<\/p>/);
+  assert.match(next, /content="&quot;quoted&quot; &lt;tag&gt;"/);
+  const untouched = applyGeneratedBlocks(PAGE, { projects: DATA.projects, stats: DATA.stats, sections: {} }, null);
+  assert.match(untouched, /<p id="display-name">Old<\/p>/);
+  assert.match(untouched, /<title>Old title<\/title>/);
 });
 
 test('buildIntroParagraphs escapes markup and tolerates a missing intro', () => {

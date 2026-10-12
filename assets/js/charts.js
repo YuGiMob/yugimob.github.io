@@ -1,4 +1,5 @@
-import { el, append, svg, formatNumber, extent } from './ui.js';
+import { extent, formatNumber } from './numbers.js';
+import { el, append, svg } from './ui.js';
 
 function historyEntries(history) {
   return (Array.isArray(history) ? history : [])
@@ -75,7 +76,7 @@ function growthRow(label, values, delta, formatter = formatNumber) {
   row.appendChild(sparkline(values, label));
   const value = el('span', 'growth-value', formatter(values[values.length - 1]));
   const trend = delta > 0 ? ' is-up' : delta < 0 ? ' is-down' : '';
-  value.appendChild(el('span', `growth-delta${trend}`, `${delta > 0 ? '+' : ''}${formatter(delta)}`));
+  append(value, ' ', el('span', `growth-delta${trend}`, `${delta > 0 ? '+' : ''}${formatter(delta)}`));
   row.appendChild(value);
   return row;
 }

@@ -86,6 +86,49 @@ test('the boot path falls back to the error state when the data cannot be fetche
     assert.equal(dom.document.getElementById('colophon').hidden, true);
     assert.equal(dom.document.getElementById('activity-panel').hidden, true);
     const actions = dom.document.querySelector('.intro-actions');
+    assert.equal(dom.document.getElementById('campfire-year').textContent, `© ${new Date().getFullYear()} YuGiMob`);
     assert.equal(actions.children[0].textContent, 'Try again');
   }, { fetch: async () => ({ ok: false, status: 404, json: async () => null }) });
+});
+
+test('setupNav marks the section in view and clears the rest', async () => {
+  await withDom(async (dom) => {
+    prepare(dom);
+    const { setupNav } = await import('../assets/js/main.js?nav');
+    await flush();
+    dom.document.getElementById('problems').id = 'problems';
+    dom.document.getElementById('colophon').id = 'colophon';
+    const first = element('a');
+    first.dataset.nav = 'problems';
+    const second = element('a');
+    second.dataset.nav = 'colophon';
+    dom.document.body.appendChild(first);
+    dom.document.body.appendChild(second);
+    setupNav();
+    const observer = dom.observers.at(-1);
+    assert.equal(observer.targets.length, 2);
+    observer.trigger([{ isIntersecting: true, target: observer.targets[0] }]);
+    assert.equal(first.classList.contains('is-current'), true);
+    assert.equal(first.getAttribute('aria-current'), 'location');
+    assert.equal(second.getAttribute('aria-current'), null);
+  }, { fetch: async (url) => jsonResponse(String(url).includes('showcase') ? SHOWCASE : DATA) });
+});
+
+test('setupChrome syncs the sticky offset and opens details before printing', async () => {
+  await withDom(async (dom) => {
+    prepare(dom);
+    register(dom.document, 'topbar', element('header'));
+    dom.document.getElementById('problem-list').replaceChildren();
+    const details = element('details');
+    dom.document.body.appendChild(details);
+    const { setupChrome } = await import('../assets/js/main.js?chrome');
+    await flush();
+    setupChrome();
+    assert.equal(dom.document.documentElement.style.scrollPaddingTop, '20px');
+    dom.window.scrollY = 40;
+    dom.window.dispatch('scroll');
+    assert.equal(dom.document.getElementById('topbar').classList.contains('is-scrolled'), true);
+    dom.window.dispatch('beforeprint');
+    assert.equal(details.open, true);
+  }, { fetch: async (url) => jsonResponse(String(url).includes('showcase') ? SHOWCASE : DATA) });
 });

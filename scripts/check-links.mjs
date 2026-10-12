@@ -15,6 +15,9 @@ const DOCUMENTS = [
   { label: 'CONTRIBUTING', text: readFileSync(join(ROOT, 'CONTRIBUTING.md'), 'utf8') },
   { label: 'SECURITY', text: readFileSync(join(ROOT, 'SECURITY.md'), 'utf8') },
   { label: 'package.json', text: readFileSync(join(ROOT, 'package.json'), 'utf8') },
+  { label: 'llms.txt', text: readFileSync(join(ROOT, 'llms.txt'), 'utf8') },
+  { label: 'index.md', text: readFileSync(join(ROOT, 'index.md'), 'utf8') },
+  { label: 'agent-readability.json', text: readFileSync(join(ROOT, 'agent-readability.json'), 'utf8') },
 ];
 
 const urls = collectLinks(readJson('data/site-data.json'), readJson('data/showcase.json'), DOCUMENTS);

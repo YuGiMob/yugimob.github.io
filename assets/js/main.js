@@ -17,7 +17,7 @@ const SHOWCASE_URL = 'data/showcase.json';
 
 document.getElementById('main-content')?.setAttribute('aria-busy', 'true');
 
-function setupNav() {
+export function setupNav() {
   const links = [...document.querySelectorAll('[data-nav]')];
   const sections = links.map((anchor) => document.getElementById(anchor.dataset.nav)).filter(Boolean);
   if (sections.length === 0 || typeof IntersectionObserver !== 'function') return;
@@ -27,7 +27,7 @@ function setupNav() {
       for (const anchor of links) {
         const current = anchor.dataset.nav === entry.target.id;
         anchor.classList.toggle('is-current', current);
-        if (current) anchor.setAttribute('aria-current', 'true');
+        if (current) anchor.setAttribute('aria-current', 'location');
         else anchor.removeAttribute('aria-current');
       }
     }
@@ -40,7 +40,7 @@ function focusElement(target) {
   target.focus({ preventScroll: true });
 }
 
-function setupAnchorAlignment() {
+export function setupAnchorAlignment() {
   let timerIds = [];
   let observer = null;
   let pendingFocus = null;
@@ -95,7 +95,7 @@ function setupAnchorAlignment() {
   if (window.location.hash) schedule();
 }
 
-function setupChrome() {
+export function setupChrome() {
   const bar = document.getElementById('topbar');
   if (!bar) return;
   const update = () => bar.classList.toggle('is-scrolled', window.scrollY > 12);
@@ -130,7 +130,7 @@ async function init() {
   renderFooter(data);
   document.getElementById('main-content')?.removeAttribute('aria-busy');
   if (!curatedShowcase) {
-    renderDegradedNotice('The curated copy in data/showcase.json could not be loaded, so this page is showing the fallback descriptions from data/site-data.json.');
+    renderDegradedNotice('The curated copy in data/showcase.json could not be loaded, so the page is showing its pre-rendered copy; the project facts still come from data/site-data.json.');
   }
   setupNav();
   setupAnchorAlignment();
@@ -142,13 +142,14 @@ init().catch((error) => {
   renderError();
 });
 
-function renderError() {
+export function renderError() {
   document.title = 'YuGiMob · data unavailable';
   setText('intro-headline', 'This page could not load its data.');
   setText('display-name', 'YuGiMob');
+  setText('campfire-year', `© ${new Date().getFullYear()} YuGiMob`);
   const main = document.getElementById('main-content');
   if (main) main.removeAttribute('aria-busy');
-  for (const id of ['problems', 'evidence', 'colophon', 'activity-panel']) {
+  for (const id of ['problems', 'colophon', 'activity-panel']) {
     const section = document.getElementById(id);
     if (section) section.hidden = true;
   }

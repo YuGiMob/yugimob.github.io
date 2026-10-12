@@ -683,3 +683,63 @@ test('the site validator refuses a CSP without a script hash', () => {
     writeFileSync(path, readFileSync(path, 'utf8').replace(/'sha256-[A-Za-z0-9+/=]+'/, ''));
   }, /has no sha256 hash/);
 });
+
+test('the data validator refuses manifest totals that drift', () => {
+  expectData((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.stats.npmPackages = 99;
+    writeJson(copy, 'data/site-data.json', data);
+  }, /stats\.npmPackages is 99; the manifest lists \d+ npm packages/);
+  expectData((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.history[data.history.length - 1].totalStars = 1;
+    writeJson(copy, 'data/site-data.json', data);
+  }, /newest history snapshot has 1 stars; stats\.totalStars is \d+/);
+  expectData((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.activity.pushes = 999;
+    writeJson(copy, 'data/site-data.json', data);
+  }, /activity\.pushes is 999; the daily entries sum to \d+/);
+});
+
+test('the site validator refuses an extra inline script', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '</head>', '<script>console.log(1)</script></head>');
+  }, /only inline script allowed/);
+});
+
+test('the site validator keeps the README Demos table in step', () => {
+  expectSite((copy) => {
+    patch(copy, 'README.md', '| `hashline` | assets/js/demos.js |', '| `ghost` | assets/js/demos.js |');
+  }, /Demos table is missing hashline/);
+  expectSite((copy) => {
+    patch(copy, 'README.md', '| `git` | assets/js/demos.js |', '| `git` | assets/js/demos.js |\n| `ghost` | assets/js/demos.js |');
+  }, /Demos table lists the unknown demo ghost/);
+});
+
+test('the site validator checks the noscript install commands', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '<code>pi install npm:pi-git-commit</code>', '<code>pi install npm:ghost</code>');
+  }, /missing the install command for pi-git-commit/);
+});
+
+test('the site validator refuses an rgba palette token it cannot account for', () => {
+  expectSite((copy) => {
+    patch(copy, 'assets/css/style.css', '--accent-soft:', '--mystery-soft: rgba(1, 2, 3, 0.4);\n  --accent-soft:');
+  }, /--mystery-soft is neither measured for contrast nor declared decorative/);
+});
+
+test('the site validator measures the prefers-contrast palette overrides', () => {
+  expectSite((copy) => {
+    patch(copy, 'assets/css/style.css', '--ink-2: #322d26;', '--ink-2: #c9c9c9;');
+  }, /light high contrast ink-2 on paper is .* below 4\.5:1/);
+});
+
+test('the site validator measures the default palettes, not only the high-contrast overrides', () => {
+  expectSite((copy) => {
+    patch(copy, 'assets/css/style.css', '--ink-3: #71695b;', '--ink-3: #cfcfcf;');
+  }, /light ink-3 on paper is .* below 4\.5:1/);
+  expectSite((copy) => {
+    patch(copy, 'assets/css/style.css', '--ink-2: #c8bfae;', '--ink-2: #2a2a2a;');
+  }, /dark ink-2 on paper is .* below 4\.5:1/);
+});

@@ -272,3 +272,15 @@ test('renderFooter tolerates a page without footer targets', async () => {
     assert.doesNotThrow(() => renderFooter(DATA));
   });
 });
+
+test('renderActivity replaces the panel content instead of appending', async () => {
+  await withDom(async (dom) => {
+    prepare(dom);
+    const { renderActivity } = await import('../assets/js/render.js');
+    await renderActivity(DATA);
+    await renderActivity(DATA);
+    await flush();
+    const panel = dom.document.getElementById('activity-panel');
+    assert.equal(findAll(panel, (node) => node.classList?.contains('activity-title') === true).length, 1);
+  });
+});

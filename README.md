@@ -56,11 +56,11 @@ data/site-data.json      machine numbers          data/showcase.json  curated pr
 ```
 
 The same refresh rewrites the pre-rendered blocks in `index.html` (hero stats,
-intro, the problems heading, problem cards, colophon, and the inline JSON-LD
-block) and regenerates `llms.txt`, `index.md`, `agent-readability.json`, and
-`feed.json`, so the page, the machine files, and the agent index cannot drift
-apart. Validators re-derive every rule they can, and the test suite runs them
-against a temporary copy of the tree.
+identity copy, intro, the problems heading, problem cards, colophon, and the
+inline JSON-LD block) and regenerates `llms.txt`, `index.md`,
+`agent-readability.json`, and `feed.json`, so the page, the machine files, and
+the agent index cannot drift apart. Validators re-derive every rule they can,
+and the test suite runs them against a temporary copy of the tree.
 
 ## Files
 
@@ -92,8 +92,9 @@ assets/js/lazy.js               lazy mounting behind IntersectionObserver
 assets/js/demo-registry.js      demo id to dynamic loader registry
 assets/js/site-data.js          data guards, fallback model, formatting
 assets/js/view-model.js         pure derivations behind the DOM
+assets/js/numbers.js            pure number and date helpers
 assets/js/fetch-json.js         retrying JSON fetch with a timeout
-assets/js/ui.js                 DOM, formatting, copy, runtime helpers
+assets/js/ui.js                 DOM, copy, runtime helpers
 assets/js/demos.js              the five card demos
 assets/js/charts.js             the history and growth charts
 assets/js/avatar.js             avatar src and alt hydration
@@ -103,6 +104,7 @@ data/showcase.json              curated narrative and demo wiring
 data/showcase.schema.json       schema for the above
 scripts/refresh-data.mjs        daily GitHub + npm refresh
 scripts/refresh-lib.mjs         pure activity and history helpers
+scripts/atomic-write.mjs        shared temp-file and rename writer
 scripts/build-llms.mjs          regenerate llms.txt, index.md, and the agent manifest
 scripts/llms-lib.mjs            agent-file content builders and atomic writers
 scripts/validate-data.mjs       offline validation for the data files
@@ -210,6 +212,8 @@ query for every plain package in the manifest, and the GitHub requests are
 conditional: the response body and its `etag` are kept in
 `.cache/fetch-state.json`, and the next run sends `if-none-match` so an unchanged
 response comes back as a `304` that does not count against the rate limit.
+A `429`, or a `403` that carries `Retry-After` (a secondary rate limit), is
+waited out and retried once.
 
 The avatar is not fetched: `assets/avatar.png` is a committed copy of the GitHub
 avatar, so replace that file by hand when the profile picture changes.
@@ -232,7 +236,9 @@ deliberately not curated, so they do not produce a warning.
 Each run also appends a `history` snapshot (replacing an existing entry for the
 same date, capped at 120 entries) and rebuilds `activity.daily` from the most
 recent public events, paginating up to the GitHub API's 300-event maximum and
-capping the window at 120 days. When a fetch reaches an API pagination cap, the
+capping the window at 120 days. The stored daily pushes always sum to
+`activity.pushes`, because both are derived from the same events. When a fetch
+reaches an API pagination cap, the
 run prints a warning so the truncated window is visible in the log. A run that
 could not read the repos leaves `history` and `stats` untouched, so an outage
 cannot stamp yesterday's numbers with today's date; activity still follows the
@@ -261,17 +267,22 @@ Its comment scan reads strings, templates, and regexes as text, reaches comments
 inside template-literal expressions, and scans HTML, CSS, Markdown, and YAML for
 their comment syntax too. The data validator walks the JSON files against the
 schema files themselves, so a rule lives in one place, then cross-references
-showcase names with the manifest, verifies every `demo` id, and refuses
-histories, daily activity, or highlight lists beyond the documented caps. It
+showcase names with the manifest, verifies every `demo` id, checks that
+`stats.npmPackages` matches the manifest, that the newest history snapshot
+agrees with `stats.totalStars`, and that `activity.pushes` equals the sum of
+`activity.daily`, and refuses histories, daily activity, or highlight lists
+beyond the documented caps. It
 prints `validate: ok` and lists every failure it finds in one run. The site
 validator checks internal links, element ids the scripts depend on, module
 preloads (every statically imported module is preloaded and every on-demand
 module is not) and the full module reachability graph, the runtime data
-preloads, the README file listing in both directions, the noscript list's
-completeness, local stylesheet references, the `Content-Security-Policy` on both
-pages (including the Trusted Types directive and a scan for DOM sinks that would
-violate it), that the CSP hash still matches the inline JSON-LD block, that the
-avatar path exists and its origin is allowed, the sitemap `lastmod` against the
+preloads, the README file listing in both directions and the Demos table, the
+noscript list's completeness and install commands, that the JSON-LD block is
+the only inline script, local stylesheet references, the
+`Content-Security-Policy` on both pages (including the Trusted Types directive
+and a scan for DOM sinks that would violate it), that the CSP hash still
+matches the inline JSON-LD block, that the avatar path exists and its origin is
+allowed, the sitemap `lastmod` against the
 newest history date, the nav order against the section order, title and
 description lengths, and a set of static accessibility rules (`lang`, `img` alt
 text, `aria` references, `target=_blank` rel, heading order, a single `main`),
@@ -284,10 +295,11 @@ a palette pair below the 4.5:1 contrast minimum, a palette token that is neither
 measured nor declared decorative, two chart colors closer than 15 ΔE under
 normal, protan, or deutan vision, a `robots.txt` without content signals, a
 `feed.json` that is not valid JSON Feed 1.1, the required
-`Content-Security-Policy` directives, an asset group over its weight budget, an
-image whose real dimensions differ from the declared ones, and a manifest
-project with no showcase entry. The schema walker refuses a keyword or format
-it does not implement, so a rule can never be silently unenforced. The schema
+`Content-Security-Policy` directives, an asset group or a single file over its
+weight budget, an image whose real dimensions differ from the declared ones, and
+a manifest project with no showcase entry. The schema walker refuses a
+keyword or format it does not implement, so a rule can never be silently
+unenforced. The schema
 files also drive editor validation through the `$schema` keys in the data
 files. The workflow runs all three on every refresh and on push. `npm run csp`
 rewrites the CSP hash in place after the inline JSON-LD changes. Separate tests

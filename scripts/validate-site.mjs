@@ -4,7 +4,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { problemsHeading, sectionVisibility } from '../assets/js/view-model.js';
-import { colorDistance, contrastRatio, paletteFrom, rootPaletteSource, simulateDichromacy } from './contrast-lib.mjs';
+import { DEMO_IDS } from '../assets/js/demos.js';
+import { colorDistance, contrastRatio, paletteFrom, simulateDichromacy } from './contrast-lib.mjs';
 import { buildColophonProseBlock, buildHeroStatsBlock, buildIntroParagraphs, buildPrinciplesBlock, buildProblemIndexBlock, buildProblemListBlock, buildStructuredDataBlock, readBlock, readHeroStatsBlock, readIntroParagraphs } from './site-html-lib.mjs';
 import { scriptSrcHash } from './csp-lib.mjs';
 import { SITE_REPOSITORY, SITE_URL } from './llms-lib.mjs';
@@ -101,6 +102,10 @@ for (const [page, source] of html) {
       if (!policy[1].includes(directive)) fail(`${page}: CSP is missing ${directive}`);
     }
   }
+  for (const match of source.matchAll(/<script\b[^>]*>/g)) {
+    if (/\ssrc=/.test(match[0])) continue;
+    if (!/type="application\/ld\+json"/.test(match[0])) fail(`${page}: the only inline script allowed is the JSON-LD block`);
+  }
   if (!/<html[^>]*\slang="[^"]+"/.test(source)) fail(`${page}: <html> is missing a lang attribute`);
   for (const match of source.matchAll(/<img\b[^>]*>/g)) {
     if (!/\salt="[^"]*"/.test(match[0])) fail(`${page}: <img> is missing an alt attribute`);
@@ -129,7 +134,7 @@ const referencedIds = new Set();
 
 for (const file of listFiles('assets/js', '.js')) {
   const source = readText(`assets/js/${file}`);
-  for (const match of source.matchAll(/(?:getElementById|setText|setHidden)\('([^']+)'/g)) referencedIds.add(match[1]);
+  for (const match of source.matchAll(/(?:getElementById|setText)\('([^']+)'/g)) referencedIds.add(match[1]);
   for (const match of source.matchAll(/querySelector\('#([^']+)'\)/g)) referencedIds.add(match[1]);
   const sink = source.match(TRUSTED_TYPES_SINKS);
   if (sink) fail(`assets/js/${file}: uses a DOM sink that Trusted Types forbids (${sink[0]})`);
@@ -212,6 +217,12 @@ if (existsSync(siteDataPath)) {
       for (const name of projectNames) {
         if (!listed.has(name)) fail(`index.html: the noscript list is missing ${name}`);
       }
+      for (const project of siteData.projects) {
+        if (typeof project.npm !== 'string' || project.npm.length === 0) continue;
+        if (!list[1].includes(`pi install npm:${project.npm}`)) {
+          fail(`index.html: the noscript list is missing the install command for ${project.name}`);
+        }
+      }
     }
     const avatarUrl = siteData.identity && siteData.identity.avatarUrl;
     if (policy && typeof avatarUrl === 'string') {
@@ -248,6 +259,19 @@ if (!filesBlock) {
   }
 }
 
+const demoTable = readme.match(/\| demo \| implementation \|\n\| --- \| --- \|\n([\s\S]*?)\n\n/);
+if (!demoTable) {
+  fail('README.md: missing the Demos table');
+} else {
+  const listed = new Set([...demoTable[1].matchAll(/^\| `([^`]+)` \|/gm)].map((match) => match[1]));
+  for (const id of DEMO_IDS) {
+    if (!listed.has(id)) fail(`README.md: the Demos table is missing ${id}`);
+  }
+  for (const id of listed) {
+    if (!DEMO_IDS.has(id)) fail(`README.md: the Demos table lists the unknown demo ${id}`);
+  }
+}
+
 const stylesheet = readText('assets/css/style.css');
 for (const match of stylesheet.matchAll(/url\('([^']+)'\)/g)) {
   const target = localTarget(match[1]);
@@ -258,9 +282,25 @@ if (!/scroll-padding-top:\s*\d+px/.test(baseHtmlRule?.[2] ?? '')) fail('assets/c
 
 const darkStart = stylesheet.indexOf('@media (prefers-color-scheme: dark)');
 const reducedStart = stylesheet.indexOf('@media (prefers-reduced-motion', darkStart);
-const lightPalette = paletteFrom(rootPaletteSource(stylesheet));
-const darkSource = darkStart === -1 ? '' : rootPaletteSource(stylesheet.slice(darkStart, reducedStart === -1 ? undefined : reducedStart));
-const darkPalette = new Map([...lightPalette, ...paletteFrom(darkSource)]);
+const printStart = stylesheet.indexOf('@media print');
+const rootBlocks = [...stylesheet.matchAll(/:root\s*\{([^}]*)\}/g)]
+  .filter((match) => printStart === -1 || match.index < printStart)
+  .map((match) => ({ index: match.index, palette: paletteFrom(match[1]) }));
+const basePalette = rootBlocks.length > 0 ? rootBlocks[0].palette : new Map();
+const inDarkScheme = (index) => darkStart !== -1 && index >= darkStart && (reducedStart === -1 || index < reducedStart);
+const darkBlocks = rootBlocks.filter((block) => inDarkScheme(block.index));
+const baseDarkPalette = new Map([...basePalette, ...(darkBlocks.length > 0 ? darkBlocks[0].palette : new Map())]);
+const lightContrastPalette = new Map();
+const darkContrastPalette = new Map(basePalette);
+for (const block of rootBlocks) {
+  for (const [token, value] of block.palette) (inDarkScheme(block.index) ? darkContrastPalette : lightContrastPalette).set(token, value);
+}
+const CONTRAST_STATES = [
+  ['light', basePalette],
+  ['light high contrast', lightContrastPalette],
+  ['dark', baseDarkPalette],
+  ['dark high contrast', darkContrastPalette],
+];
 const CONTRAST_PAIRS = [
   ['ink', 'paper'],
   ['ink-2', 'paper'],
@@ -286,7 +326,7 @@ const CONTRAST_PAIRS = [
   ['term-accent-2', 'term-bg'],
   ['tor-circuit', 'term-bg'],
 ];
-for (const [scheme, palette] of [['light', lightPalette], ['dark', darkPalette]]) {
+for (const [scheme, palette] of CONTRAST_STATES) {
   for (const [foreground, background] of CONTRAST_PAIRS) {
     const ratio = contrastRatio(palette.get(foreground), palette.get(background));
     if (ratio === null) fail(`assets/css/style.css: cannot measure the ${scheme} ${foreground} on ${background} contrast`);
@@ -296,16 +336,16 @@ for (const [scheme, palette] of [['light', lightPalette], ['dark', darkPalette]]
 
 const CATEGORY_COLORS = ['answer', 'evidence', 'accent', 'red', 'green', 'term-accent', 'rule-strong'];
 const MIN_CATEGORY_DISTANCE = 15;
-const NON_TEXT_TOKENS = new Set(['paper-2', 'rule', 'term-bg-2', 'term-bg-3', 'term-rule']);
+const NON_TEXT_TOKENS = new Set(['paper-2', 'rule', 'term-bg-2', 'term-bg-3', 'term-rule', 'accent-soft', 'answer-soft', 'shadow']);
 const measuredTokens = new Set([...CONTRAST_PAIRS.flat(), ...CATEGORY_COLORS]);
-for (const token of new Set([...lightPalette.keys(), ...darkPalette.keys()])) {
+for (const token of new Set([...lightContrastPalette.keys(), ...darkContrastPalette.keys()])) {
   if (!measuredTokens.has(token) && !NON_TEXT_TOKENS.has(token)) {
     fail(`assets/css/style.css: the palette token --${token} is neither measured for contrast nor declared decorative`);
   }
 }
 
 const DICHROMACY_KINDS = ['protanopia', 'deuteranopia'];
-for (const [scheme, palette] of [['light', lightPalette], ['dark', darkPalette]]) {
+for (const [scheme, palette] of [['light', basePalette], ['dark', baseDarkPalette]]) {
   for (const kind of [null, ...DICHROMACY_KINDS]) {
     for (let first = 0; first < CATEGORY_COLORS.length; first += 1) {
       for (let second = first + 1; second < CATEGORY_COLORS.length; second += 1) {
@@ -606,6 +646,11 @@ for (const budget of budgets) {
   if (weight > budget.limit) fail(`${budget.label} weigh ${weight} bytes; the budget is ${budget.limit}`);
 }
 if (totalWeight > 800 * 1024) fail(`all assets weigh ${totalWeight} bytes; the budget is ${800 * 1024}`);
+const LARGEST_FILE_LIMIT = 192 * 1024;
+for (const file of [...scriptFiles, 'assets/css/style.css', ...fontFiles, 'assets/og.jpg']) {
+  const size = fileSize(file);
+  if (size > LARGEST_FILE_LIMIT) fail(`${file} weighs ${size} bytes; the per-file budget is ${LARGEST_FILE_LIMIT}`);
+}
 
 function imageSize(relativePath) {
   let bytes;

@@ -144,3 +144,8 @@ test('refresh-data.mjs imports every refresh-lib helper it calls', () => {
   }
   assert.ok(imported.length >= 5);
 });
+
+test('buildDaily bounds the filled range before applying the cap', () => {
+  const daily = buildDaily([push('1970-01-01'), push('2026-09-20')], 3);
+  assert.deepEqual(daily.map((entry) => entry.date), ['2026-09-18', '2026-09-19', '2026-09-20']);
+});

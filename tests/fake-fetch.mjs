@@ -6,6 +6,8 @@ const FIXTURES = process.env.YUGIMOB_FIXTURES;
 const NO_GITHUB = process.env.YUGIMOB_NO_GITHUB === '1';
 const LOG = process.env.YUGIMOB_FETCH_LOG;
 const NPM_BULK_FAIL = process.env.YUGIMOB_NPM_BULK_FAIL === '1';
+const GITHUB_SECONDARY = process.env.YUGIMOB_GITHUB_SECONDARY === '1';
+let secondarySent = false;
 
 function fixtureText(name) {
   return readFileSync(join(FIXTURES, name), 'utf8');
@@ -15,8 +17,8 @@ function fixtureJson(name) {
   return JSON.parse(fixtureText(name));
 }
 
-function responseHeaders(etag = null) {
-  const map = new Map();
+function responseHeaders(etag = null, extra = {}) {
+  const map = new Map(Object.entries(extra));
   if (etag) map.set('etag', etag);
   return { get: (name) => map.get(String(name).toLowerCase()) ?? null };
 }
@@ -25,11 +27,11 @@ function etagOf(value) {
   return `"${createHash('sha1').update(JSON.stringify(value)).digest('hex')}"`;
 }
 
-function jsonResponse(value, status = 200, etag = null) {
+function jsonResponse(value, status = 200, etag = null, extra = {}) {
   return {
     ok: status >= 200 && status < 300,
     status,
-    headers: responseHeaders(etag),
+    headers: responseHeaders(etag, extra),
     json: async () => value,
     text: async () => JSON.stringify(value),
   };
@@ -59,6 +61,11 @@ function pageOf(url) {
 
 globalThis.fetch = async (url, options = {}) => {
   const target = String(url);
+  if (GITHUB_SECONDARY && !secondarySent && target.startsWith('https://api.github.com/')) {
+    secondarySent = true;
+    logRequest(target, 403, false);
+    return jsonResponse(null, 403, null, { 'retry-after': '0' });
+  }
   if (NO_GITHUB && target.startsWith('https://api.github.com/')) return jsonResponse(null, 503);
   if (target.startsWith('https://api.github.com/users/YuGiMob/repos')) {
     return conditionalJson(target, pageOf(target) === 1 ? fixtureJson('repos.json') : [], options);

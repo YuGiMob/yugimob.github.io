@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { heroStatRows, problemEntries, problemId, problemIndexRows, problemsHeading, projectChipRows, sectionVisibility, structuredData } from '../assets/js/view-model.js';
-import { formatNumber } from '../assets/js/ui.js';
+import { formatNumber } from '../assets/js/numbers.js';
+import { writeFileAtomic } from './atomic-write.mjs';
 import { withScriptSrcHash } from './csp-lib.mjs';
 import { SITE_URL } from './llms-lib.mjs';
 
@@ -16,6 +17,27 @@ function escapeHtml(text) {
 
 function escapeAttr(text) {
   return escapeHtml(text).replace(/"/g, '&quot;');
+}
+
+const TITLE_PATTERN = /(<title>)[^<]*(<\/title>)/;
+
+function setMetaContent(source, attribute, name, text) {
+  const pattern = new RegExp(`<meta [^>]*${attribute}="${name}"[^>]*>`);
+  return source.replace(pattern, (tag) => tag.replace(/ content="[^"]*"/, () => ` content="${escapeAttr(text)}"`));
+}
+
+function applyIdentityCopy(source, siteData) {
+  const identity = siteData?.identity;
+  if (!identity || typeof identity.displayName !== 'string' || typeof identity.classTitle !== 'string' || typeof identity.tagline !== 'string') return source;
+  const title = `${identity.displayName} · ${identity.classTitle}`;
+  let next = source.replace(TITLE_PATTERN, (match, open, close) => `${open}${escapeHtml(title)}${close}`);
+  next = setMetaContent(next, 'name', 'description', identity.tagline);
+  next = setMetaContent(next, 'property', 'og:title', title);
+  next = setMetaContent(next, 'property', 'og:description', identity.tagline);
+  next = setMetaContent(next, 'name', 'twitter:title', title);
+  next = setMetaContent(next, 'name', 'twitter:description', identity.tagline);
+  next = setElementText(next, 'display-name', identity.displayName);
+  return setElementText(next, 'class-title', identity.classTitle);
 }
 
 export function buildHeroStatsBlock(siteData) {
@@ -216,13 +238,14 @@ export function buildPrinciplesBlock(showcase) {
 }
 
 export function applyGeneratedBlocks(source, siteData, showcase = null) {
-  let next = source;
+  let next = applyIdentityCopy(source, siteData);
   if (readHeroStatsBlock(next)) next = next.replace(BLOCK_PATTERN, () => buildHeroStatsBlock(siteData));
   const intro = INTRO_PATTERN.exec(next);
   if (showcase && intro) {
     next = next.replace(INTRO_PATTERN, () => `${intro[1]}\n${buildIntroParagraphs(showcase)}\n        ${intro[3]}`);
   }
   if (showcase) {
+    if (showcase.intro?.headline) next = setElementText(next, 'intro-headline', showcase.intro.headline);
     const projects = new Map((siteData.projects ?? []).map((project) => [project.name, project]));
     next = replaceBlock(next, 'ol', 'problem-index', buildProblemIndexBlock(showcase, projects)) ?? next;
     next = replaceBlock(next, 'div', 'problem-list', buildProblemListBlock(showcase, projects)) ?? next;
@@ -242,15 +265,10 @@ export function updateIndexFile(target, siteData, showcase = null) {
   if (!readHeroStatsBlock(source)) return { ok: false, reason: 'no-block' };
   const next = applyGeneratedBlocks(source, siteData, showcase);
   if (next === source) return { ok: true, changed: false };
-  const tmp = `${target}.${process.pid}.tmp`;
   try {
-    writeFileSync(tmp, next);
-    renameSync(tmp, target);
+    writeFileAtomic(target, next);
     return { ok: true, changed: true };
   } catch (err) {
-    try {
-      unlinkSync(tmp);
-    } catch {}
     return { ok: false, reason: err.message };
   }
 }

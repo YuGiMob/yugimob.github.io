@@ -33,7 +33,8 @@ Open <http://localhost:8123/> to see the page.
 
 ```
 assets/js/
-  ui.js             generic DOM, formatting, copy, timers, controllers
+  ui.js             generic DOM, copy, timers, controllers
+  numbers.js        pure number and date helpers
   site-data.js      shape guards and fallbacks for the fetched documents
   view-model.js     pure derivations: rows, headings, notices, JSON-LD
   render.js         hydration and DOM construction, no data math
@@ -74,7 +75,7 @@ These are derived. Edit the inputs, then regenerate:
 | file | regenerate with |
 | --- | --- |
 | `llms.txt`, `index.md`, `agent-readability.json`, `feed.json` | `npm run build:llms` |
-| the pre-rendered page content in `index.html` (hero stats, intro, the problems heading, problem cards, colophon, and the JSON-LD block) | `npm run build:static` |
+| the pre-rendered page content in `index.html` (hero stats, identity copy, intro, the problems heading, problem cards, colophon, and the JSON-LD block) | `npm run build:static` |
 | the CSP hash in `index.html` (also refreshed by `npm run build:static`) | `npm run csp` |
 | `sitemap.xml` lastmod | `npm run refresh` |
 
@@ -86,6 +87,10 @@ change can be reviewed first.
 `npm run check` runs, in order, the style validator, the data validator, the
 site validator, and `node --test` with coverage thresholds. Fix the first
 failure before re-running; each validator prints every problem it found.
+
+Run one test file with `node --test tests/view-model.test.mjs`, and pass a path
+to a validator (`node scripts/validate-site.mjs /tmp/copy`) to check a copy of
+the tree without touching the working one.
 
 CI runs the same command on Node 22 and 24, and on pushes and scheduled runs it
 also checks freshness: a history snapshot older than two days fails until the

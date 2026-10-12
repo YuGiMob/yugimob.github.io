@@ -301,8 +301,8 @@ class FakeDocument {
     return this.queries.get(selector) ?? null;
   }
 
-  querySelectorAll() {
-    return [];
+  querySelectorAll(selector) {
+    return querySelectorIn(this.body, selector, false);
   }
 
   execCommand(command) {

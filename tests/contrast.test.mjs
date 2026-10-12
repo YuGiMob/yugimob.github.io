@@ -25,7 +25,7 @@ test('contrastRatio matches the known WCAG extremes', () => {
 
 test('paletteFrom reads custom properties from a stylesheet', () => {
   const palette = paletteFrom(':root { --ink: #1b1814; --paper: #f6f1e7; --shadow: rgba(0, 0, 0, 0.15); }');
-  assert.deepEqual([...palette.entries()], [['ink', '#1b1814'], ['paper', '#f6f1e7']]);
+  assert.deepEqual([...palette.entries()], [['ink', '#1b1814'], ['paper', '#f6f1e7'], ['shadow', 'rgba(0, 0, 0, 0.15)']]);
 });
 
 test('rootPaletteSource reads only the base :root block', () => {

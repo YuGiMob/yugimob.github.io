@@ -324,6 +324,24 @@ if (isPlainObject(data)) {
       fail(`history has ${data.history.length} entries; the cap is ${HISTORY_LIMIT}`);
     }
   });
+  run(() => {
+    if (isPlainObject(data.stats) && Array.isArray(data.projects)) {
+      const packages = data.projects.filter((project) => isPlainObject(project) && typeof project.npm === 'string' && project.npm.length > 0).length;
+      if (data.stats.npmPackages !== packages) fail(`stats.npmPackages is ${data.stats.npmPackages}; the manifest lists ${packages} npm packages`);
+    }
+  });
+  run(() => {
+    if (!isPlainObject(data.stats) || !Array.isArray(data.history) || data.history.length === 0) return;
+    const newest = data.history[data.history.length - 1];
+    if (isPlainObject(newest) && typeof newest.totalStars === 'number' && newest.totalStars !== data.stats.totalStars) {
+      fail(`the newest history snapshot has ${newest.totalStars} stars; stats.totalStars is ${data.stats.totalStars}`);
+    }
+  });
+  run(() => {
+    if (!isPlainObject(data.activity) || !Array.isArray(data.activity.daily) || typeof data.activity.pushes !== 'number') return;
+    const total = data.activity.daily.reduce((sum, entry) => sum + (isPlainObject(entry) && typeof entry.pushes === 'number' ? entry.pushes : 0), 0);
+    if (total !== data.activity.pushes) fail(`activity.pushes is ${data.activity.pushes}; the daily entries sum to ${total}`);
+  });
 }
 
 if (errors.length > 0) {

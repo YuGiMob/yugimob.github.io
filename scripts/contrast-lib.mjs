@@ -24,7 +24,7 @@ export function contrastRatio(foreground, background) {
 
 export function paletteFrom(source) {
   const palette = new Map();
-  for (const match of String(source).matchAll(/--([a-z0-9-]+):\s*(#[0-9a-f]{6})\s*;/gi)) palette.set(match[1], match[2]);
+  for (const match of String(source).matchAll(/--([a-z0-9-]+):\s*(#[0-9a-f]{6}|rgba?\([^)]*\))\s*;/gi)) palette.set(match[1], match[2]);
   return palette;
 }
 

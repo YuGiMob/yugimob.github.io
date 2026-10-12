@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
-import { readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { writeFileAtomic } from './atomic-write.mjs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { withScriptSrcHash } from './csp-lib.mjs';
@@ -33,14 +34,5 @@ if (next === policy[1]) {
 }
 
 const updated = source.replace(policy[0], `<meta http-equiv="Content-Security-Policy" content="${next}"`);
-const tmp = `${PAGE}.${process.pid}.tmp`;
-try {
-  writeFileSync(tmp, updated);
-  renameSync(tmp, PAGE);
-} catch (err) {
-  try {
-    unlinkSync(tmp);
-  } catch {}
-  throw err;
-}
+writeFileAtomic(PAGE, updated);
 console.log(`csp: updated to sha256-${hash}`);

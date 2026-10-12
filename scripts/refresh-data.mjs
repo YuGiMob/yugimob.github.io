@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, renameSync, existsSync, unlinkSync, readdirSync, statSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, unlinkSync, readdirSync, statSync, mkdirSync } from 'node:fs';
 import {
   buildActivity,
   npmPointUrl,
@@ -12,13 +12,13 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
+import { writeFileAtomic } from './atomic-write.mjs';
 import { writeAgentFiles } from './llms-lib.mjs';
 import { updateIndexFile } from './site-html-lib.mjs';
 import { updateSitemapFile } from './sitemap-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_FILE = join(ROOT, 'data', 'site-data.json');
-const TMP_FILE = `${DATA_FILE}.${process.pid}.tmp`;
 const SITEMAP_FILE = join(ROOT, 'sitemap.xml');
 const INDEX_FILE = join(ROOT, 'index.html');
 const SHOWCASE_FILE = join(ROOT, 'data', 'showcase.json');
@@ -197,7 +197,9 @@ async function request(url, headers, warnPrefix, read, cache = null) {
       return null;
     }
     if (!response.ok) {
-      if (attempt < 2 && response.status === 429) {
+      const header = (name) => (response.headers && typeof response.headers.get === 'function' ? response.headers.get(name) : null);
+      const secondaryLimit = response.status === 403 && header('retry-after');
+      if (attempt < 2 && (response.status === 429 || secondaryLimit)) {
         await sleep(retryDelayMs(response.headers));
         continue;
       }
@@ -205,7 +207,6 @@ async function request(url, headers, warnPrefix, read, cache = null) {
         await sleep(300);
         continue;
       }
-      const header = (name) => (response.headers && typeof response.headers.get === 'function' ? response.headers.get(name) : null);
       const remaining = header('x-ratelimit-remaining');
       const resetSeconds = Number(header('x-ratelimit-reset'));
       const rateLimit = remaining === '0' && Number.isFinite(resetSeconds) && resetSeconds > 0
@@ -363,7 +364,7 @@ if (Array.isArray(events)) {
   report('activity.highlights', existing.activity.highlights, activity.highlights);
   data.activity.window = activity.window;
   report('activity.window', existing.activity.window, activity.window);
-  if (activity.daily.length > 0) data.activity.daily = activity.daily;
+  data.activity.daily = activity.daily;
   reportCount('activity.daily', existing.activity.daily, data.activity.daily);
 }
 const npmDownloads = await fetchNpmDownloads(npmPackages);
@@ -399,14 +400,9 @@ if (reposFresh) {
 }
 const dataChanged = JSON.stringify(existing) !== JSON.stringify(data);
 if (dataChanged && !DRY_RUN) {
-  try {
-    writeFileSync(TMP_FILE, `${JSON.stringify(data, null, 2)}\n`);
-    assertCandidateValid(TMP_FILE, 'the refreshed data failed validate-data; the existing file was left untouched');
-    renameSync(TMP_FILE, DATA_FILE);
-  } catch (err) {
-    safeUnlink(TMP_FILE);
-    throw err;
-  }
+  writeFileAtomic(DATA_FILE, `${JSON.stringify(data, null, 2)}\n`, (candidate) => {
+    assertCandidateValid(candidate, 'the refreshed data failed validate-data; the existing file was left untouched');
+  });
   if (data.history.at(-1)?.date === today) updateSitemapLastmod(today);
 }
 if (DRY_RUN && dataChanged) {

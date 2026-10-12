@@ -1,5 +1,6 @@
 import { hydrateAvatar } from './avatar.js';
-import { el, append, copyButton, formatNumber, extent, animateValue, svg, setText, setMeta, observeVisibility, timeNode } from './ui.js';
+import { extent, formatNumber } from './numbers.js';
+import { el, append, copyButton, animateValue, svg, setText, setMeta, observeVisibility, timeNode } from './ui.js';
 import { lazyMount } from './lazy.js';
 import { loadDemo } from './demo-registry.js';
 import { fetchJson } from './fetch-json.js';
@@ -117,6 +118,7 @@ export async function renderActivity(data) {
   const panel = document.getElementById('activity-panel');
   const activity = data.activity;
   if (!panel || !activity) return;
+  panel.replaceChildren();
   panel.appendChild(el('h3', 'activity-title', 'Public activity'));
   const line = el('p', 'activity-line');
   const parts = activityLine(activity);

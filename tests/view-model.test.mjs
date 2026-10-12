@@ -128,3 +128,10 @@ test('structuredData tolerates a missing base URL', () => {
   assert.equal(jsonLd.mainEntity.url, undefined);
   assert.equal(jsonLd.mainEntity.image, 'assets/avatar.png');
 });
+
+test('structuredData uses the current SPDX identifier for a deprecated license', () => {
+  const projects = [{ ...PROJECTS[0], license: 'AGPL-3.0' }];
+  const showcase = { problems: [{ name: 'tool-a', headline: 'A problem.', kicker: 'Rule A' }] };
+  const jsonLd = structuredData({ ...DATA, projects }, showcase, '');
+  assert.equal(jsonLd.hasPart.itemListElement[0].item.license, 'https://spdx.org/licenses/AGPL-3.0-only');
+});

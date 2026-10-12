@@ -1,3 +1,4 @@
+import { elapsedDays } from '../assets/js/numbers.js';
 import { STALE_AFTER_DAYS } from '../assets/js/view-model.js';
 
 export const HISTORY_LIMIT = 120;
@@ -45,9 +46,12 @@ export function buildDaily(events, maxDays = MAX_ACTIVITY_DAYS) {
   }
   const dates = [...byDay.keys()].sort();
   if (dates.length === 0) return [];
-  return dayRange(dates[0], dates[dates.length - 1])
-    .map((date) => byDay.get(date) ?? { date, events: 0, pushes: 0 })
-    .slice(-maxDays);
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+  const earliest = new Date(Date.parse(`${last}T00:00:00Z`) - (maxDays - 1) * DAY_MS).toISOString().slice(0, 10);
+  const start = first > earliest ? first : earliest;
+  return dayRange(start, last)
+    .map((date) => byDay.get(date) ?? { date, events: 0, pushes: 0 });
 }
 
 export function buildActivity(events, today, maxDays = MAX_ACTIVITY_DAYS) {
@@ -83,8 +87,7 @@ export function isTimestamp(value) {
 export function historyAgeDays(history, now = Date.now()) {
   const newest = Array.isArray(history) && history.length > 0 ? history[history.length - 1] : null;
   if (!newest || typeof newest.date !== 'string') return null;
-  const then = Date.parse(newest.date);
-  return Number.isFinite(then) ? Math.max(0, Math.floor((now - then) / DAY_MS)) : null;
+  return elapsedDays(newest.date, now);
 }
 
 export function npmPointUrl(packages) {
