@@ -29,7 +29,8 @@ function transcript(root, stage, lines) {
     body.replaceChildren();
     for (let index = 0; index < count && index < lines.length; index += 1) {
       const spec = lines[index];
-      const row = el('div', `term-line ${spec.cls || ''}`);
+      const kind = spec.wrap ? 'is-prose' : 'is-code';
+      const row = el('div', `term-line ${kind}${spec.cls ? ` ${spec.cls}` : ''}`);
       row.appendChild(el('span', null, spec.text));
       body.appendChild(row);
     }
@@ -65,18 +66,35 @@ function transcript(root, stage, lines) {
 function hashlineDemo() {
   const { root, stage } = frame('read · replace · stale · retry', 'anchors');
   return transcript(root, stage, [
-    { text: '$ read src/anchors.ts' },
+    { text: 'read { "path": "src/stale.ts" }' },
     { text: 'Dafo│function replace(lines, req) {' },
-    { text: 'Emno│  if (from < 0 || to < 0) return stale(lines)' },
+    { text: 'Emno│  return stale(lines)' },
     { text: 'HDtm│}' },
-    { text: '$ replace remove_from=Emno text="  if (from < 0 || to < 0) return staleRange(lines)"' },
-    { text: '✓ Qwer│  if (from < 0 || to < 0) return staleRange(lines)', cls: 'is-ok' },
-    { text: '   another process edits the file; the served row no longer matches', cls: 'is-dim', pause: 700 },
-    { text: '$ replace remove_from=Emno text="  if (from < 0 || to < 0) return staleRange(lines)"' },
-    { text: '✗ [E_RANGE_STALE] the served range changed on disk; current rows below', cls: 'is-err' },
-    { text: '   Emno│  if (from < 0 || to < 0) return staleRange(lines)', cls: 'is-dim' },
-    { text: '$ replace remove_from=Emno text="  if (from < 0 || to < 0) return staleRange(lines)"' },
-    { text: '✓ Qwer│ landed on the re-served anchor · no re-read needed', cls: 'is-ok' },
+    { text: 'replace {', pause: 700 },
+    { text: '  "remove_from": "Emno",' },
+    { text: '  "remove_to": "Emno",' },
+    { text: '  "text": "  return staleRange(lines)"' },
+    { text: '}' },
+    { text: '-Emno│  return stale(lines)', cls: 'is-err' },
+    { text: '+Qwer│  return staleRange(lines)', cls: 'is-ok' },
+    { text: ' HDtm│}' },
+    { text: 'another process edits the file; the served row no longer matches', cls: 'is-dim', wrap: true, pause: 900 },
+    { text: 'replace {', pause: 700 },
+    { text: '  "remove_from": "Qwer",' },
+    { text: '  "remove_to": "Qwer",' },
+    { text: '  "text": "  return staleRange(lines)"' },
+    { text: '}' },
+    { text: '✗ [E_RANGE_STALE] The range changed on disk since it was served. Fresh anchors below.', cls: 'is-err', wrap: true },
+    { text: 'Qwer│  return staleRange(lines, from, to)' },
+    { text: 'HDtm│}' },
+    { text: 'replace {', pause: 700 },
+    { text: '  "remove_from": "Qwer",' },
+    { text: '  "remove_to": "Qwer",' },
+    { text: '  "text": "  return staleRange(lines)"' },
+    { text: '}' },
+    { text: '-Qwer│  return staleRange(lines, from, to)', cls: 'is-err' },
+    { text: '+Zk9m│  return staleRange(lines)', cls: 'is-ok' },
+    { text: ' HDtm│}' },
   ]);
 }
 
@@ -238,15 +256,18 @@ function gitDemo() {
   const { root, stage } = frame('bash · pi', 'human gate');
   return transcript(root, stage, [
     { text: '$ git commit -am "quick fix"' },
-    { text: '✗ Mutative git commands are blocked. Ask the user to run /toggle-allow-git to allow them for this session.', cls: 'is-err' },
+    { text: '✗ Mutative git commands are blocked. Ask the user to run /toggle-allow-git to allow them for this session.', cls: 'is-err', wrap: true },
     { text: '$ /commit', pause: 700 },
-    { text: '✓ staged 4 files · diff summary in the transcript (ctrl+o to expand)', cls: 'is-ok' },
-    { text: '$ pi › git_commit(type: "FIX", message: "guard the commit path")', pause: 700 },
+    { text: '✓ staged 4 files · diff summary in the transcript (ctrl+o to expand)', cls: 'is-ok', wrap: true },
+    { text: 'git_commit {', pause: 700 },
+    { text: '  "type": "FIX",' },
+    { text: '  "message": "guard the commit path"' },
+    { text: '}' },
     { text: '✓ commit 9c1f3a2  FIX: guard the commit path', cls: 'is-ok' },
-    { text: '   git_commit refuses until /commit opens the flow', cls: 'is-dim' },
+    { text: '   git_commit refuses until /commit opens the flow', cls: 'is-dim', wrap: true },
     { text: '$ /amend tighten the subject', pause: 700 },
     { text: '✓ amended 9c1f3a2  FIX: guard the commit path', cls: 'is-ok' },
-    { text: '   git_amend rewrites the message and timestamp only', cls: 'is-dim' },
+    { text: '   git_amend rewrites the message and timestamp only', cls: 'is-dim', wrap: true },
   ]);
 }
 

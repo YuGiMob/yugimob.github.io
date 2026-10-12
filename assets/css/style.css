@@ -743,6 +743,7 @@ kbd {
 .term-body {
   min-height: 180px;
   max-height: 320px;
+  overflow-x: auto;
   overflow-y: auto;
   padding: 12px 14px;
   border-radius: 10px;
@@ -769,6 +770,16 @@ kbd {
 
 .term-line.is-dim {
   color: var(--term-3);
+}
+
+.term-line.is-code {
+  white-space: pre;
+  word-break: normal;
+}
+
+.term-line.is-prose {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .term-actions {
@@ -1220,6 +1231,10 @@ kbd {
 @media (max-width: 600px) {
   .intro-stats {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .term-body {
+    font-size: 0.72rem;
   }
 
   .nav-links a {
