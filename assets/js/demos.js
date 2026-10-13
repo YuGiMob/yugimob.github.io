@@ -64,9 +64,9 @@ function transcript(root, stage, lines) {
 
   return createController(root, (runtime) => {
     runtimeRef = runtime;
-    if (!reducedMotion()) play(false);
   }, () => {
     runtimeRef = null;
+    render(lines.length);
   });
 }
 
@@ -221,7 +221,7 @@ function torView(config) {
 
 function torDemo() {
   const { root, stage } = frame('direct · tor', 'per-instance circuit');
-  const view = torView({
+  const wide = torView({
     className: 'is-wide',
     viewBox: '0 0 560 200',
     direct: 'M 52 110 L 508 110',
@@ -234,8 +234,21 @@ function torDemo() {
       { x: 508, y: 110, label: 'site' },
     ],
   });
+  const tall = torView({
+    className: 'is-tall',
+    viewBox: '0 0 220 460',
+    direct: 'M 110 30 L 110 390',
+    circuit: 'M 110 30 L 50 120 L 170 210 L 50 300 L 110 390',
+    nodes: [
+      { x: 110, y: 30, label: 'you' },
+      { x: 110, y: 120, label: 'guard', sub: 'hop 1' },
+      { x: 110, y: 210, label: 'middle', sub: 'hop 2' },
+      { x: 110, y: 300, label: 'exit', sub: 'hop 3' },
+      { x: 110, y: 390, label: 'site' },
+    ],
+  });
   const legend = el('p', 'flow-note', 'dashed: direct request · solid: three-hop circuit · one circuit and exit IP per pi instance, verified against check.torproject.org');
-  append(stage, view, legend);
+  append(stage, wide, tall, legend);
   return createController(root, () => {});
 }
 
