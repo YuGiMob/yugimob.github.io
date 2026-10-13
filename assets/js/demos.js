@@ -1,6 +1,7 @@
 import { el, append, createController, reducedMotion, svg, announce } from './ui.js';
 
 const ANCHOR_LINE = /^([-+ ]?)([A-Za-z0-9]{4})(│)(.*)$/;
+const GREP_LINE = /^(\d+[:-]│)\s([A-Za-z0-9]{4})(│)(.*)$/;
 
 function frame(title, badge) {
   const root = el('div', 'demo');
@@ -18,6 +19,49 @@ function press(label, className) {
   return button;
 }
 
+function lineRow(spec) {
+  const classes = ['term-line', spec.wrap ? 'is-prose' : 'is-code'];
+  if (spec.kind) classes.push(`is-${spec.kind}`);
+  if (spec.cls) classes.push(spec.cls);
+  const row = el('div', classes.join(' '));
+  if (spec.kind === 'call' && !spec.text.startsWith('$')) {
+    const marker = el('span', 'term-marker', '▸');
+    marker.setAttribute('aria-hidden', 'true');
+    append(row, marker, ' ');
+  }
+  const grep = spec.kind === 'file' ? GREP_LINE.exec(spec.text) : null;
+  const parts = grep ? null : spec.kind === 'file' ? ANCHOR_LINE.exec(spec.text) : null;
+  if (grep) {
+    append(
+      row,
+      el('span', 'term-gutter', grep[1]),
+      ' ',
+      el('span', 'term-anchor', grep[2]),
+      el('span', 'term-bar', grep[3]),
+      el('span', 'term-code', grep[4]),
+    );
+  } else if (parts) {
+    append(
+      row,
+      el('span', 'term-sign', parts[1]),
+      el('span', 'term-anchor', parts[2]),
+      el('span', 'term-bar', parts[3]),
+      el('span', 'term-code', parts[4]),
+    );
+  } else {
+    row.appendChild(el('span', null, spec.text));
+  }
+  return row;
+}
+
+function renderLines(body, lines, count) {
+  body.replaceChildren();
+  for (let index = 0; index < count && index < lines.length; index += 1) {
+    body.appendChild(lineRow(lines[index]));
+  }
+  body.scrollTop = body.scrollHeight;
+}
+
 function transcript(root, stage, lines) {
   const body = el('div', 'term-body');
   body.setAttribute('role', 'group');
@@ -30,35 +74,7 @@ function transcript(root, stage, lines) {
 
   let runtimeRef = null;
 
-  const render = (count) => {
-    body.replaceChildren();
-    for (let index = 0; index < count && index < lines.length; index += 1) {
-      const spec = lines[index];
-      const classes = ['term-line', spec.wrap ? 'is-prose' : 'is-code'];
-      if (spec.kind) classes.push(`is-${spec.kind}`);
-      if (spec.cls) classes.push(spec.cls);
-      const row = el('div', classes.join(' '));
-      if (spec.kind === 'call' && !spec.text.startsWith('$')) {
-        const marker = el('span', 'term-marker', '▸');
-        marker.setAttribute('aria-hidden', 'true');
-        append(row, marker, ' ');
-      }
-      const parts = spec.kind === 'file' ? ANCHOR_LINE.exec(spec.text) : null;
-      if (parts) {
-        append(
-          row,
-          el('span', 'term-sign', parts[1]),
-          el('span', 'term-anchor', parts[2]),
-          el('span', 'term-bar', parts[3]),
-          el('span', 'term-code', parts[4]),
-        );
-      } else {
-        row.appendChild(el('span', null, spec.text));
-      }
-      body.appendChild(row);
-    }
-    body.scrollTop = body.scrollHeight;
-  };
+  const render = (count) => renderLines(body, lines, count);
 
   const play = (announceRun) => {
     if (!runtimeRef) return;
@@ -90,38 +106,274 @@ function transcript(root, stage, lines) {
   });
 }
 
+function consoleDemo(root, stage, scenarios) {
+  const tabs = el('div', 'term-tabs');
+  tabs.setAttribute('role', 'tablist');
+  tabs.setAttribute('aria-label', 'Hashline tools');
+  const bodyId = 'hashline-transcript';
+  const body = el('div', 'term-body');
+  body.id = bodyId;
+  body.setAttribute('role', 'tabpanel');
+  body.setAttribute('aria-label', 'Transcript');
+  const actions = el('div', 'term-actions');
+  const replay = press('replay');
+  replay.setAttribute('aria-label', 'Replay the transcript');
+  actions.appendChild(replay);
+  append(stage, tabs, body, actions);
+
+  let runtimeRef = null;
+  let active = 0;
+
+  function select(index, announceRun) {
+    active = index;
+    tabButtons.forEach((tab, position) => {
+      const current = position === active;
+      tab.classList.toggle('is-current', current);
+      tab.setAttribute('aria-selected', String(current));
+      tab.tabIndex = current ? 0 : -1;
+    });
+    renderLines(body, scenarios[active].lines, scenarios[active].lines.length);
+    if (announceRun) announce(`${scenarios[active].label} selected`);
+  }
+
+  const tabButtons = scenarios.map((scenario, index) => {
+    const tab = el('button', 'term-tab', scenario.label);
+    tab.type = 'button';
+    tab.setAttribute('role', 'tab');
+    tab.setAttribute('aria-controls', bodyId);
+    tab.addEventListener('click', () => select(index, false));
+    tabs.appendChild(tab);
+    return tab;
+  });
+
+  tabs.addEventListener('keydown', (event) => {
+    const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+    if (event.key === 'Home') select(0, true);
+    else if (event.key === 'End') select(scenarios.length - 1, true);
+    else if (step !== 0) select((active + step + scenarios.length) % scenarios.length, true);
+    else return;
+    event.preventDefault();
+    tabButtons[active].focus();
+  });
+
+  const play = (announceRun) => {
+    if (!runtimeRef) return;
+    const lines = scenarios[active].lines;
+    runtimeRef.reset();
+    renderLines(body, lines, 0);
+    if (reducedMotion()) {
+      renderLines(body, lines, lines.length);
+      if (announceRun) announce('transcript complete');
+      return;
+    }
+    if (announceRun) announce('replaying the run');
+    lines.forEach((spec, index) => {
+      const last = index === lines.length - 1;
+      runtimeRef.after(() => {
+        renderLines(body, lines, index + 1);
+        if (last && announceRun) announce('transcript complete');
+      }, 220 + index * (spec.pause ?? 520));
+    });
+  };
+
+  replay.addEventListener('click', () => play(true));
+  select(0, false);
+
+  return createController(root, (runtime) => {
+    runtimeRef = runtime;
+  }, () => {
+    runtimeRef = null;
+    renderLines(body, scenarios[active].lines, scenarios[active].lines.length);
+  });
+}
+
+const GREET_ROWS = [
+  { text: 'Dafo│export function greet(name: string) {', kind: 'file' },
+  { text: 'Emno│  return `hello ${name}`', kind: 'file' },
+  { text: 'HDtm│}', kind: 'file' },
+];
+
+function greetRead() {
+  return [{ text: 'read { "path": "src/greet.ts" }', kind: 'call' }, ...GREET_ROWS];
+}
+
 function hashlineDemo() {
-  const { root, stage } = frame('read · replace · stale · retry', 'anchors');
-  return transcript(root, stage, [
-    { text: 'read { "path": "src/stale.ts" }', kind: 'call' },
-    { text: 'Dafo│function replace(lines, req) {', kind: 'file' },
-    { text: 'Emno│  return stale(lines)', kind: 'file' },
-    { text: 'HDtm│}', kind: 'file' },
-    { text: 'replace {', pause: 700, kind: 'call' },
-    { text: '  "remove_from": "Emno",', kind: 'arg' },
-    { text: '  "remove_to": "Emno",', kind: 'arg' },
-    { text: '  "text": "  return staleRange(lines)"', kind: 'arg' },
-    { text: '}', kind: 'arg' },
-    { text: '-Emno│  return stale(lines)', cls: 'is-err', kind: 'file' },
-    { text: '+Qwer│  return staleRange(lines)', cls: 'is-ok', kind: 'file' },
-    { text: ' HDtm│}', kind: 'file' },
-    { text: 'another process edits the file; the served row no longer matches', cls: 'is-dim', wrap: true, pause: 900 },
-    { text: 'replace {', pause: 700, kind: 'call' },
-    { text: '  "remove_from": "Qwer",', kind: 'arg' },
-    { text: '  "remove_to": "Qwer",', kind: 'arg' },
-    { text: '  "text": "  return staleRange(lines)"', kind: 'arg' },
-    { text: '}', kind: 'arg' },
-    { text: '✗ [E_RANGE_STALE] The range changed on disk since it was served. Fresh anchors below.', cls: 'is-err', wrap: true },
-    { text: 'Qwer│  return staleRange(lines, from, to)', kind: 'file' },
-    { text: 'HDtm│}', kind: 'file' },
-    { text: 'replace {', pause: 700, kind: 'call' },
-    { text: '  "remove_from": "Qwer",', kind: 'arg' },
-    { text: '  "remove_to": "Qwer",', kind: 'arg' },
-    { text: '  "text": "  return staleRange(lines)"', kind: 'arg' },
-    { text: '}', kind: 'arg' },
-    { text: '-Qwer│  return staleRange(lines, from, to)', cls: 'is-err', kind: 'file' },
-    { text: '+Zk9m│  return staleRange(lines)', cls: 'is-ok', kind: 'file' },
-    { text: ' HDtm│}', kind: 'file' },
+  const { root, stage } = frame('one anchor per line', 'eight tools');
+  return consoleDemo(root, stage, [
+    {
+      label: 'read',
+      lines: [
+        { text: 'the entry point: every served row is a line with its own anchor', cls: 'is-dim', wrap: true },
+        { text: 'read { "path": "src/greet.ts", "limit": 2 }', kind: 'call' },
+        { text: 'Dafo│export function greet(name: string) {', kind: 'file' },
+        { text: 'Emno│  return `hello ${name}`', kind: 'file' },
+        { text: '[Showing lines 1-2 of 3. Use offset=HDtm to continue.]', cls: 'is-dim', wrap: true },
+        { text: 'read { "path": "src/greet.ts", "offset": "HDtm" }', pause: 700, kind: 'call' },
+        { text: 'HDtm│}', kind: 'file' },
+      ],
+    },
+    {
+      label: 'replace',
+      lines: [
+        { text: 'change a line by anchor; the diff returns the anchors the next edit uses', cls: 'is-dim', wrap: true },
+        ...greetRead(),
+        { text: 'replace {', pause: 700, kind: 'call' },
+        { text: '  "remove_from": "Emno",', kind: 'arg' },
+        { text: '  "remove_to": "Emno",', kind: 'arg' },
+        { text: '  "text": "  return `hi ${name}`"', kind: 'arg' },
+        { text: '}', kind: 'arg' },
+        { text: '-Emno│  return `hello ${name}`', cls: 'is-err', kind: 'file' },
+        { text: '+Qwer│  return `hi ${name}`', cls: 'is-ok', kind: 'file' },
+        { text: ' HDtm│}', kind: 'file' },
+        { text: 'replace {', pause: 700, kind: 'call' },
+        { text: '  "remove_from": "Qwer",', kind: 'arg' },
+        { text: '  "remove_to": "Qwer",', kind: 'arg' },
+        { text: '  "text": "  return `hi ${name}!`"', kind: 'arg' },
+        { text: '}', kind: 'arg' },
+        { text: '-Qwer│  return `hi ${name}`', cls: 'is-err', kind: 'file' },
+        { text: '+Rskm│  return `hi ${name}!`', cls: 'is-ok', kind: 'file' },
+        { text: ' HDtm│}', kind: 'file' },
+      ],
+    },
+    {
+      label: 'replace_match',
+      lines: [
+        { text: 'quote only the part that changes; everything else stays untouched', cls: 'is-dim', wrap: true },
+        ...greetRead(),
+        { text: 'replace_match {', pause: 700, kind: 'call' },
+        { text: '  "replace_from": "Emno",', kind: 'arg' },
+        { text: '  "replace_to": "Emno",', kind: 'arg' },
+        { text: '  "old_string": "hello",', kind: 'arg' },
+        { text: '  "new_string": "hi"', kind: 'arg' },
+        { text: '}', kind: 'arg' },
+        { text: '-Emno│  return `hello ${name}`', cls: 'is-err', kind: 'file' },
+        { text: '+Qwer│  return `hi ${name}`', cls: 'is-ok', kind: 'file' },
+        { text: ' HDtm│}', kind: 'file' },
+      ],
+    },
+    {
+      label: 'insert',
+      lines: [
+        { text: 'add lines next to an anchor, then edit the anchors the diff returns', cls: 'is-dim', wrap: true },
+        ...greetRead(),
+        { text: 'insert {', pause: 700, kind: 'call' },
+        { text: '  "anchor": "Emno",', kind: 'arg' },
+        { text: '  "direction": "before",', kind: 'arg' },
+        { text: '  "text": "  const trimmed = name.trim()"', kind: 'arg' },
+        { text: '}', kind: 'arg' },
+        { text: ' Dafo│export function greet(name: string) {', kind: 'file' },
+        { text: '+Qwer│  const trimmed = name.trim()', cls: 'is-ok', kind: 'file' },
+        { text: ' Emno│  return `hello ${name}`', kind: 'file' },
+        { text: ' HDtm│}', kind: 'file' },
+        { text: 'replace {', pause: 700, kind: 'call' },
+        { text: '  "remove_from": "Emno",', kind: 'arg' },
+        { text: '  "remove_to": "Emno",', kind: 'arg' },
+        { text: '  "text": "  return `hello ${trimmed}`"', kind: 'arg' },
+        { text: '}', kind: 'arg' },
+        { text: '-Emno│  return `hello ${name}`', cls: 'is-err', kind: 'file' },
+        { text: '+Rskm│  return `hello ${trimmed}`', cls: 'is-ok', kind: 'file' },
+        { text: ' HDtm│}', kind: 'file' },
+      ],
+    },
+    {
+      label: 'copy',
+      lines: [
+        { text: 'reuse a block in another file; the source stays in place', cls: 'is-dim', wrap: true },
+        ...greetRead(),
+        { text: 'read { "path": "src/welcome.ts" }', pause: 700, kind: 'call' },
+        { text: 'Abra│export function welcome(name: string) {', kind: 'file' },
+        { text: 'Wqvt│  return name', kind: 'file' },
+        { text: 'Zxmb│}', kind: 'file' },
+        { text: 'copy {', pause: 700, kind: 'call' },
+        { text: '  "source_from": "Emno",', kind: 'arg' },
+        { text: '  "source_to": "Emno",', kind: 'arg' },
+        { text: '  "anchor": "Wqvt",', kind: 'arg' },
+        { text: '  "direction": "before"', kind: 'arg' },
+        { text: '}', kind: 'arg' },
+        { text: '=== src/welcome.ts ===', cls: 'is-dim' },
+        { text: ' Abra│export function welcome(name: string) {', kind: 'file' },
+        { text: '+Qwer│  return `hello ${name}`', cls: 'is-ok', kind: 'file' },
+        { text: ' Wqvt│  return name', kind: 'file' },
+        { text: ' Zxmb│}', kind: 'file' },
+      ],
+    },
+    {
+      label: 'move',
+      lines: [
+        { text: 'relocate a block in one call; the lines between the source and the target stay', cls: 'is-dim', wrap: true },
+        { text: 'read { "path": "src/greet.ts" }', kind: 'call' },
+        { text: 'Dafo│export function greet(name: string) {', kind: 'file' },
+        { text: 'Emno│  return `hello ${name}`', kind: 'file' },
+        { text: 'HDtm│}', kind: 'file' },
+        { text: 'Kqla│', kind: 'file' },
+        { text: 'Xkbn│export function shout(name: string) {', kind: 'file' },
+        { text: 'Wqst│  return greet(name).toUpperCase()', kind: 'file' },
+        { text: 'Zxma│}', kind: 'file' },
+        { text: 'move {', pause: 700, kind: 'call' },
+        { text: '  "source_from": "Dafo",', kind: 'arg' },
+        { text: '  "source_to": "HDtm",', kind: 'arg' },
+        { text: '  "anchor": "Zxma",', kind: 'arg' },
+        { text: '  "direction": "after"', kind: 'arg' },
+        { text: '}', kind: 'arg' },
+        { text: '-Dafo│export function greet(name: string) {', cls: 'is-err', kind: 'file' },
+        { text: '-Emno│  return `hello ${name}`', cls: 'is-err', kind: 'file' },
+        { text: '-HDtm│}', cls: 'is-err', kind: 'file' },
+        { text: ' Kqla│', kind: 'file' },
+        { text: ' Xkbn│export function shout(name: string) {', kind: 'file' },
+        { text: ' Wqst│  return greet(name).toUpperCase()', kind: 'file' },
+        { text: ' Zxma│}', kind: 'file' },
+        { text: '+Dafo│export function greet(name: string) {', cls: 'is-ok', kind: 'file' },
+        { text: '+Emno│  return `hello ${name}`', cls: 'is-ok', kind: 'file' },
+        { text: '+HDtm│}', cls: 'is-ok', kind: 'file' },
+      ],
+    },
+    {
+      label: 'grep',
+      lines: [
+        { text: 'find every hit, then edit the served rows in one message', cls: 'is-dim', wrap: true },
+        { text: 'grep { "pattern": "hello", "path": "src", "glob": "*.ts" }', kind: 'call' },
+        { text: '=== src/greet.ts ===', cls: 'is-dim' },
+        { text: '2:│ Emno│  return `hello ${name}`', kind: 'file' },
+        { text: '6:│ Wqst│  return `hello there`', kind: 'file' },
+        { text: 'replace_match {', pause: 700, kind: 'call' },
+        { text: '  "replace_from": "Emno",', kind: 'arg' },
+        { text: '  "replace_to": "Emno",', kind: 'arg' },
+        { text: '  "old_string": "hello",', kind: 'arg' },
+        { text: '  "new_string": "hi"', kind: 'arg' },
+        { text: '}', kind: 'arg' },
+        { text: 'replace_match {', pause: 700, kind: 'call' },
+        { text: '  "replace_from": "Wqst",', kind: 'arg' },
+        { text: '  "replace_to": "Wqst",', kind: 'arg' },
+        { text: '  "old_string": "hello",', kind: 'arg' },
+        { text: '  "new_string": "hi"', kind: 'arg' },
+        { text: '}', kind: 'arg' },
+        { text: 'In batch 1 (queued)', cls: 'is-dim', wrap: true },
+        { text: 'batch 1: combined diff', cls: 'is-dim' },
+        { text: '-Emno│  return `hello ${name}`', cls: 'is-err', kind: 'file' },
+        { text: '+Qwer│  return `hi ${name}`', cls: 'is-ok', kind: 'file' },
+        { text: '-Wqst│  return `hello there`', cls: 'is-err', kind: 'file' },
+        { text: '+Rskm│  return `hi there`', cls: 'is-ok', kind: 'file' },
+      ],
+    },
+    {
+      label: 'undo_last_change',
+      lines: [
+        { text: 'back out the last change on a file; one undo survives restarts', cls: 'is-dim', wrap: true },
+        ...greetRead(),
+        { text: 'replace {', pause: 700, kind: 'call' },
+        { text: '  "remove_from": "Emno",', kind: 'arg' },
+        { text: '  "remove_to": "Emno",', kind: 'arg' },
+        { text: '  "text": "  return `goodbye ${name}`"', kind: 'arg' },
+        { text: '}', kind: 'arg' },
+        { text: '-Emno│  return `hello ${name}`', cls: 'is-err', kind: 'file' },
+        { text: '+Qwer│  return `goodbye ${name}`', cls: 'is-ok', kind: 'file' },
+        { text: ' HDtm│}', kind: 'file' },
+        { text: 'undo_last_change { "path": "src/greet.ts" }', pause: 700, kind: 'call' },
+        { text: '-Qwer│  return `goodbye ${name}`', cls: 'is-err', kind: 'file' },
+        { text: '+Emno│  return `hello ${name}`', cls: 'is-ok', kind: 'file' },
+        { text: ' HDtm│}', kind: 'file' },
+      ],
+    },
   ]);
 }
 
@@ -256,15 +508,16 @@ function torDemo() {
   });
   const tall = torView({
     className: 'is-tall',
-    viewBox: '0 0 220 460',
-    direct: 'M 110 30 L 110 390',
-    circuit: 'M 110 30 L 50 120 L 170 210 L 50 300 L 110 390',
+    radius: 11,
+    viewBox: '0 0 340 640',
+    direct: 'M 170 40 L 170 600',
+    circuit: 'M 170 40 L 80 180 L 250 320 L 80 460 L 170 600',
     nodes: [
-      { x: 110, y: 30, label: 'you' },
-      { x: 110, y: 120, label: 'guard', sub: 'hop 1' },
-      { x: 110, y: 210, label: 'middle', sub: 'hop 2' },
-      { x: 110, y: 300, label: 'exit', sub: 'hop 3' },
-      { x: 110, y: 390, label: 'site' },
+      { x: 170, y: 40, label: 'you', ly: 20 },
+      { x: 80, y: 180, label: 'guard', sub: 'hop 1', lx: 62, ly: 185, anchor: 'end', sx: 62, sy: 209, sanchor: 'end' },
+      { x: 250, y: 320, label: 'middle', sub: 'hop 2', lx: 266, ly: 325, anchor: 'start', sx: 266, sy: 349, sanchor: 'start' },
+      { x: 80, y: 460, label: 'exit', sub: 'hop 3', lx: 62, ly: 465, anchor: 'end', sx: 62, sy: 489, sanchor: 'end' },
+      { x: 170, y: 600, label: 'site', lx: 188, ly: 605, anchor: 'start' },
     ],
   });
   const legend = el('p', 'flow-note', 'dashed: direct request · solid: three-hop circuit · one circuit and exit IP per pi instance, verified against check.torproject.org');

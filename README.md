@@ -23,9 +23,11 @@ pre-rendered panels.
 - **The tools** (`#problems`): an index of the rules, then one card per tool.
   Each card leads with its rule, then the failure it removes, then what the tool
   does, the install command, the source link, and a demo.
-  - pi-hashline-edit-pro gets the flagship treatment with a scripted transcript
-    of one edit: read with anchors, replace, an external change, an
-    `[E_RANGE_STALE]` refusal, and the retry that lands without a re-read.
+  - pi-hashline-edit-pro gets the flagship treatment with a console that
+    selects any of its eight tools and scripts a real edit per kind of change:
+    paging a read by anchor, a replace that returns fresh anchors,
+    replace_match on a substring, insert, a cross-file copy, a move, grep
+    feeding a batched replace_match, and undo_last_change.
   - The other entries run a two-tool flow diagram (pi-unsloth-webtools), a Tor
     circuit diagram (pi-tor-proxy), a workflow diagram (pi-msg-workflow), and a
     guarded commit transcript (pi-git-commit).

@@ -797,6 +797,10 @@ kbd {
   color: var(--term-3);
 }
 
+.term-gutter {
+  color: var(--term-3);
+}
+
 .term-line.is-code {
   white-space: pre;
   word-break: normal;
@@ -810,6 +814,34 @@ kbd {
 .term-actions {
   display: flex;
   gap: 8px;
+}
+
+.term-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.term-tab {
+  padding: 4px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink-2);
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
+.term-tab:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.term-tab.is-current {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--card);
 }
 
 .flow-svg,
@@ -1409,6 +1441,7 @@ kbd {
   .intro-actions,
   .actions,
   .demo-button,
+  .term-tabs,
   .term-actions,
   .copy-btn {
     display: none !important;
