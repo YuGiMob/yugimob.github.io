@@ -1,5 +1,7 @@
 import { el, append, createController, reducedMotion, svg, announce } from './ui.js';
 
+const ANCHOR_LINE = /^([-+ ]?)([A-Za-z0-9]{4})(│)(.*)$/;
+
 function frame(title, badge) {
   const root = el('div', 'demo');
   const bar = el('div', 'demo-bar');
@@ -32,9 +34,27 @@ function transcript(root, stage, lines) {
     body.replaceChildren();
     for (let index = 0; index < count && index < lines.length; index += 1) {
       const spec = lines[index];
-      const kind = spec.wrap ? 'is-prose' : 'is-code';
-      const row = el('div', `term-line ${kind}${spec.cls ? ` ${spec.cls}` : ''}`);
-      row.appendChild(el('span', null, spec.text));
+      const classes = ['term-line', spec.wrap ? 'is-prose' : 'is-code'];
+      if (spec.kind) classes.push(`is-${spec.kind}`);
+      if (spec.cls) classes.push(spec.cls);
+      const row = el('div', classes.join(' '));
+      if (spec.kind === 'call' && !spec.text.startsWith('$')) {
+        const marker = el('span', 'term-marker', '▸');
+        marker.setAttribute('aria-hidden', 'true');
+        append(row, marker, ' ');
+      }
+      const parts = spec.kind === 'file' ? ANCHOR_LINE.exec(spec.text) : null;
+      if (parts) {
+        append(
+          row,
+          el('span', 'term-sign', parts[1]),
+          el('span', 'term-anchor', parts[2]),
+          el('span', 'term-bar', parts[3]),
+          el('span', 'term-code', parts[4]),
+        );
+      } else {
+        row.appendChild(el('span', null, spec.text));
+      }
       body.appendChild(row);
     }
     body.scrollTop = body.scrollHeight;
@@ -73,35 +93,35 @@ function transcript(root, stage, lines) {
 function hashlineDemo() {
   const { root, stage } = frame('read · replace · stale · retry', 'anchors');
   return transcript(root, stage, [
-    { text: 'read { "path": "src/stale.ts" }' },
-    { text: 'Dafo│function replace(lines, req) {' },
-    { text: 'Emno│  return stale(lines)' },
-    { text: 'HDtm│}' },
-    { text: 'replace {', pause: 700 },
-    { text: '  "remove_from": "Emno",' },
-    { text: '  "remove_to": "Emno",' },
-    { text: '  "text": "  return staleRange(lines)"' },
-    { text: '}' },
-    { text: '-Emno│  return stale(lines)', cls: 'is-err' },
-    { text: '+Qwer│  return staleRange(lines)', cls: 'is-ok' },
-    { text: ' HDtm│}' },
+    { text: 'read { "path": "src/stale.ts" }', kind: 'call' },
+    { text: 'Dafo│function replace(lines, req) {', kind: 'file' },
+    { text: 'Emno│  return stale(lines)', kind: 'file' },
+    { text: 'HDtm│}', kind: 'file' },
+    { text: 'replace {', pause: 700, kind: 'call' },
+    { text: '  "remove_from": "Emno",', kind: 'arg' },
+    { text: '  "remove_to": "Emno",', kind: 'arg' },
+    { text: '  "text": "  return staleRange(lines)"', kind: 'arg' },
+    { text: '}', kind: 'arg' },
+    { text: '-Emno│  return stale(lines)', cls: 'is-err', kind: 'file' },
+    { text: '+Qwer│  return staleRange(lines)', cls: 'is-ok', kind: 'file' },
+    { text: ' HDtm│}', kind: 'file' },
     { text: 'another process edits the file; the served row no longer matches', cls: 'is-dim', wrap: true, pause: 900 },
-    { text: 'replace {', pause: 700 },
-    { text: '  "remove_from": "Qwer",' },
-    { text: '  "remove_to": "Qwer",' },
-    { text: '  "text": "  return staleRange(lines)"' },
-    { text: '}' },
+    { text: 'replace {', pause: 700, kind: 'call' },
+    { text: '  "remove_from": "Qwer",', kind: 'arg' },
+    { text: '  "remove_to": "Qwer",', kind: 'arg' },
+    { text: '  "text": "  return staleRange(lines)"', kind: 'arg' },
+    { text: '}', kind: 'arg' },
     { text: '✗ [E_RANGE_STALE] The range changed on disk since it was served. Fresh anchors below.', cls: 'is-err', wrap: true },
-    { text: 'Qwer│  return staleRange(lines, from, to)' },
-    { text: 'HDtm│}' },
-    { text: 'replace {', pause: 700 },
-    { text: '  "remove_from": "Qwer",' },
-    { text: '  "remove_to": "Qwer",' },
-    { text: '  "text": "  return staleRange(lines)"' },
-    { text: '}' },
-    { text: '-Qwer│  return staleRange(lines, from, to)', cls: 'is-err' },
-    { text: '+Zk9m│  return staleRange(lines)', cls: 'is-ok' },
-    { text: ' HDtm│}' },
+    { text: 'Qwer│  return staleRange(lines, from, to)', kind: 'file' },
+    { text: 'HDtm│}', kind: 'file' },
+    { text: 'replace {', pause: 700, kind: 'call' },
+    { text: '  "remove_from": "Qwer",', kind: 'arg' },
+    { text: '  "remove_to": "Qwer",', kind: 'arg' },
+    { text: '  "text": "  return staleRange(lines)"', kind: 'arg' },
+    { text: '}', kind: 'arg' },
+    { text: '-Qwer│  return staleRange(lines, from, to)', cls: 'is-err', kind: 'file' },
+    { text: '+Zk9m│  return staleRange(lines)', cls: 'is-ok', kind: 'file' },
+    { text: ' HDtm│}', kind: 'file' },
   ]);
 }
 
@@ -275,17 +295,17 @@ function workflowDemo() {
 function gitDemo() {
   const { root, stage } = frame('bash · pi', 'human gate');
   return transcript(root, stage, [
-    { text: '$ git commit -am "quick fix"' },
+    { text: '$ git commit -am "quick fix"', kind: 'call' },
     { text: '✗ Mutative git commands are blocked. Ask the user to run /toggle-allow-git to allow them for this session.', cls: 'is-err', wrap: true },
-    { text: '$ /commit', pause: 700 },
+    { text: '$ /commit', pause: 700, kind: 'call' },
     { text: '✓ staged 4 files · diff summary in the transcript (ctrl+o to expand)', cls: 'is-ok', wrap: true },
-    { text: 'git_commit {', pause: 700 },
-    { text: '  "type": "FIX",' },
-    { text: '  "message": "guard the commit path"' },
-    { text: '}' },
+    { text: 'git_commit {', pause: 700, kind: 'call' },
+    { text: '  "type": "FIX",', kind: 'arg' },
+    { text: '  "message": "guard the commit path"', kind: 'arg' },
+    { text: '}', kind: 'arg' },
     { text: '✓ commit 9c1f3a2  FIX: guard the commit path', cls: 'is-ok' },
     { text: '   git_commit refuses until /commit opens the flow', cls: 'is-dim', wrap: true },
-    { text: '$ /amend tighten the subject', pause: 700 },
+    { text: '$ /amend tighten the subject', pause: 700, kind: 'call' },
     { text: '✓ amended 9c1f3a2  FIX: guard the commit path', cls: 'is-ok' },
     { text: '   git_amend rewrites the message and timestamp only', cls: 'is-dim', wrap: true },
   ]);

@@ -34,3 +34,17 @@ test('transcript demos expose a labelled transcript and a labelled replay button
     }
   });
 });
+
+test('the hashline transcript separates tool calls from file content', () => {
+  withDom(() => {
+    const controller = buildDemo('hashline');
+    const calls = findAll(controller.node, (node) => node.classList?.contains('is-call') === true);
+    const args = findAll(controller.node, (node) => node.classList?.contains('is-arg') === true);
+    const files = findAll(controller.node, (node) => node.classList?.contains('is-file') === true);
+    const anchors = findAll(controller.node, (node) => node.classList?.contains('term-anchor') === true);
+    assert.equal(calls.length, 4);
+    assert.equal(args.length, 12);
+    assert.equal(files.length, 11);
+    assert.equal(anchors.length, files.length);
+  });
+});

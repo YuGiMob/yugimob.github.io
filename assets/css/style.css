@@ -759,7 +759,7 @@ kbd {
   word-break: break-word;
 }
 
-.term-line.is-cmd {
+.term-line.is-call {
   color: var(--term-accent);
 }
 
@@ -772,6 +772,28 @@ kbd {
 }
 
 .term-line.is-dim {
+  color: var(--term-3);
+}
+
+.term-line.is-arg {
+  color: var(--term-2);
+}
+
+.term-line.is-file {
+  padding-left: 8px;
+  border-left: 2px solid var(--term-rule);
+  background: var(--term-bg-2);
+}
+
+.term-anchor {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--term-bg-3);
+  color: var(--term-accent-2);
+}
+
+.term-bar {
+  padding: 0 2px;
   color: var(--term-3);
 }
 
@@ -1279,6 +1301,10 @@ kbd {
     text-indent: -1.1em;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+  }
+
+  .term-line.is-file {
+    padding-left: calc(1.1em + 6px);
   }
 
   .nav-links a {
