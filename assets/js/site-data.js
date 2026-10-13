@@ -57,9 +57,21 @@ export function countWord(value) {
   return NUMBER_WORDS[value] ?? String(value);
 }
 
+function sameMonthDay(start, day) {
+  const year = Number(start.slice(0, 4));
+  const month = Number(start.slice(5, 7));
+  const startDay = Number(start.slice(8, 10));
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(startDay) || Number(day) >= startDay) {
+    return `${start.slice(0, 8)}${day}`;
+  }
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  return `${String(nextYear).padStart(4, '0')}-${String(nextMonth).padStart(2, '0')}-${day}`;
+}
+
 export function formatWindow(range) {
   const [start, end] = String(range).split('..');
   if (!end) return range;
-  if (end.length === 2) return `${start} to ${start.slice(0, 8)}${end}`;
-  return `${start} to ${end}`;
+  const expanded = end.length === 2 ? sameMonthDay(start, end) : end;
+  return expanded === start ? start : `${start} to ${expanded}`;
 }

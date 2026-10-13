@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   activityLine,
+  dataRefreshedDate,
+  dataRefreshedNote,
   heroStatRows,
   problemEntries,
   problemId,
@@ -10,7 +12,6 @@ import {
   projectChipRows,
   repositoryFacts,
   sectionVisibility,
-  staleDays,
   stalenessNotice,
   structuredData,
 } from '../assets/js/view-model.js';
@@ -93,15 +94,33 @@ test('structuredData builds a profile page around the showcase projects', () => 
   assert.equal(jsonLd.hasPart.numberOfItems, 5);
   assert.equal(jsonLd.hasPart.itemListElement[0].item.name, 'tool-a');
   assert.equal(jsonLd.hasPart.itemListElement[0].item.license, 'https://spdx.org/licenses/MIT');
+  assert.equal(jsonLd.dateModified, '2026-09-10');
 });
 
 test('repositoryFacts formats the repository totals', () => {
   assert.deepEqual(repositoryFacts({ publicRepos: 13, forksReceived: 33 }), { repositories: '13', forks: '33' });
 });
 
-test('staleDays counts whole days and rejects unusable dates', () => {
-  assert.equal(staleDays('2026-09-18', '2026-09-20'), 2);
-  assert.equal(staleDays('nope', '2026-09-20'), null);
+test('problemsHeading uses the singular noun for one rule', () => {
+  const showcase = { problems: [{ name: 'tool-a', headline: 'A problem.', kicker: 'Rule A' }] };
+  assert.equal(problemsHeading(showcase, projectMap()), 'One rule the tools enforce');
+});
+
+test('dataRefreshedDate prefers the newest history snapshot and falls back to the activity date', () => {
+  assert.equal(dataRefreshedDate({ history: [{ date: '2026-09-17' }, { date: '2026-09-18' }], activity: { fetchedAt: '2026-09-10' } }), '2026-09-18');
+  assert.equal(dataRefreshedDate({ history: [], activity: { fetchedAt: '2026-09-10' } }), '2026-09-10');
+  assert.equal(dataRefreshedDate({}), null);
+});
+
+test('dataRefreshedNote renders the date and stays empty without one', () => {
+  assert.equal(dataRefreshedNote({ history: [{ date: '2026-09-18' }] }), 'Data refreshed 2026-09-18.');
+  assert.equal(dataRefreshedNote({}), '');
+});
+
+test('stalenessNotice measures the newest history snapshot', () => {
+  const data = { history: [{ date: '2026-09-18' }], activity: { fetchedAt: '2026-09-01' } };
+  assert.equal(stalenessNotice(data, '2026-09-20'), null);
+  assert.equal(stalenessNotice(data, '2026-09-21'), 'The daily refresh last updated this page 3 days ago.');
 });
 
 test('stalenessNotice names the source that went stale', () => {
@@ -134,4 +153,10 @@ test('structuredData uses the current SPDX identifier for a deprecated license',
   const showcase = { problems: [{ name: 'tool-a', headline: 'A problem.', kicker: 'Rule A' }] };
   const jsonLd = structuredData({ ...DATA, projects }, showcase, '');
   assert.equal(jsonLd.hasPart.itemListElement[0].item.license, 'https://spdx.org/licenses/AGPL-3.0-only');
+});
+
+test('structuredData dates the page from the newest history snapshot', () => {
+  const projects = [{ ...PROJECTS[0] }];
+  const jsonLd = structuredData({ ...DATA, projects, history: [{ date: '2026-09-18' }] }, SHOWCASE, '');
+  assert.equal(jsonLd.dateModified, '2026-09-18');
 });

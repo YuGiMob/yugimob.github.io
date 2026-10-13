@@ -291,3 +291,48 @@ test('a refresh never rewrites the curated showcase file', () => {
     assert.equal(readFileSync(join(repo, 'data', 'showcase.json'), 'utf8'), before);
   });
 });
+
+test('unlistedRepos silences the warning for a known uncurated repo', () => {
+  withRepo((repo) => {
+    const result = refresh(repo);
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stderr, /repo not curated in data\/site-data\.json: pi-edit-benchmark/);
+  });
+});
+
+test('a repo missing from unlistedRepos warns as uncurated', () => {
+  withRepo((repo) => {
+    const path = join(repo, DATA_FILE);
+    const data = readData(repo);
+    data.unlistedRepos = data.unlistedRepos.filter((name) => name !== 'pi-edit-benchmark');
+    writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+    const result = refresh(repo);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, /repo not curated in data\/site-data\.json: pi-edit-benchmark/);
+  });
+});
+
+test('the refresh warns when the curated license disagrees with GitHub', () => {
+  withRepo((repo) => {
+    const path = join(repo, DATA_FILE);
+    const data = readData(repo);
+    data.projects.find((project) => project.name === 'pi-hashline-edit-pro').license = 'Apache-2.0';
+    writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+    const result = refresh(repo);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, /license mismatch for pi-hashline-edit-pro: curated Apache-2\.0, GitHub reports MIT/);
+  });
+});
+
+test('an empty repos response warns and leaves the totals and history untouched', () => {
+  withRepo((repo) => {
+    const before = readData(repo);
+    const result = refresh(repo, { YUGIMOB_EMPTY_REPOS: '1' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, /returned no repositories; totals were left untouched/);
+    const after = readData(repo);
+    assert.equal(after.stats.totalStars, before.stats.totalStars);
+    assert.equal(after.stats.forksReceived, before.stats.forksReceived);
+    assert.equal(after.history.length, before.history.length);
+  });
+});

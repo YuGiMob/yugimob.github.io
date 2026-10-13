@@ -1,11 +1,12 @@
 import { hydrateAvatar } from './avatar.js';
-import { extent, formatNumber } from './numbers.js';
+import { extent, formatNumber, localDateString } from './numbers.js';
 import { el, append, copyButton, animateValue, svg, setText, setMeta, observeVisibility, timeNode } from './ui.js';
 import { lazyMount } from './lazy.js';
 import { loadDemo } from './demo-registry.js';
 import { fetchJson } from './fetch-json.js';
 import {
   activityLine,
+  dataRefreshedNote,
   heroStatRows,
   problemId,
   repositoryFacts,
@@ -40,13 +41,22 @@ export function renderIntro(showcase) {
   }
 }
 
+function renderedStatValue(item) {
+  const value = typeof item?.querySelector === 'function' ? item.querySelector('.stat-value') : null;
+  if (!value) return null;
+  const parsed = Number(String(value.textContent).replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function renderHeroStats(data) {
   const list = document.getElementById('hero-stats');
   if (!list) return;
+  const previous = [...list.children].map(renderedStatValue);
   list.replaceChildren();
-  for (const stat of heroStatRows(data)) {
+  heroStatRows(data).forEach((stat, index) => {
+    const from = previous[index];
     const item = el('div', 'stat');
-    const dd = el('dd', 'stat-value', '0');
+    const dd = el('dd', 'stat-value', formatNumber(from ?? 0));
     dd.setAttribute('aria-hidden', 'true');
     const readout = el('dd', 'sr-only', formatNumber(stat.value));
     append(item, el('dt', 'stat-label', stat.label), dd, readout);
@@ -55,9 +65,10 @@ export function renderHeroStats(data) {
     observeVisibility(dd, () => {
       if (animated) return;
       animated = true;
-      animateValue(dd, stat.value);
+      if (from === stat.value) return;
+      animateValue(dd, stat.value, formatNumber, 900, from ?? 0);
     }, () => {});
-  }
+  });
 }
 
 function hydrateInstallCommand(article) {
@@ -107,7 +118,10 @@ function activityChart(daily) {
       class: value > 0 ? 'activity-bar' : 'activity-bar is-empty',
     });
     const label = svg('title');
-    label.textContent = `${entry.date}: ${value} ${value === 1 ? 'push' : 'pushes'}`;
+    const pushWord = value === 1 ? 'push' : 'pushes';
+    const events = Number.isFinite(entry.events) ? entry.events : 0;
+    const eventWord = events === 1 ? 'event' : 'events';
+    label.textContent = `${entry.date}: ${value} ${pushWord}, ${events} ${eventWord}`;
     bar.appendChild(label);
     chart.appendChild(bar);
   });
@@ -131,8 +145,9 @@ export async function renderActivity(data) {
     panel.appendChild(activityChart(daily));
     const values = daily.map((entry) => entry.pushes);
     const total = values.reduce((sum, value) => sum + value, 0);
+    const events = daily.reduce((sum, entry) => sum + (Number.isFinite(entry.events) ? entry.events : 0), 0);
     const [low, high] = extent(values);
-    panel.appendChild(el('p', 'sr-only', `${values.length} days recorded, ${formatNumber(total)} pushes total, between ${formatNumber(low)} and ${formatNumber(high)} per day.`));
+    panel.appendChild(el('p', 'sr-only', `${values.length} days recorded, ${formatNumber(total)} pushes and ${formatNumber(events)} public events total, between ${formatNumber(low)} and ${formatNumber(high)} pushes per day.`));
   }
   const highlights = Array.isArray(activity.highlights) ? activity.highlights : [];
   const facts = repositoryFacts(data.stats);
@@ -151,10 +166,13 @@ export async function renderActivity(data) {
     panel.appendChild(note);
   }
   const history = Array.isArray(data.history) ? data.history : [];
-  if (history.length > 0) {
+  if (daily.length > 0 || history.length > 0) {
     const charts = await import('./charts.js').catch(() => null);
-    const growth = charts ? charts.historyPanel(history) : null;
+    const table = charts && daily.length > 0 ? charts.activityTable(daily) : null;
+    if (table) panel.appendChild(table);
+    const growth = charts && history.length > 0 ? charts.historyPanel(history) : null;
     if (growth) panel.appendChild(growth);
+    if (!charts) panel.appendChild(el('p', 'chart-note', 'The charts could not be loaded from the data.'));
   }
 }
 
@@ -166,9 +184,10 @@ export function renderFooter(data) {
     githubLink.textContent = `${identity.displayName} on GitHub`;
   }
   setText('campfire-year', `© ${new Date().getFullYear()} ${identity.displayName}`);
+  setText('data-refreshed', dataRefreshedNote(data));
   const notice = document.getElementById('data-age');
   if (notice) {
-    const message = stalenessNotice(data, new Date().toISOString().slice(0, 10));
+    const message = stalenessNotice(data, localDateString());
     notice.textContent = message ?? '';
     notice.hidden = !message;
   }

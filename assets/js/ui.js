@@ -227,7 +227,7 @@ export function copyButton(label, value, announceLabel) {
   return copyWithFeedback(button, value, { label });
 }
 
-export function animateValue(node, value, formatter = formatNumber, duration = 900) {
+export function animateValue(node, value, formatter = formatNumber, duration = 900, from = 0) {
   if (reducedMotion() || !Number.isFinite(value)) {
     node.textContent = formatter(value);
     return;
@@ -236,7 +236,7 @@ export function animateValue(node, value, formatter = formatNumber, duration = 9
   const step = (now) => {
     const progress = Math.min(1, (now - start) / duration);
     const eased = 1 - Math.pow(1 - progress, 3);
-    node.textContent = formatter(Math.round(value * eased));
+    node.textContent = formatter(Math.round(from + (value - from) * eased));
     if (progress < 1) requestAnimationFrame(step);
   };
   requestAnimationFrame(step);

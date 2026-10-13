@@ -149,7 +149,7 @@ export function renderError() {
   setText('campfire-year', `© ${new Date().getFullYear()} YuGiMob`);
   const main = document.getElementById('main-content');
   if (main) main.removeAttribute('aria-busy');
-  for (const id of ['problems', 'colophon', 'activity-panel']) {
+  for (const id of ['problems', 'colophon', 'activity-panel', 'data-refreshed']) {
     const section = document.getElementById(id);
     if (section) section.hidden = true;
   }

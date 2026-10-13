@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildDemo, DEMO_IDS } from '../assets/js/demos.js';
-import { withDom } from './dom.mjs';
+import { findAll, withDom } from './dom.mjs';
 
 test('every registered demo builds a controller with a node and a start and stop pair', () => {
   for (const id of DEMO_IDS) {
@@ -19,4 +19,18 @@ test('every registered demo builds a controller with a node and a start and stop
 
 test('an unknown demo id builds nothing', () => {
   withDom(() => assert.equal(buildDemo('nope'), null));
+});
+
+test('transcript demos expose a labelled transcript and a labelled replay button', () => {
+  withDom(() => {
+    for (const id of ['hashline', 'git']) {
+      const controller = buildDemo(id);
+      const transcript = findAll(controller.node, (node) => node.getAttribute?.('aria-label') === 'Transcript')[0];
+      assert.ok(transcript, `${id} has no labelled transcript`);
+      assert.equal(transcript.getAttribute('role'), 'group');
+      assert.equal(transcript.getAttribute('aria-live'), null);
+      const replay = findAll(controller.node, (node) => node.getAttribute?.('aria-label') === 'Replay the transcript')[0];
+      assert.ok(replay, `${id} has no labelled replay button`);
+    }
+  });
 });

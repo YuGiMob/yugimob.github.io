@@ -8,7 +8,7 @@ import {
   sleep,
   upsertHistory,
 } from './refresh-lib.mjs';
-import { join, dirname } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -61,15 +61,16 @@ function assertCandidateValid(candidateFile, message) {
   }
 }
 
-const TMP_PREFIXES = [
-  [ROOT, 'index.html.'],
-  [ROOT, 'index.md.'],
-  [ROOT, 'llms.txt.'],
-  [ROOT, 'agent-readability.json.'],
-  [ROOT, 'feed.json.'],
-  [ROOT, 'sitemap.xml.'],
-  [join(ROOT, 'data'), 'site-data.json.'],
+const GENERATED_OUTPUTS = [
+  INDEX_FILE,
+  join(ROOT, 'index.md'),
+  join(ROOT, 'llms.txt'),
+  join(ROOT, 'agent-readability.json'),
+  join(ROOT, 'feed.json'),
+  SITEMAP_FILE,
+  DATA_FILE,
 ];
+const TMP_PREFIXES = GENERATED_OUTPUTS.map((target) => [dirname(target), `${basename(target)}.`]);
 
 function cleanupStaleTmpFiles() {
   const cutoff = Date.now() - 10 * 60 * 1000;
@@ -109,7 +110,6 @@ const EVENT_PAGES = 3;
 const REPO_PAGES = 5;
 const PAGE_SIZE = 100;
 const FETCH_TIMEOUT_MS = 15000;
-const UNLISTED_REPOS = new Set(['pi-jina-webtools', 'pi-msg-queue', 'pi-tps-status', 'mypi', 'pi-edit-benchmark']);
 const DRY_RUN = process.argv.includes('--check');
 let data = null;
 let fileUnusable = false;
@@ -156,18 +156,19 @@ if (!fileExists) {
 
 if (!Array.isArray(data.history)) data.history = [];
 if (!Array.isArray(data.activity.daily)) data.activity.daily = [];
+const unlistedRepos = new Set(Array.isArray(data.unlistedRepos) ? data.unlistedRepos : []);
 
 const existing = JSON.parse(JSON.stringify(data));
 
-const npmPackages = data.projects.filter((p) => p.npm).map((p) => p.npm);
-const projectByNpm = new Map(data.projects.filter((p) => p.npm).map((p) => [p.npm, p]));
-const show = (v) => (v === undefined ? '(none)' : JSON.stringify(v));
+const npmPackages = data.projects.filter((project) => project.npm).map((project) => project.npm);
+const projectByNpm = new Map(data.projects.filter((project) => project.npm).map((project) => [project.npm, project]));
+const formatValue = (value) => (value === undefined ? '(none)' : JSON.stringify(value));
 const summary = [];
 const report = (path, oldVal, newVal) => {
-  if (show(oldVal) === show(newVal)) {
+  if (formatValue(oldVal) === formatValue(newVal)) {
     summary.push(`${path}: unchanged`);
   } else {
-    summary.push(`${path}: ${show(oldVal)} -> ${show(newVal)}`);
+    summary.push(`${path}: ${formatValue(oldVal)} -> ${formatValue(newVal)}`);
   }
 };
 const reportCount = (path, oldArray, newArray) => {
@@ -303,11 +304,11 @@ if (Array.isArray(reposRaw) && reposRaw.length >= REPO_PAGES * PAGE_SIZE) {
 }
 
 if (Array.isArray(reposRaw)) {
-  const repoNames = new Set(repos.map((r) => r.name));
+  const repoNames = new Set(repos.map((repository) => repository.name));
   for (const repo of repos) {
     if (repo.name.endsWith('.github.io')) continue;
     if (repo.fork) continue;
-    if (!UNLISTED_REPOS.has(repo.name) && !data.projects.some((p) => p.name === repo.name)) {
+    if (!unlistedRepos.has(repo.name) && !data.projects.some((project) => project.name === repo.name)) {
       console.warn(`repo not curated in data/site-data.json: ${repo.name}`);
     }
   }
@@ -322,12 +323,14 @@ if (user && user.login) {
 }
 report('identity.links.github', existing.identity.links.github, data.identity.links.github);
 if (repos.length > 0) {
-  const totalStars = repos.reduce((s, r) => s + (r.stargazers_count ?? 0), 0);
-  const forksReceived = repos.reduce((s, r) => s + (r.forks_count ?? 0), 0);
+  const totalStars = repos.reduce((sum, repository) => sum + (repository.stargazers_count ?? 0), 0);
+  const forksReceived = repos.reduce((sum, repository) => sum + (repository.forks_count ?? 0), 0);
   data.stats.totalStars = totalStars;
   data.stats.forksReceived = forksReceived;
   report('stats.totalStars', existing.stats.totalStars, totalStars);
   report('stats.forksReceived', existing.stats.forksReceived, forksReceived);
+} else if (Array.isArray(reposRaw)) {
+  console.warn('GitHub repos: the API returned no repositories; totals were left untouched');
 }
 if (user) {
   data.stats.publicRepos = typeof user.public_repos === 'number' ? user.public_repos : repos.length;
@@ -336,11 +339,15 @@ if (user) {
 data.stats.npmPackages = npmPackages.length;
 report('stats.npmPackages', existing.stats.npmPackages, data.stats.npmPackages);
 
-const repoByName = new Map(repos.map((r) => [r.name, r]));
-const existingByName = new Map(existing.projects.map((p) => [p.name, p]));
+const repoByName = new Map(repos.map((repository) => [repository.name, repository]));
+const existingByName = new Map(existing.projects.map((project) => [project.name, project]));
 for (const project of data.projects) {
   const repo = repoByName.get(project.name);
   if (!repo) continue;
+  const repoLicense = repo.license && typeof repo.license.spdx_id === 'string' ? repo.license.spdx_id : null;
+  if (repoLicense && project.license && project.license !== repoLicense) {
+    console.warn(`license mismatch for ${project.name}: curated ${project.license}, GitHub reports ${repoLicense}`);
+  }
   const prev = existingByName.get(project.name);
   const sync = (repoKey, projKey, pred) => {
     const val = repo[repoKey];
@@ -349,11 +356,11 @@ for (const project of data.projects) {
     report(`projects.${project.name}.${projKey}`, prev?.[projKey], val);
     project[projKey] = val;
   };
-  sync('stargazers_count', 'stars', (v) => typeof v === 'number');
-  sync('forks_count', 'forks', (v) => typeof v === 'number');
-  sync('language', 'language', (v) => Boolean(v));
-  sync('pushed_at', 'pushedAt', (v) => typeof v === 'string');
-  sync('description', 'description', (v) => Boolean(v));
+  sync('stargazers_count', 'stars', (value) => typeof value === 'number');
+  sync('forks_count', 'forks', (value) => typeof value === 'number');
+  sync('language', 'language', (value) => Boolean(value));
+  sync('pushed_at', 'pushedAt', (value) => typeof value === 'string');
+  sync('description', 'description', (value) => Boolean(value));
 }
 const today = new Date().toISOString().slice(0, 10);
 if (Array.isArray(events)) {
@@ -384,7 +391,7 @@ if (Array.isArray(events)) {
   data.activity.fetchedAt = today;
   report('activity.fetchedAt', existing.activity.fetchedAt, data.activity.fetchedAt);
 }
-const reposFresh = Array.isArray(reposRaw);
+const reposFresh = Array.isArray(reposRaw) && reposRaw.length > 0;
 if (reposFresh) {
   const totalDownloads = data.projects.reduce(
     (sum, project) => sum + (Number.isFinite(project.npmWeeklyDownloads) ? project.npmWeeklyDownloads : 0),

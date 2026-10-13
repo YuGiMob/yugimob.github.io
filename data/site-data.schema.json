@@ -108,6 +108,11 @@
           "totalDownloads": { "type": "integer", "minimum": 0 }
         }
       }
+    },
+    "unlistedRepos": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
     }
   }
 }

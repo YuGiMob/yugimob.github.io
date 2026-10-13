@@ -75,7 +75,7 @@ These are derived. Edit the inputs, then regenerate:
 | file | regenerate with |
 | --- | --- |
 | `llms.txt`, `index.md`, `agent-readability.json`, `feed.json` | `npm run build:llms` |
-| the pre-rendered page content in `index.html` (hero stats, identity copy, intro, the problems heading, problem cards, colophon, and the JSON-LD block) | `npm run build:static` |
+| the pre-rendered page content in `index.html` (hero stats, identity copy, intro, the problems heading, problem cards, colophon, the activity summary, the refresh date, and the JSON-LD block) | `npm run build:static` |
 | the CSP hash in `index.html` (also refreshed by `npm run build:static`) | `npm run csp` |
 | `sitemap.xml` lastmod | `npm run refresh` |
 

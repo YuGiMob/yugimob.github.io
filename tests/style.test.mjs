@@ -139,6 +139,14 @@ test('the style validator refuses comments in markup, stylesheets, and markdown'
   assert.match(markdown.stderr, /CONTRIBUTING\.md:\d+:\d+ has a markup comment/);
 });
 
+test('the style validator refuses a markup comment in XML', () => {
+  const result = runStyleValidator((copy) => {
+    appendFileSync(join(copy, 'sitemap.xml'), '\n<!-- leaked -->\n');
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /sitemap\.xml:\d+:\d+ has a markup comment/);
+});
+
 test('the style validator reaches comments inside template expressions', () => {
   const result = runStyleValidator((copy) => {
     appendFileSync(join(copy, 'assets', 'js', 'avatar.js'), '\nconst text = `a ${1 // leaked\n} b`;\n');

@@ -15,10 +15,22 @@ export function historyTableRows(history) {
   }));
 }
 
+export function activityTableRows(daily) {
+  return (Array.isArray(daily) ? daily : [])
+    .filter((entry) => entry && typeof entry.date === 'string' && Number.isFinite(entry.pushes))
+    .map((entry) => ({
+      date: entry.date,
+      pushes: formatNumber(entry.pushes),
+      events: formatNumber(Number.isFinite(entry.events) ? entry.events : 0),
+    }));
+}
+
 const TABLE_LABELS = {
   date: 'date',
   stars: 'GitHub stars',
   downloads: 'installs / week',
+  pushes: 'pushes',
+  events: 'public events',
 };
 
 function dataTable(summary, rows, caption) {
@@ -46,20 +58,41 @@ function dataTable(summary, rows, caption) {
   return details;
 }
 
-export function sparklinePoints(values, width = 120, height = 28) {
+export function activityTable(daily) {
+  const rows = activityTableRows(daily);
+  if (rows.length === 0) return null;
+  return dataTable('View the days as a table', rows, 'Public events and pushes per day.');
+}
+
+export function sparklinePoints(values, width = 120, height = 28, dates = null) {
+  if (!Array.isArray(values) || values.length === 0) return '';
   const series = values.length > 1 ? values : [values[0], values[0]];
   const [min, max] = extent(series);
   const span = max - min || 1;
-  const step = width / (series.length - 1);
+  const xs = sparklineXs(dates, series.length, width);
   return series
-    .map((value, index) => `${(index * step).toFixed(1)} ${(height - 2 - ((value - min) / span) * (height - 4)).toFixed(1)}`)
+    .map((value, index) => `${xs[index].toFixed(1)} ${(height - 2 - ((value - min) / span) * (height - 4)).toFixed(1)}`)
     .join(' ');
 }
 
-function sparkline(values, label) {
+function sparklineXs(dates, count, width) {
+  const uniform = (index) => (count > 1 ? (index * width) / (count - 1) : 0);
+  if (!Array.isArray(dates) || dates.length !== count || count < 2) {
+    return Array.from({ length: count }, (unused, index) => uniform(index));
+  }
+  const times = dates.map((date) => Date.parse(date));
+  if (times.some((time) => !Number.isFinite(time)) || times.some((time, index) => index > 0 && time <= times[index - 1])) {
+    return Array.from({ length: count }, (unused, index) => uniform(index));
+  }
+  const first = times[0];
+  const last = times[times.length - 1];
+  return times.map((time) => ((time - first) / (last - first)) * width);
+}
+
+function sparkline(values, label, dates = null) {
   const width = 120;
   const height = 28;
-  const points = sparklinePoints(values, width, height);
+  const points = sparklinePoints(values, width, height, dates);
   const node = svg('svg', {
     class: 'growth-spark',
     viewBox: `0 0 ${width} ${height}`,
@@ -70,10 +103,10 @@ function sparkline(values, label) {
   return node;
 }
 
-function growthRow(label, values, delta, formatter = formatNumber) {
+function growthRow(label, values, delta, dates, formatter = formatNumber) {
   const row = el('div', 'growth-row');
   row.appendChild(el('span', 'growth-label', label));
-  row.appendChild(sparkline(values, label));
+  row.appendChild(sparkline(values, label, dates));
   const value = el('span', 'growth-value', formatter(values[values.length - 1]));
   const trend = delta > 0 ? ' is-up' : delta < 0 ? ' is-down' : '';
   append(value, ' ', el('span', `growth-delta${trend}`, `${delta > 0 ? '+' : ''}${formatter(delta)}`));
@@ -90,8 +123,9 @@ export function historyPanel(history) {
   root.appendChild(el('p', 'chart-kicker', 'Collected daily'));
   root.appendChild(el('h3', 'chart-title', 'Since the first snapshot'));
   const rows = el('div', 'growth-rows');
-  rows.appendChild(growthRow('GitHub stars', entries.map((entry) => entry.totalStars), last.totalStars - first.totalStars));
-  rows.appendChild(growthRow('Installs / week', entries.map((entry) => entry.totalDownloads), last.totalDownloads - first.totalDownloads));
+  const dates = entries.map((entry) => entry.date);
+  rows.appendChild(growthRow('GitHub stars', entries.map((entry) => entry.totalStars), last.totalStars - first.totalStars, dates));
+  rows.appendChild(growthRow('Installs / week', entries.map((entry) => entry.totalDownloads), last.totalDownloads - first.totalDownloads, dates));
   root.appendChild(rows);
   const count = entries.length === 1 ? '1 snapshot' : `${entries.length} snapshots`;
   root.appendChild(el('p', 'chart-note', `${count} since ${first.date}`));

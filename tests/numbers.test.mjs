@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { elapsedDays, extent, formatNumber } from '../assets/js/numbers.js';
+import { elapsedDays, extent, formatNumber, localDateString } from '../assets/js/numbers.js';
 
 test('formatNumber groups thousands', () => {
   assert.equal(formatNumber(1234567), '1,234,567');
@@ -29,4 +29,13 @@ test('elapsedDays counts whole days against a date or a timestamp', () => {
 test('elapsedDays rejects unusable dates', () => {
   assert.equal(elapsedDays('nope', '2026-09-20'), null);
   assert.equal(elapsedDays('2026-09-20', 'nope'), null);
+});
+
+test('localDateString formats a local date and passes a calendar date through', () => {
+  assert.equal(localDateString(new Date(2026, 0, 2)), '2026-01-02');
+  assert.equal(localDateString(new Date(2026, 11, 31, 23, 59)), '2026-12-31');
+  assert.equal(localDateString('2026-10-11'), '2026-10-11');
+  assert.equal(localDateString('2026-02-30'), '');
+  assert.equal(localDateString('nope'), '');
+  assert.equal(localDateString(null), '');
 });

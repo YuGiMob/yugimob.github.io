@@ -293,7 +293,7 @@ function checkYaml(source, file) {
 
 function checkComments(source, file) {
   if (file.endsWith('.js') || file.endsWith('.mjs') || file.endsWith('.ts')) checkScript(source, file);
-  else if (file.endsWith('.html') || file.endsWith('.md')) checkMarkup(source, file);
+  else if (file.endsWith('.html') || file.endsWith('.md') || file.endsWith('.xml')) checkMarkup(source, file);
   else if (file.endsWith('.css')) checkStylesheet(source, file);
   else if (file.endsWith('.yml') || file.endsWith('.yaml')) checkYaml(source, file);
 }

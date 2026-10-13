@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildActivity, buildDaily, buildHighlights, historyAgeDays, isTimestamp, npmPointUrl, retryDelayMs, sleep, upsertHistory } from '../scripts/refresh-lib.mjs';
+import { buildActivity, buildDaily, buildHighlights, historyAgeDays, isTimestamp, npmPointUrl, retryDelayMs, sleep, upsertHistory, windowRange } from '../scripts/refresh-lib.mjs';
 
 const ROOT = new URL('..', import.meta.url);
 const SCRIPT = new URL('scripts/refresh-data.mjs', ROOT);
@@ -137,7 +137,9 @@ test('sleep resolves after the requested delay', async () => {
 
 test('refresh-data.mjs imports every refresh-lib helper it calls', () => {
   const source = readFileSync(SCRIPT, 'utf8');
-  const imported = [...source.matchAll(/^\s{2}(\w+),$/gm)].map((match) => match[1]);
+  const block = source.match(/import \{([^}]*)\} from '\.\/refresh-lib\.mjs'/);
+  assert.ok(block, 'refresh-data.mjs does not import refresh-lib.mjs');
+  const imported = [...block[1].matchAll(/(\w+),/g)].map((match) => match[1]);
   const lib = readFileSync(new URL('scripts/refresh-lib.mjs', ROOT), 'utf8');
   for (const name of imported) {
     assert.match(lib, new RegExp(`export (function|const) ${name}\\b`), `${name} is not exported by refresh-lib.mjs`);
@@ -148,4 +150,10 @@ test('refresh-data.mjs imports every refresh-lib helper it calls', () => {
 test('buildDaily bounds the filled range before applying the cap', () => {
   const daily = buildDaily([push('1970-01-01'), push('2026-09-20')], 3);
   assert.deepEqual(daily.map((entry) => entry.date), ['2026-09-18', '2026-09-19', '2026-09-20']);
+});
+
+test('windowRange abbreviates a same-month span and refuses a partial one', () => {
+  assert.equal(windowRange('2026-09-09', '2026-09-10'), '2026-09-09..10');
+  assert.equal(windowRange('2026-08-30', '2026-09-02'), '2026-08-30..2026-09-02');
+  assert.equal(windowRange('2026-09-09', undefined), null);
 });

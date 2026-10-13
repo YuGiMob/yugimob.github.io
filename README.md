@@ -9,10 +9,11 @@ The site code is MIT (see `LICENSE`).
 
 The page opens with the rules the tools enforce, then presents one rule and one
 tool at a time, each with a short scripted transcript or diagram of the
-interaction it changes. The tool cards, the about prose, the principles, and the
-JSON-LD are pre-rendered into the HTML, so a fetch-only reader gets the full
-page before JavaScript runs; the browser hydrates that markup instead of
-rebuilding it, mounting demos into the pre-rendered panels.
+interaction it changes. The tool cards, the about prose, the activity summary,
+the principles, the refresh date, and the JSON-LD are pre-rendered into the
+HTML, so a fetch-only reader gets the full page before JavaScript runs; the
+browser hydrates that markup instead of rebuilding it, mounting demos into the
+pre-rendered panels.
 
 ## Page sections
 
@@ -29,8 +30,10 @@ rebuilding it, mounting demos into the pre-rendered panels.
     circuit diagram (pi-tor-proxy), a workflow diagram (pi-msg-workflow), and a
     guarded commit transcript (pi-git-commit).
 - **About** (`#colophon`): why the tools exist, the principles behind them, and
-  a pushes-per-day chart built from public GitHub events.
-- Footer (`#campfire`): the GitHub link and the daily-refresh note.
+  an activity summary with a pushes-per-day chart and a per-day table built
+  from public GitHub events.
+- Footer (`#campfire`): the GitHub link, the refresh date, and the
+  daily-refresh note.
 
 ## How the pieces fit
 
@@ -56,8 +59,9 @@ data/site-data.json      machine numbers          data/showcase.json  curated pr
 ```
 
 The same refresh rewrites the pre-rendered blocks in `index.html` (hero stats,
-identity copy, intro, the problems heading, problem cards, colophon, and the
-inline JSON-LD block) and regenerates `llms.txt`, `index.md`,
+identity copy, intro, the problems heading, problem cards, colophon, the
+activity summary, the refresh date, and the inline JSON-LD block) and
+regenerates `llms.txt`, `index.md`,
 `agent-readability.json`, and `feed.json`, so the page, the machine files, and
 the agent index cannot drift apart. Validators re-derive every rule they can,
 and the test suite runs them against a temporary copy of the tree.
@@ -96,7 +100,7 @@ assets/js/numbers.js            pure number and date helpers
 assets/js/fetch-json.js         retrying JSON fetch with a timeout
 assets/js/ui.js                 DOM, copy, runtime helpers
 assets/js/demos.js              the five card demos
-assets/js/charts.js             the history and growth charts
+assets/js/charts.js             the history, growth, and activity charts
 assets/js/avatar.js             avatar src and alt hydration
 data/site-data.json             machine-refreshed data
 data/site-data.schema.json      schema for the above
@@ -180,7 +184,8 @@ Two files, with a clean split:
 identity block, the curated project manifest (name, URL, npm package, curated
 description), and machine numbers: stars, forks, languages, last push,
 weekly npm downloads, stats, activity (window, pushes, highlights, per-day
-events), and `history`: one snapshot per day with total stars and total weekly
+events), `unlistedRepos` (known public repositories that are deliberately not
+curated), and `history`: one snapshot per day with total stars and total weekly
 downloads. The About panel renders the highlights and the public-repo and
 forks-received totals, and the footer prints a notice when the daily refresh
 snapshot is more than two days old. The `stats` totals cover every public
@@ -229,9 +234,9 @@ present but unusable, the refresh exits with an error without writing, so a
 corrupt file cannot wipe curated content. If the file is missing entirely, the
 refresh exits with an error instead of writing an empty skeleton. When nothing
 changed, the run only prints the summary and leaves the file untouched. Repos
-listed in `UNLISTED_REPOS` (`pi-jina-webtools`, `pi-msg-queue`,
-`pi-tps-status`, `mypi`, `pi-edit-benchmark`) are known public repos that are
-deliberately not curated, so they do not produce a warning.
+listed in `data/site-data.json` under `unlistedRepos` (`pi-jina-webtools`,
+`pi-msg-queue`, `pi-tps-status`, `mypi`, `pi-edit-benchmark`) are known public
+repos that are deliberately not curated, so they do not produce a warning.
 
 Each run also appends a `history` snapshot (replacing an existing entry for the
 same date, capped at 120 entries) and rebuilds `activity.daily` from the most
@@ -264,20 +269,22 @@ npm run validate
 in the tree by extension, refuses comments in any script, and enforces LF
 endings, spaces for indentation, no trailing whitespace, and a final newline.
 Its comment scan reads strings, templates, and regexes as text, reaches comments
-inside template-literal expressions, and scans HTML, CSS, Markdown, and YAML for
+inside template-literal expressions, and scans HTML, CSS, Markdown, YAML, and XML for
 their comment syntax too. The data validator walks the JSON files against the
 schema files themselves, so a rule lives in one place, then cross-references
 showcase names with the manifest, verifies every `demo` id, checks that
 `stats.npmPackages` matches the manifest, that the newest history snapshot
 agrees with `stats.totalStars`, and that `activity.pushes` equals the sum of
-`activity.daily`, and refuses histories, daily activity, or highlight lists
-beyond the documented caps. It
+`activity.daily`, that `activity.window` matches the daily span, and refuses
+histories, daily activity, or highlight lists beyond the documented caps. It
 prints `validate: ok` and lists every failure it finds in one run. The site
 validator checks internal links, element ids the scripts depend on, module
 preloads (every statically imported module is preloaded and every on-demand
 module is not) and the full module reachability graph, the runtime data
-preloads, the README file listing in both directions and the Demos table, the
-noscript list's completeness and install commands, that the JSON-LD block is
+preloads, the README file listing in both directions and the Demos table,
+the CONTRIBUTING module map, the npm scripts the documentation mentions,
+every font file against its `@font-face` references, the noscript list's
+completeness and install commands, that the JSON-LD block is
 the only inline script, local stylesheet references, the
 `Content-Security-Policy` on both pages (including the Trusted Types directive
 and a scan for DOM sinks that would violate it), that the CSP hash still
@@ -286,9 +293,12 @@ allowed, the sitemap `lastmod` against the
 newest history date, the nav order against the section order, title and
 description lengths, and a set of static accessibility rules (`lang`, `img` alt
 text, `aria` references, `target=_blank` rel, heading order, a single `main`),
-then prints `validate:site: ok`. It also refuses static copy that drifts from
+a browser module that imports a Node builtin, and a `404.html` title without
+the display name, then prints `validate:site: ok`. It also refuses static copy
+that drifts from
 the data files (`<title>`, meta description, social tags, the inline JSON-LD
-block, `#display-name`, `#class-title`, `#problems-heading`), inline `style` and
+block, `#display-name`, `#class-title`, `#problems-heading`, the activity
+summary, the refresh date), inline `style` and
 event-handler attributes the CSP forbids, a sitemap or `robots.txt` that
 disagrees with the canonical URL, a `security.txt` that expires within 60 days,
 a palette pair below the 4.5:1 contrast minimum, a palette token that is neither

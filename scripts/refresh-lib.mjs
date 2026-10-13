@@ -54,15 +54,17 @@ export function buildDaily(events, maxDays = MAX_ACTIVITY_DAYS) {
     .map((date) => byDay.get(date) ?? { date, events: 0, pushes: 0 });
 }
 
+export function windowRange(first, last) {
+  if (typeof first !== 'string' || typeof last !== 'string') return null;
+  return first.slice(0, 7) === last.slice(0, 7) ? `${first}..${last.slice(8)}` : `${first}..${last}`;
+}
+
 export function buildActivity(events, today, maxDays = MAX_ACTIVITY_DAYS) {
   const daily = buildDaily(events, maxDays);
   const pushes = daily.reduce((sum, entry) => sum + entry.pushes, 0);
   const first = daily[0]?.date;
   const last = daily[daily.length - 1]?.date;
-  let window = today;
-  if (first && last) {
-    window = first.slice(0, 7) === last.slice(0, 7) ? `${first}..${last.slice(8)}` : `${first}..${last}`;
-  }
+  const window = windowRange(first, last) ?? today;
   return {
     pushes,
     highlights: buildHighlights(events),

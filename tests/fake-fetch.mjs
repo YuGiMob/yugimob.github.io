@@ -7,6 +7,7 @@ const NO_GITHUB = process.env.YUGIMOB_NO_GITHUB === '1';
 const LOG = process.env.YUGIMOB_FETCH_LOG;
 const NPM_BULK_FAIL = process.env.YUGIMOB_NPM_BULK_FAIL === '1';
 const GITHUB_SECONDARY = process.env.YUGIMOB_GITHUB_SECONDARY === '1';
+const EMPTY_REPOS = process.env.YUGIMOB_EMPTY_REPOS === '1';
 let secondarySent = false;
 
 function fixtureText(name) {
@@ -68,6 +69,7 @@ globalThis.fetch = async (url, options = {}) => {
   }
   if (NO_GITHUB && target.startsWith('https://api.github.com/')) return jsonResponse(null, 503);
   if (target.startsWith('https://api.github.com/users/YuGiMob/repos')) {
+    if (EMPTY_REPOS) return conditionalJson(target, [], options);
     return conditionalJson(target, pageOf(target) === 1 ? fixtureJson('repos.json') : [], options);
   }
   if (target.startsWith('https://api.github.com/users/YuGiMob/events/public')) {

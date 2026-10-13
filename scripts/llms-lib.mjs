@@ -1,15 +1,22 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { formatNumber } from '../assets/js/numbers.js';
+import { dataRefreshedDate, dataRefreshedNote } from '../assets/js/view-model.js';
 import { writeFileAtomic } from './atomic-write.mjs';
 
 export const SITE_URL = 'https://yugimob.github.io';
 export const SITE_REPOSITORY = 'https://github.com/YuGiMob/yugimob.github.io';
 
+const SENTENCE_END = /[.!?](?=\s+[A-Z]|\s*$)/g;
+const ABBREVIATIONS = /(?:\b(?:e\.g|i\.e|etc|cf|vs|Dr|Mr|Mrs|Ms|St|No|Inc|Ltd)\.|(?:\b[A-Z]\.){2,})$/;
+
 function firstSentence(text) {
   const sentence = String(text ?? '').trim();
-  const end = sentence.match(/^[\s\S]*?[.!?](?=\s+[A-Z]|\s*$)/);
-  return end ? end[0].trim() : sentence;
+  for (const match of sentence.matchAll(SENTENCE_END)) {
+    const candidate = sentence.slice(0, match.index + 1);
+    if (!ABBREVIATIONS.test(candidate)) return candidate.trim();
+  }
+  return sentence;
 }
 
 function dataLine(label, url, detail) {
@@ -38,6 +45,8 @@ export function buildLlmsTxt(siteData, showcase) {
   lines.push('');
   lines.push(`> ${identity.tagline ?? ''}`.trimEnd());
   lines.push('');
+  const refreshed = dataRefreshedNote(siteData);
+  if (refreshed) lines.push(refreshed, '');
   for (const paragraph of showcase.intro?.paragraphs ?? []) {
     lines.push(paragraph, '');
   }
@@ -81,6 +90,8 @@ export function buildIndexMd(siteData, showcase) {
   lines.push('');
   lines.push(`> ${identity.tagline ?? ''}`.trimEnd());
   lines.push('');
+  const refreshed = dataRefreshedNote(siteData);
+  if (refreshed) lines.push(refreshed, '');
   for (const paragraph of showcase.intro?.paragraphs ?? []) {
     lines.push(paragraph, '');
   }
@@ -133,12 +144,26 @@ export function buildIndexMd(siteData, showcase) {
 
 const FEED_ITEM_LIMIT = 30;
 
-function historyFeedItem(entry) {
+function signed(value) {
+  return `${value > 0 ? '+' : ''}${formatNumber(value)}`;
+}
+
+function changeSentence(entry, previous) {
+  const stars = entry.totalStars - previous.totalStars;
+  const downloads = entry.totalDownloads - previous.totalDownloads;
+  if (stars === 0 && downloads === 0) return ' No change in stars or weekly installs since the previous snapshot.';
+  const starPart = stars === 0 ? 'no change in stars' : `${signed(stars)} ${Math.abs(stars) === 1 ? 'star' : 'stars'}`;
+  const downloadPart = downloads === 0 ? 'no change in weekly installs' : `${signed(downloads)} weekly installs`;
+  return ` That is ${starPart} and ${downloadPart} since the previous snapshot.`;
+}
+
+function historyFeedItem(entry, previous) {
+  const change = previous ? changeSentence(entry, previous) : '';
   return {
     id: `${SITE_URL}/#history-${entry.date}`,
     url: `${SITE_URL}/#intro`,
     title: `Data refresh ${entry.date}: ${formatNumber(entry.totalStars)} stars, ${formatNumber(entry.totalDownloads)} weekly installs`,
-    content_text: `${formatNumber(entry.totalStars)} GitHub stars and ${formatNumber(entry.totalDownloads)} npm installs per week across the projects on ${entry.date}.`,
+    content_text: `${formatNumber(entry.totalStars)} GitHub stars and ${formatNumber(entry.totalDownloads)} npm installs per week across the projects on ${entry.date}.${change}`,
     date_published: `${entry.date}T00:00:00Z`,
     tags: ['data'],
   };
@@ -146,10 +171,10 @@ function historyFeedItem(entry) {
 
 export function buildJsonFeed(siteData) {
   const identity = siteData.identity ?? {};
-  const items = [];
-  for (const entry of Array.isArray(siteData.history) ? siteData.history : []) {
-    if (entry && typeof entry.date === 'string' && Number.isFinite(entry.totalStars) && Number.isFinite(entry.totalDownloads)) items.push(historyFeedItem(entry));
-  }
+  const entries = (Array.isArray(siteData.history) ? siteData.history : [])
+    .filter((entry) => entry && typeof entry.date === 'string' && Number.isFinite(entry.totalStars) && Number.isFinite(entry.totalDownloads))
+    .sort((first, second) => first.date.localeCompare(second.date));
+  const items = entries.map((entry, index) => historyFeedItem(entry, index > 0 ? entries[index - 1] : null));
   items.sort((a, b) => b.date_published.localeCompare(a.date_published) || a.id.localeCompare(b.id));
   return `${JSON.stringify({
     version: 'https://jsonfeed.org/version/1.1',
@@ -173,7 +198,7 @@ export function buildAgentReadability(siteData) {
     repository: SITE_REPOSITORY,
     language: 'en',
     license: 'MIT',
-    updated: siteData.activity?.fetchedAt ?? null,
+    updated: dataRefreshedDate(siteData),
     artifacts: {
       llmsTxt: `${SITE_URL}/llms.txt`,
       markdown: `${SITE_URL}/index.md`,

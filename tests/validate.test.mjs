@@ -743,3 +743,47 @@ test('the site validator measures the default palettes, not only the high-contra
     patch(copy, 'assets/css/style.css', '--ink-2: #c8bfae;', '--ink-2: #2a2a2a;');
   }, /dark ink-2 on paper is .* below 4\.5:1/);
 });
+
+test('the data validator refuses an activity window that disagrees with the daily entries', () => {
+  expectData((copy) => {
+    const data = readJson(copy, 'data/site-data.json');
+    data.activity.window = '2026-09-01..2026-10-10';
+    writeJson(copy, 'data/site-data.json', data);
+  }, /activity\.window is .*; the daily entries span/);
+});
+
+test('the site validator refuses a browser module that imports a Node builtin', () => {
+  expectSite((copy) => {
+    patch(copy, 'assets/js/numbers.js', 'const DAY_MS', "import { readFileSync } from 'node:fs';\n\nconst DAY_MS");
+  }, /uses a Node builtin/);
+});
+
+test('the site validator refuses a font file no stylesheet references', () => {
+  expectSite((copy) => {
+    writeFileSync(join(copy, 'assets', 'fonts', 'unused.woff2'), 'fake');
+  }, /assets\/fonts\/unused\.woff2: no @font-face references this file/);
+});
+
+test('the site validator refuses docs that drift from the scripts and the module map', () => {
+  expectSite((copy) => {
+    patch(copy, 'README.md', '`npm run check`', '`npm run ghost`');
+  }, /mentions npm script ghost/);
+  expectSite((copy) => {
+    patch(copy, 'CONTRIBUTING.md', '  render.js', '  ghost-helper.js');
+  }, /module map is missing render\.js/);
+});
+
+test('the site validator refuses a 404 title without the display name', () => {
+  expectSite((copy) => {
+    patch(copy, '404.html', '<title>404 · YuGiMob</title>', '<title>404 · Nobody</title>');
+  }, /404\.html: the title does not contain the display name/);
+});
+
+test('the site validator refuses a drifted activity summary and refresh date', () => {
+  expectSite((copy) => {
+    patch(copy, 'index.html', '139 pushes to public repositories', '0 pushes to public repositories');
+  }, /#activity-panel block does not match the machine data/);
+  expectSite((copy) => {
+    patch(copy, 'index.html', 'id="data-refreshed">Data refreshed', 'id="data-refreshed">Data refreshed soon:');
+  }, /refresh date does not match the machine data/);
+});

@@ -18,8 +18,11 @@ function press(label, className) {
 
 function transcript(root, stage, lines) {
   const body = el('div', 'term-body');
+  body.setAttribute('role', 'group');
+  body.setAttribute('aria-label', 'Transcript');
   const actions = el('div', 'term-actions');
   const replay = press('replay');
+  replay.setAttribute('aria-label', 'Replay the transcript');
   actions.appendChild(replay);
   append(stage, body, actions);
 
@@ -48,7 +51,11 @@ function transcript(root, stage, lines) {
     }
     if (announceRun) announce('replaying the run');
     lines.forEach((spec, index) => {
-      runtimeRef.after(() => render(index + 1), 220 + index * (spec.pause ?? 520));
+      const last = index === lines.length - 1;
+      runtimeRef.after(() => {
+        render(index + 1);
+        if (last && announceRun) announce('transcript complete');
+      }, 220 + index * (spec.pause ?? 520));
     });
   };
 

@@ -81,8 +81,11 @@ test('countWord spells small numbers and falls back to digits', () => {
   assert.equal(countWord(11), '11');
 });
 
-test('formatWindow expands a same-month range', () => {
+test('formatWindow expands a range, rolls over a month or year, and collapses a same day', () => {
   assert.equal(formatWindow('2026-09-09..10'), '2026-09-09 to 2026-09-10');
   assert.equal(formatWindow('2026-08-30..2026-09-02'), '2026-08-30 to 2026-09-02');
   assert.equal(formatWindow('2026-09-09'), '2026-09-09');
+  assert.equal(formatWindow('2026-09-28..02'), '2026-09-28 to 2026-10-02');
+  assert.equal(formatWindow('2026-12-31..01'), '2026-12-31 to 2027-01-01');
+  assert.equal(formatWindow('2026-09-20..20'), '2026-09-20');
 });

@@ -36,7 +36,7 @@ const SHOWCASE = {
 const IDS = [
   'avatar', 'display-name', 'class-title', 'intro-headline', 'intro-paragraphs', 'data-notice',
   'problems', 'hero-stats', 'problem-list', 'colophon', 'campfire', 'activity-panel', 'github-link',
-  'campfire-year', 'data-age', 'nav-github', 'hero-github',
+  'campfire-year', 'data-age', 'data-refreshed', 'nav-github', 'hero-github',
 ];
 
 const SIZE_BEFORE = `stale text that should never win`;
@@ -175,17 +175,19 @@ test('renderActivity skips the chart and highlights for empty data', async () =>
   });
 });
 
-test('renderFooter writes the link, the year, and the staleness notice', async () => {
+test('renderFooter writes the link, the year, the refresh date, and the staleness notice', async () => {
   await withDom(async (dom) => {
     prepare(dom);
     const { renderFooter } = await import('../assets/js/render.js');
-    renderFooter(DATA);
+    const fresh = { ...DATA, history: [] };
+    renderFooter(fresh);
     assert.equal(dom.document.getElementById('github-link').href, 'https://github.com/tester');
     assert.equal(dom.document.getElementById('github-link').textContent, 'Tester on GitHub');
     assert.match(dom.document.getElementById('campfire-year').textContent, /© \d{4} Tester/);
+    assert.equal(dom.document.getElementById('data-refreshed').textContent, `Data refreshed ${fresh.activity.fetchedAt}.`);
     assert.equal(dom.document.getElementById('data-age').hidden, true);
 
-    const stale = { ...DATA, activity: { ...DATA.activity, fetchedAt: '2000-01-01' } };
+    const stale = { ...fresh, activity: { ...fresh.activity, fetchedAt: '2000-01-01' } };
     renderFooter(stale);
     assert.equal(dom.document.getElementById('data-age').hidden, false);
     assert.match(dom.document.getElementById('data-age').textContent, /daily refresh last updated/);

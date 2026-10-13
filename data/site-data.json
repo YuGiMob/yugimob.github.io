@@ -257,6 +257,13 @@
     "showHeroStats": true,
     "showCampfire": true
   },
+  "unlistedRepos": [
+    "pi-jina-webtools",
+    "pi-msg-queue",
+    "pi-tps-status",
+    "mypi",
+    "pi-edit-benchmark"
+  ],
   "history": [
     {
       "date": "2026-09-17",

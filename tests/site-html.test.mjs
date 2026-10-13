@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   applyGeneratedBlocks,
+  buildActivityBlock,
   buildColophonProseBlock,
   buildHeroStatsBlock,
   buildIntroParagraphs,
@@ -48,8 +49,8 @@ const PAGE = [
   '<ol id="problem-index"></ol>',
   '<div id="problem-list"></div>',
   '</section>',
-  '<section id="colophon"><div id="colophon-prose"></div><ul id="principles"></ul></section>',
-  '<footer id="campfire"></footer>',
+  '<section id="colophon"><div id="colophon-prose"></div><ul id="principles"></ul><div class="activity" id="activity-panel"></div></section>',
+  '<footer id="campfire"><p class="footer-note" id="data-refreshed"></p></footer>',
   '</body>',
   '</html>',
 ].join('\n');
@@ -86,6 +87,7 @@ test('the committed pre-rendered blocks already match the data files', () => {
   assert.equal(readBlock(source, 'div', 'problem-list'), buildProblemListBlock(SHOWCASE, projects));
   assert.equal(readBlock(source, 'div', 'colophon-prose'), buildColophonProseBlock(SHOWCASE));
   assert.equal(readBlock(source, 'ul', 'principles'), buildPrinciplesBlock(SHOWCASE));
+  assert.equal(readBlock(source, 'div', 'activity-panel'), buildActivityBlock(DATA));
 });
 
 test('the committed identity copy already matches the data', () => {
@@ -159,6 +161,8 @@ test('applyGeneratedBlocks rewrites every pre-rendered block', () => {
   assert.equal(readIntroParagraphs(next), buildIntroParagraphs(SHOWCASE));
   assert.equal(readBlock(next, 'ol', 'problem-index'), buildProblemIndexBlock(SHOWCASE, projects));
   assert.equal(readBlock(next, 'div', 'problem-list'), buildProblemListBlock(SHOWCASE, projects));
+  assert.equal(readBlock(next, 'div', 'activity-panel'), buildActivityBlock(DATA));
+  assert.match(next, /Data refreshed \d{4}-\d{2}-\d{2}\./);
   assert.match(next, /Five rules the tools enforce/);
 });
 

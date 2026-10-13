@@ -152,3 +152,46 @@ test('buildJsonFeed drops unusable history entries', () => {
 test('buildAgentReadability tolerates a document without activity', () => {
   assert.match(buildAgentReadability({ identity: { displayName: 'X', tagline: 'T' } }), /"updated": null/);
 });
+
+test('llms.txt states when the machine data was refreshed', () => {
+  assert.match(COMMITTED, /Data refreshed \d{4}-\d{2}-\d{2}\./);
+});
+
+test('buildLlmsTxt keeps a sentence that ends in an abbreviation', () => {
+  const problems = [{ ...SHOWCASE.problems[0], answer: 'Use e.g. This tool. It works.' }];
+  assert.match(buildLlmsTxt(DATA, { ...SHOWCASE, problems }), /Use e\.g\. This tool\./);
+  const initialism = [{ ...SHOWCASE.problems[0], answer: 'Built for the U.S. Then it spread.' }];
+  assert.match(buildLlmsTxt(DATA, { ...SHOWCASE, problems: initialism }), /Built for the U\.S\. Then it spread\./);
+});
+
+test('buildJsonFeed reports the change since the previous snapshot', () => {
+  const feed = JSON.parse(buildJsonFeed({ ...DATA, history: [
+    { date: '2026-01-01', totalStars: 10, totalDownloads: 100 },
+    { date: '2026-01-02', totalStars: 13, totalDownloads: 96 },
+    { date: '2026-01-03', totalStars: 14, totalDownloads: 100 },
+  ] }));
+  const newest = feed.items.find((item) => item.id.endsWith('#history-2026-01-03'));
+  assert.match(newest.content_text, /\+1 star and \+4 weekly installs since the previous snapshot/);
+  const middle = feed.items.find((item) => item.id.endsWith('#history-2026-01-02'));
+  assert.match(middle.content_text, /\+3 stars and -4 weekly installs since the previous snapshot/);
+  const oldest = feed.items.find((item) => item.id.endsWith('#history-2026-01-01'));
+  assert.ok(!oldest.content_text.includes('previous snapshot'));
+});
+
+test('buildJsonFeed spells out a snapshot with no change', () => {
+  const feed = JSON.parse(buildJsonFeed({ ...DATA, history: [
+    { date: '2026-01-01', totalStars: 10, totalDownloads: 100 },
+    { date: '2026-01-02', totalStars: 10, totalDownloads: 100 },
+    { date: '2026-01-03', totalStars: 11, totalDownloads: 100 },
+  ] }));
+  assert.match(feed.items.find((item) => item.id.endsWith('#history-2026-01-02')).content_text, /No change in stars or weekly installs since the previous snapshot\./);
+  assert.match(feed.items.find((item) => item.id.endsWith('#history-2026-01-03')).content_text, /\+1 star and no change in weekly installs since the previous snapshot\./);
+});
+
+test('index.md mirrors the refresh date in llms.txt', () => {
+  assert.match(COMMITTED_INDEX, /Data refreshed \d{4}-\d{2}-\d{2}\./);
+});
+
+test('buildAgentReadability dates the update from the newest history snapshot', () => {
+  assert.equal(JSON.parse(buildAgentReadability(DATA)).updated, DATA.history.at(-1).date);
+});

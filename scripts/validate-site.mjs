@@ -3,16 +3,16 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { problemsHeading, sectionVisibility } from '../assets/js/view-model.js';
+import { dataRefreshedDate, dataRefreshedNote, problemsHeading, sectionVisibility } from '../assets/js/view-model.js';
 import { DEMO_IDS } from '../assets/js/demos.js';
 import { colorDistance, contrastRatio, paletteFrom, simulateDichromacy } from './contrast-lib.mjs';
-import { buildColophonProseBlock, buildHeroStatsBlock, buildIntroParagraphs, buildPrinciplesBlock, buildProblemIndexBlock, buildProblemListBlock, buildStructuredDataBlock, readBlock, readHeroStatsBlock, readIntroParagraphs } from './site-html-lib.mjs';
+import { buildActivityBlock, buildColophonProseBlock, buildHeroStatsBlock, buildIntroParagraphs, buildPrinciplesBlock, buildProblemIndexBlock, buildProblemListBlock, buildStructuredDataBlock, readBlock, readHeroStatsBlock, readIntroParagraphs } from './site-html-lib.mjs';
 import { scriptSrcHash } from './csp-lib.mjs';
 import { SITE_REPOSITORY, SITE_URL } from './llms-lib.mjs';
 
 const ROOT = process.argv[2] ? resolve(process.argv[2]) : join(dirname(fileURLToPath(import.meta.url)), '..');
 const errors = [];
-const TRUSTED_TYPES_SINKS = /innerHTML|outerHTML|insertAdjacentHTML|srcdoc|createContextualFragment|parseHTMLUnsafe|setHTMLUnsafe|parseFromString|document\.writ(?:e|eln)\(|\beval\(|new (?:Async)?(?:Generator)?Function\(|importScripts\(|execCommand\(\s*['"]insertHTML|set(?:Timeout|Interval)\(\s*['"`]|setAttribute\(\s*['"](?:on[a-z]+|srcdoc)['"]/;
+const TRUSTED_TYPES_SINKS = /innerHTML|outerHTML|insertAdjacentHTML|srcdoc|createContextualFragment|parseHTMLUnsafe|setHTMLUnsafe|parseFromString|document\.writ(?:e|eln)\(|\beval\(|new (?:Async)?(?:Generator)?Function\(|importScripts\(|execCommand\(\s*['"]insertHTML|set(?:Timeout|Interval)\(\s*['"`]|setAttribute\(\s*['"](?:on[a-z]+|srcdoc)['"]|new\s+(?:Shared)?Worker\s*\(|navigator\s*\.\s*serviceWorker/;
 const CSP_STYLE_SINKS = /setAttribute\(\s*['"]style['"]/;
 
 function scriptSink(source) {
@@ -142,6 +142,9 @@ for (const file of listFiles('assets/js', '.js')) {
   if (styleSink) fail(`assets/js/${file}: sets an inline style attribute, which the CSP forbids (${styleSink[0]})`);
   const scriptSinkName = scriptSink(source);
   if (scriptSinkName) fail(`assets/js/${file}: uses a DOM sink that Trusted Types forbids (${scriptSinkName})`);
+  if (/(?:from\s+['"]node:|\bimport\s*\(\s*['"]node:|\brequire\s*\()/.test(source)) {
+    fail(`assets/js/${file}: uses a Node builtin, which the browser cannot load`);
+  }
 }
 for (const id of referencedIds) {
   if (!indexIds.has(id)) fail(`index.html: missing #${id} referenced by scripts`);
@@ -259,6 +262,29 @@ if (!filesBlock) {
   }
 }
 
+let packageScripts = {};
+try {
+  packageScripts = JSON.parse(readText('package.json')).scripts ?? {};
+} catch (err) {
+  fail(`package.json unusable for the script check: ${err.message}`);
+}
+for (const doc of ['README.md', 'CONTRIBUTING.md', 'AGENTS.md']) {
+  for (const match of readText(doc).matchAll(/`npm run ([\w:-]+)`/g)) {
+    if (!(match[1] in packageScripts)) fail(`${doc}: mentions npm script ${match[1]}, which package.json does not define`);
+  }
+}
+const moduleBlock = readText('CONTRIBUTING.md').match(/## Module boundaries\s+```\n([\s\S]*?)```/);
+if (!moduleBlock) fail('CONTRIBUTING.md: missing the module map');
+else {
+  const listed = new Set([...moduleBlock[1].matchAll(/^[ \t]+([\w.-]+\.js)\s/gm)].map((match) => match[1]));
+  for (const file of listFiles('assets/js', '.js')) {
+    if (!listed.has(file)) fail(`CONTRIBUTING.md: the module map is missing ${file}`);
+  }
+  for (const name of listed) {
+    if (!existsSync(join(ROOT, 'assets/js', name))) fail(`CONTRIBUTING.md: the module map lists ${name}, which does not exist`);
+  }
+}
+
 const demoTable = readme.match(/\| demo \| implementation \|\n\| --- \| --- \|\n([\s\S]*?)\n\n/);
 if (!demoTable) {
   fail('README.md: missing the Demos table');
@@ -276,6 +302,13 @@ const stylesheet = readText('assets/css/style.css');
 for (const match of stylesheet.matchAll(/url\('([^']+)'\)/g)) {
   const target = localTarget(match[1]);
   if (target && !existsSync(join(ROOT, 'assets', 'css', target))) fail(`assets/css/style.css: missing file ${match[1]}`);
+}
+const referencedFonts = new Set([...stylesheet.matchAll(/url\('([^']+)'\)/g)]
+  .map((match) => localTarget(match[1]))
+  .filter((target) => target && target.endsWith('.woff2'))
+  .map((target) => posix.normalize(`assets/css/${target}`)));
+for (const file of listFiles('assets/fonts', '.woff2')) {
+  if (!referencedFonts.has(`assets/fonts/${file}`)) fail(`assets/fonts/${file}: no @font-face references this file`);
 }
 const baseHtmlRule = [...stylesheet.matchAll(/([^{}]+)\{([^}]*)\}/g)].find((match) => match[1].split(',').some((selector) => /^html\b/.test(selector.trim())));
 if (!/scroll-padding-top:\s*\d+px/.test(baseHtmlRule?.[2] ?? '')) fail('assets/css/style.css: the html rule has no scroll-padding-top, so a focused anchor can be obscured by the sticky topbar');
@@ -368,6 +401,10 @@ for (const [page, source] of html) {
   const descriptionLength = (source.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? '').length;
   if (descriptionLength < 50 || descriptionLength > 200) fail(`${page}: the meta description length ${descriptionLength} is outside 50-200`);
 }
+const notFoundTitle = (html.get('404.html') ?? '').match(/<title>([^<]*)<\/title>/)?.[1] ?? '';
+if (siteData && typeof siteData.identity?.displayName === 'string' && !notFoundTitle.includes(siteData.identity.displayName)) {
+  fail('404.html: the title does not contain the display name');
+}
 const pageTitle = indexSource.match(/<title>([^<]*)<\/title>/)?.[1] ?? '';
 if (siteData && typeof siteData.identity?.displayName === 'string' && !pageTitle.includes(siteData.identity.displayName)) {
   fail('index.html: the title does not contain the display name');
@@ -410,6 +447,11 @@ for (const project of siteData?.projects ?? []) {
 if (siteData) {
   const heroBlock = readHeroStatsBlock(indexSource) ?? '';
   if (heroBlock !== buildHeroStatsBlock(siteData)) fail('index.html: the hero stat block does not match the machine data');
+  const activityBlock = readBlock(indexSource, 'div', 'activity-panel') ?? '';
+  if (activityBlock !== buildActivityBlock(siteData)) fail('index.html: the #activity-panel block does not match the machine data');
+  if (elementText(indexSource, 'data-refreshed') !== dataRefreshedNote(siteData)) {
+    fail('index.html: the refresh date does not match the machine data');
+  }
 }
 
 for (const [rel, target] of [['describedby', 'llms.txt'], ['describedby', 'agent-readability.json'], ['alternate', 'index.md'], ['alternate', 'feed.json']]) {
@@ -431,7 +473,7 @@ if (readability) {
   if (readability.description !== siteData?.identity?.tagline) fail('agent-readability.json: description does not match the tagline');
   if (readability.language !== 'en') fail('agent-readability.json: language is not en');
   if (readability.license !== 'MIT') fail('agent-readability.json: license is not MIT');
-  if (readability.updated !== (siteData?.activity?.fetchedAt ?? null)) fail('agent-readability.json: updated does not match the activity date');
+  if (readability.updated !== dataRefreshedDate(siteData)) fail('agent-readability.json: updated does not match the refresh date');
   const artifacts = readability.artifacts && typeof readability.artifacts === 'object' ? Object.values(readability.artifacts) : [];
   for (const file of ['llms.txt', 'index.md', 'feed.json', 'data/site-data.json', 'data/showcase.json', 'sitemap.xml']) {
     if (!artifacts.some((url) => typeof url === 'string' && url.endsWith(`/${file}`))) {

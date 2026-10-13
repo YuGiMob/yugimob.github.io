@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
-import { heroStatRows, problemEntries, problemId, problemIndexRows, problemsHeading, projectChipRows, sectionVisibility, structuredData } from '../assets/js/view-model.js';
+import { activityLine, dataRefreshedNote, heroStatRows, problemEntries, problemId, problemIndexRows, problemsHeading, projectChipRows, repositoryFacts, sectionVisibility, structuredData } from '../assets/js/view-model.js';
 import { formatNumber } from '../assets/js/numbers.js';
 import { writeFileAtomic } from './atomic-write.mjs';
 import { withScriptSrcHash } from './csp-lib.mjs';
@@ -50,6 +50,31 @@ export function buildHeroStatsBlock(siteData) {
   ].join('\n'));
   const hidden = siteData.sections?.showHeroStats === false ? ' hidden' : '';
   return [`        <dl class="intro-stats" id="hero-stats"${hidden}>`, ...rows, '        </dl>'].join('\n');
+}
+
+export function buildActivityBlock(siteData) {
+  const activity = siteData?.activity ?? {};
+  const lines = ['          <div class="activity" id="activity-panel">'];
+  lines.push('            <h3 class="activity-title">Public activity</h3>');
+  const parts = activityLine(activity);
+  const line = [`            <p class="activity-line">${escapeHtml(parts.pushes)}`];
+  if (parts.window) line.push(`, <span class="activity-window">${escapeHtml(parts.window)}</span>`);
+  line.push('.</p>');
+  lines.push(line.join(''));
+  const facts = repositoryFacts(siteData?.stats);
+  lines.push(`            <p class="activity-facts">${escapeHtml(`${facts.repositories} public repositories · ${facts.forks} forks received.`)}</p>`);
+  const highlights = Array.isArray(activity.highlights) ? activity.highlights : [];
+  if (highlights.length > 0) {
+    lines.push('            <h4 class="activity-subtitle">Recently</h4>');
+    lines.push('            <ul class="activity-highlights">');
+    for (const highlight of highlights) lines.push(`              <li class="activity-highlight">${escapeHtml(highlight)}</li>`);
+    lines.push('            </ul>');
+  }
+  if (typeof activity.fetchedAt === 'string' && activity.fetchedAt.length > 0) {
+    lines.push(`            <p class="activity-note">GitHub public events, fetched <time datetime="${escapeAttr(activity.fetchedAt)}">${escapeHtml(activity.fetchedAt)}</time>.</p>`);
+  }
+  lines.push('          </div>');
+  return lines.join('\n');
 }
 
 export function readHeroStatsBlock(source) {
@@ -240,6 +265,8 @@ export function buildPrinciplesBlock(showcase) {
 export function applyGeneratedBlocks(source, siteData, showcase = null) {
   let next = applyIdentityCopy(source, siteData);
   if (readHeroStatsBlock(next)) next = next.replace(BLOCK_PATTERN, () => buildHeroStatsBlock(siteData));
+  next = replaceBlock(next, 'div', 'activity-panel', buildActivityBlock(siteData)) ?? next;
+  next = setElementText(next, 'data-refreshed', dataRefreshedNote(siteData));
   const intro = INTRO_PATTERN.exec(next);
   if (showcase && intro) {
     next = next.replace(INTRO_PATTERN, () => `${intro[1]}\n${buildIntroParagraphs(showcase)}\n        ${intro[3]}`);

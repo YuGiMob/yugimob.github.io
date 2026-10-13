@@ -34,7 +34,8 @@ export function problemIndexRows(showcase, projects) {
 export function problemsHeading(showcase, projects) {
   const count = problemEntries(showcase, projects).length;
   const word = countWord(count);
-  return `${word.charAt(0).toUpperCase()}${word.slice(1)} rules the tools enforce`;
+  const noun = count === 1 ? 'rule' : 'rules';
+  return `${word.charAt(0).toUpperCase()}${word.slice(1)} ${noun} the tools enforce`;
 }
 
 export function heroStatRows(data) {
@@ -89,12 +90,22 @@ function dayCount(days) {
   return `${days} ${days === 1 ? 'day' : 'days'}`;
 }
 
-export const staleDays = elapsedDays;
+export function dataRefreshedDate(data) {
+  const history = Array.isArray(data?.history) ? data.history : [];
+  const newest = history.length > 0 ? history[history.length - 1]?.date : null;
+  if (typeof newest === 'string') return newest;
+  return typeof data?.activity?.fetchedAt === 'string' ? data.activity.fetchedAt : null;
+}
+
+export function dataRefreshedNote(data) {
+  const date = dataRefreshedDate(data);
+  return date ? `Data refreshed ${date}.` : '';
+}
 
 export function stalenessNotice(data, today, limit = STALE_AFTER_DAYS) {
-  const activityDays = staleDays(data.activity?.fetchedAt, today);
-  if (activityDays == null || activityDays <= limit) return null;
-  return `The daily refresh last updated this page ${dayCount(activityDays)} ago.`;
+  const refreshedDays = elapsedDays(dataRefreshedDate(data), today);
+  if (refreshedDays == null || refreshedDays <= limit) return null;
+  return `The daily refresh last updated this page ${dayCount(refreshedDays)} ago.`;
 }
 
 function resolvedUrl(value, baseUrl) {
@@ -132,7 +143,7 @@ export function structuredData(data, showcase, baseUrl = '') {
   return {
     '@context': 'https://schema.org',
     '@type': 'ProfilePage',
-    dateModified: data.activity?.fetchedAt || undefined,
+    dateModified: dataRefreshedDate(data) || undefined,
     mainEntity: {
       '@type': 'Person',
       name: data.identity.displayName,

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEMO_IDS } from '../assets/js/demos.js';
-import { HISTORY_LIMIT, isTimestamp, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS } from './refresh-lib.mjs';
+import { HISTORY_LIMIT, isTimestamp, MAX_ACTIVITY_DAYS, MAX_HIGHLIGHTS, windowRange } from './refresh-lib.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -341,6 +341,16 @@ if (isPlainObject(data)) {
     if (!isPlainObject(data.activity) || !Array.isArray(data.activity.daily) || typeof data.activity.pushes !== 'number') return;
     const total = data.activity.daily.reduce((sum, entry) => sum + (isPlainObject(entry) && typeof entry.pushes === 'number' ? entry.pushes : 0), 0);
     if (total !== data.activity.pushes) fail(`activity.pushes is ${data.activity.pushes}; the daily entries sum to ${total}`);
+  });
+  run(() => {
+    if (!isPlainObject(data.activity) || !Array.isArray(data.activity.daily)) return;
+    const daily = data.activity.daily.filter(isPlainObject);
+    if (daily.length === 0) return;
+    const first = daily[0]?.date;
+    const last = daily[daily.length - 1]?.date;
+    const expected = windowRange(first, last);
+    if (expected === null) return;
+    if (data.activity.window !== expected) fail(`activity.window is ${data.activity.window}; the daily entries span ${expected}`);
   });
 }
 
