@@ -107,19 +107,23 @@ test('the tor graphs draw every relay on the circuit path', () => {
   });
 });
 
-test('the tor packet travels the circuit and pulses its rings', () => {
+test('the tor packet peels a ring at each relay', () => {
   withDom((dom) => {
     const controller = buildDemo('tor');
     controller.start();
-    dom.runFrame(0);
-    dom.runFrame(1200);
-    const packet = findAll(controller.node, (node) => node.classList?.contains('tor-packet') === true)[0];
-    assert.ok(packet);
-    assert.equal(packet.getAttribute('opacity'), '1.00');
-    assert.match(packet.getAttribute('transform'), /^translate\(/);
     const rings = findAll(controller.node, (node) => node.classList?.contains('tor-ring') === true);
     assert.equal(rings.length, 6);
-    assert.notEqual(rings[0].getAttribute('r'), '3.0');
+    assert.deepEqual(rings.slice(0, 3).map((ring) => ring.getAttribute('r')), ['14', '10', '6']);
+    const opacities = () => rings.slice(0, 3).map((ring) => ring.getAttribute('opacity'));
+    dom.runFrame(0);
+    assert.deepEqual(opacities(), ['1', '1', '1']);
+    dom.runFrame(1200);
+    assert.deepEqual(opacities(), ['0', '1', '1']);
+    dom.runFrame(2600);
+    assert.deepEqual(opacities(), ['0', '0', '0']);
+    const packet = findAll(controller.node, (node) => node.classList?.contains('tor-packet') === true)[0];
+    assert.equal(packet.getAttribute('opacity'), '1.00');
+    assert.match(packet.getAttribute('transform'), /^translate\(/);
     controller.stop();
   });
 });
@@ -129,8 +133,10 @@ test('the tor packet is drawn statically when motion is reduced', () => {
     const controller = buildDemo('tor');
     controller.start();
     const packet = findAll(controller.node, (node) => node.classList?.contains('tor-packet') === true)[0];
+    const rings = findAll(controller.node, (node) => node.classList?.contains('tor-ring') === true);
     assert.equal(packet.getAttribute('opacity'), '1.00');
     assert.match(packet.getAttribute('transform'), /^translate\(/);
+    assert.deepEqual(rings.slice(0, 3).map((ring) => ring.getAttribute('opacity')), ['0', '0', '1']);
     controller.stop();
   }, { matchMedia: () => ({ matches: true }) });
 });

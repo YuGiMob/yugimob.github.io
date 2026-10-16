@@ -951,6 +951,7 @@ kbd {
   fill: none;
   stroke: var(--tor-circuit);
   stroke-width: 1.4;
+  transition: opacity 0.25s ease;
 }
 
 .tor-core {

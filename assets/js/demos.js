@@ -489,10 +489,16 @@ function torView(config) {
     }
   }
   const packet = svg('g', { class: 'tor-packet' });
-  const rings = [0, 1, 2].map(() => svg('circle', { r: '3', class: 'tor-ring' }));
-  append(packet, ...rings, svg('circle', { r: '3.5', class: 'tor-core' }));
+  const rings = [14, 10, 6].map((radius) => svg('circle', { r: String(radius), class: 'tor-ring' }));
+  append(packet, ...rings, svg('circle', { r: '4', class: 'tor-core' }));
   svgRoot.appendChild(packet);
-  return { svgRoot, circuitPath, packet, rings };
+  const distances = [0];
+  for (let index = 1; index < config.nodes.length; index += 1) {
+    const previous = config.nodes[index - 1];
+    const node = config.nodes[index];
+    distances.push(distances[index - 1] + Math.hypot(node.x - previous.x, node.y - previous.y));
+  }
+  return { svgRoot, circuitPath, packet, rings, distances };
 }
 
 function torDemo() {
@@ -530,37 +536,37 @@ function torDemo() {
   const views = [wide, tall];
   const HOP_MS = 780;
   const HOLD_MS = 900;
-  const LEGS = 4;
+  const LEGS = wide.distances.length - 1;
   const CYCLE_MS = HOP_MS * LEGS + HOLD_MS;
-  const PULSE_MS = 1500;
   const FADE_MS = 160;
 
-  function travelProgress(elapsed) {
+  function legProgress(elapsed) {
     const time = elapsed % CYCLE_MS;
-    if (time >= HOP_MS * LEGS) return 1;
+    if (time >= HOP_MS * LEGS) return { leg: LEGS - 1, within: 1 };
     const leg = Math.floor(time / HOP_MS);
     const within = (time - leg * HOP_MS) / HOP_MS;
-    const eased = within * within * (3 - 2 * within);
-    return (leg + eased) / LEGS;
+    return { leg, within: within * within * (3 - 2 * within) };
+  }
+
+  function pointAt(view, leg, within) {
+    const total = view.distances[view.distances.length - 1];
+    const length = view.distances[leg] + (view.distances[leg + 1] - view.distances[leg]) * within;
+    return view.circuitPath.getPointAtLength(view.circuitPath.getTotalLength() * (length / total));
   }
 
   function drawPacket(view, elapsed) {
-    const point = view.circuitPath.getPointAtLength(view.circuitPath.getTotalLength() * travelProgress(elapsed));
+    const { leg, within } = legProgress(elapsed);
+    const point = pointAt(view, leg, within);
     const time = elapsed % CYCLE_MS;
     const fade = Math.min(1, time / FADE_MS, (CYCLE_MS - time) / FADE_MS);
     view.packet.setAttribute('transform', `translate(${point.x.toFixed(1)} ${point.y.toFixed(1)})`);
     view.packet.setAttribute('opacity', fade.toFixed(2));
-    const pulse = (elapsed % PULSE_MS) / PULSE_MS;
-    view.rings.forEach((ring, index) => {
-      const phase = (pulse + index / view.rings.length) % 1;
-      ring.setAttribute('r', (3 + phase * 9).toFixed(1));
-      ring.setAttribute('opacity', ((1 - phase) * 0.55).toFixed(2));
-    });
+    view.rings.forEach((ring, index) => ring.setAttribute('opacity', leg > index ? '0' : '1'));
   }
 
   return createController(root, (runtime) => {
     if (reducedMotion()) {
-      for (const view of views) drawPacket(view, HOP_MS * LEGS);
+      for (const view of views) drawPacket(view, HOP_MS * 2);
       return;
     }
     let origin = null;
