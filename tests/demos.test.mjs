@@ -106,3 +106,31 @@ test('the tor graphs draw every relay on the circuit path', () => {
     }
   });
 });
+
+test('the tor packet travels the circuit and pulses its rings', () => {
+  withDom((dom) => {
+    const controller = buildDemo('tor');
+    controller.start();
+    dom.runFrame(0);
+    dom.runFrame(1200);
+    const packet = findAll(controller.node, (node) => node.classList?.contains('tor-packet') === true)[0];
+    assert.ok(packet);
+    assert.equal(packet.getAttribute('opacity'), '1.00');
+    assert.match(packet.getAttribute('transform'), /^translate\(/);
+    const rings = findAll(controller.node, (node) => node.classList?.contains('tor-ring') === true);
+    assert.equal(rings.length, 6);
+    assert.notEqual(rings[0].getAttribute('r'), '3.0');
+    controller.stop();
+  });
+});
+
+test('the tor packet is drawn statically when motion is reduced', () => {
+  withDom(() => {
+    const controller = buildDemo('tor');
+    controller.start();
+    const packet = findAll(controller.node, (node) => node.classList?.contains('tor-packet') === true)[0];
+    assert.equal(packet.getAttribute('opacity'), '1.00');
+    assert.match(packet.getAttribute('transform'), /^translate\(/);
+    controller.stop();
+  }, { matchMedia: () => ({ matches: true }) });
+});

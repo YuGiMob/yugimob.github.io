@@ -488,7 +488,11 @@ function torView(config) {
       svgRoot.appendChild(sub);
     }
   }
-  return svgRoot;
+  const packet = svg('g', { class: 'tor-packet' });
+  const rings = [0, 1, 2].map(() => svg('circle', { r: '3', class: 'tor-ring' }));
+  append(packet, ...rings, svg('circle', { r: '3.5', class: 'tor-core' }));
+  svgRoot.appendChild(packet);
+  return { svgRoot, circuitPath, packet, rings };
 }
 
 function torDemo() {
@@ -521,8 +525,50 @@ function torDemo() {
     ],
   });
   const legend = el('p', 'flow-note', 'dashed: direct request · solid: three-hop circuit · one circuit and exit IP per pi instance, verified against check.torproject.org');
-  append(stage, wide, tall, legend);
-  return createController(root, () => {});
+  append(stage, wide.svgRoot, tall.svgRoot, legend);
+
+  const views = [wide, tall];
+  const HOP_MS = 780;
+  const HOLD_MS = 900;
+  const LEGS = 4;
+  const CYCLE_MS = HOP_MS * LEGS + HOLD_MS;
+  const PULSE_MS = 1500;
+  const FADE_MS = 160;
+
+  function travelProgress(elapsed) {
+    const time = elapsed % CYCLE_MS;
+    if (time >= HOP_MS * LEGS) return 1;
+    const leg = Math.floor(time / HOP_MS);
+    const within = (time - leg * HOP_MS) / HOP_MS;
+    const eased = within * within * (3 - 2 * within);
+    return (leg + eased) / LEGS;
+  }
+
+  function drawPacket(view, elapsed) {
+    const point = view.circuitPath.getPointAtLength(view.circuitPath.getTotalLength() * travelProgress(elapsed));
+    const time = elapsed % CYCLE_MS;
+    const fade = Math.min(1, time / FADE_MS, (CYCLE_MS - time) / FADE_MS);
+    view.packet.setAttribute('transform', `translate(${point.x.toFixed(1)} ${point.y.toFixed(1)})`);
+    view.packet.setAttribute('opacity', fade.toFixed(2));
+    const pulse = (elapsed % PULSE_MS) / PULSE_MS;
+    view.rings.forEach((ring, index) => {
+      const phase = (pulse + index / view.rings.length) % 1;
+      ring.setAttribute('r', (3 + phase * 9).toFixed(1));
+      ring.setAttribute('opacity', ((1 - phase) * 0.55).toFixed(2));
+    });
+  }
+
+  return createController(root, (runtime) => {
+    if (reducedMotion()) {
+      for (const view of views) drawPacket(view, HOP_MS * LEGS);
+      return;
+    }
+    let origin = null;
+    runtime.frame((now) => {
+      if (origin === null) origin = now;
+      for (const view of views) drawPacket(view, now - origin);
+    });
+  });
 }
 
 function workflowDemo() {

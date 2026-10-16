@@ -943,6 +943,20 @@ kbd {
   font-size: 8.5px;
 }
 
+.tor-packet {
+  pointer-events: none;
+}
+
+.tor-ring {
+  fill: none;
+  stroke: var(--tor-circuit);
+  stroke-width: 1.4;
+}
+
+.tor-core {
+  fill: var(--accent);
+}
+
 .wf-phase {
   padding: 12px 14px;
   border: 1px solid var(--rule);
