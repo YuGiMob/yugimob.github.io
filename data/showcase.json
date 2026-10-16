@@ -74,7 +74,7 @@
       "kicker": "Gate the commit",
       "headline": "The agent commits like it owns the repo",
       "problem": "An agent with shell access will eventually run git commit -am \"fix\", or stage a file you never looked at. A rule in a prompt is not a guardrail.",
-      "answer": "The bash guard blocks mutative git commands before they run. Commits go through git_commit with a type and a message, and only after a human runs /commit; /amend rewrites the last commit's message through git_amend, and /stop-commit closes either flow. The tools stay listed all session, so the gate never invalidates the provider's prompt cache.",
+      "answer": "The bash guard blocks mutative git commands before they run. Commits go through git_commit with a type and a message, and only after a human runs /commit; /amend folds the current changes into the last commit and rewrites its message through git_amend, and /stop-commit closes either flow. The tools stay listed all session, so the gate never invalidates the provider's prompt cache.",
       "highlights": [
         "Mutative git commands in bash are blocked",
         "FIX, IMPROVE, and NEW typed commits",

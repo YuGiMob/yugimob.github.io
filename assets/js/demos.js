@@ -560,7 +560,7 @@ function gitDemo() {
     { text: '   git_commit refuses until /commit opens the flow', cls: 'is-dim', wrap: true },
     { text: '$ /amend tighten the subject', pause: 700, kind: 'call' },
     { text: '✓ amended 9c1f3a2  FIX: guard the commit path', cls: 'is-ok' },
-    { text: '   git_amend rewrites the message and timestamp only', cls: 'is-dim', wrap: true },
+    { text: '   git_amend stages all changes, folds them into the last commit, and refreshes the timestamp', cls: 'is-dim', wrap: true },
   ]);
 }
 

@@ -2,7 +2,7 @@
 
 > Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, review workflows, and a human gate in front of every commit.
 
-Data refreshed 2026-10-11.
+Data refreshed 2026-10-13.
 
 I build extensions for pi, the terminal coding agent. Each one takes a class of mistake that instructions alone cannot reliably prevent and moves it into the tool, where it is impossible, refused, or visible.
 
@@ -25,7 +25,7 @@ Line numbers shift the moment anything above them changes, and fuzzy matching ca
 - copy and move work across files
 - Same-message edits batch into one undoable change
 
-Install: `pi install npm:pi-hashline-edit-pro`. Stars 108, 3,992 npm installs per week.
+Install: `pi install npm:pi-hashline-edit-pro`. Stars 109, 4,506 npm installs per week.
 
 ### 02. Web access costs a key and returns soup
 
@@ -40,7 +40,7 @@ Almost every way to give an agent the web wants an API key, a paid tier, or a br
 - Browser-fingerprint transport for refused pages
 - Local rendering; no third-party service
 
-Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 1,069 npm installs per week.
+Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 343 npm installs per week.
 
 ### 03. Agent traffic leaks where it comes from
 
@@ -55,7 +55,7 @@ The moment an agent fetches a URL, your IP and resolver travel with the request.
 - Exit IP verified against check.torproject.org
 - /tor-cycle, /tor-country, /tor-exclude
 
-Install: `pi install npm:pi-tor-proxy`. Stars 3, 16 npm installs per week.
+Install: `pi install npm:pi-tor-proxy`. Stars 3, 15 npm installs per week.
 
 ### 04. Long runs forget the plan
 
@@ -70,7 +70,7 @@ Ask for a review in three passes and the original plan, the corrections, and the
 - /workflow-edit edits the plan in place
 - Six workflows ship by default
 
-Install: `pi install npm:pi-msg-workflow`. Stars 1, 10 npm installs per week.
+Install: `pi install npm:pi-msg-workflow`. Stars 1, 9 npm installs per week.
 
 ### 05. The agent commits like it owns the repo
 
@@ -78,14 +78,14 @@ Install: `pi install npm:pi-msg-workflow`. Stars 1, 10 npm installs per week.
 
 An agent with shell access will eventually run git commit -am "fix", or stage a file you never looked at. A rule in a prompt is not a guardrail.
 
-**Built:** [pi-git-commit](https://github.com/YuGiMob/pi-git-commit) — The bash guard blocks mutative git commands before they run. Commits go through git_commit with a type and a message, and only after a human runs /commit; /amend rewrites the last commit's message through git_amend, and /stop-commit closes either flow. The tools stay listed all session, so the gate never invalidates the provider's prompt cache.
+**Built:** [pi-git-commit](https://github.com/YuGiMob/pi-git-commit) — The bash guard blocks mutative git commands before they run. Commits go through git_commit with a type and a message, and only after a human runs /commit; /amend folds the current changes into the last commit and rewrites its message through git_amend, and /stop-commit closes either flow. The tools stay listed all session, so the gate never invalidates the provider's prompt cache.
 
 - Mutative git commands in bash are blocked
 - FIX, IMPROVE, and NEW typed commits
 - The flow opens only after /commit or /amend
 - The tool set never changes mid-session
 
-Install: `pi install npm:pi-git-commit`. Stars 2, 382 npm installs per week.
+Install: `pi install npm:pi-git-commit`. Stars 2, 539 npm installs per week.
 
 ## Principles
 

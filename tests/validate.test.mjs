@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { formatNumber } from '../assets/js/numbers.js';
+import { activityLine } from '../assets/js/view-model.js';
 import { ROOT, withRepoCopy } from './helpers.mjs';
 
 function readJson(copy, relativePath) {
@@ -407,7 +409,9 @@ test('the site validator refuses a markdown mirror missing a project', () => {
 
 test('the site validator refuses a drifted hero stat block', () => {
   expectSite((copy) => {
-    patch(copy, 'index.html', '<dd class="stat-value" aria-hidden="true">118</dd>', '<dd class="stat-value" aria-hidden="true">0</dd>');
+    const stars = formatNumber(readJson(copy, 'data/site-data.json').stats.totalStars);
+    const drifted = stars === '0' ? '1' : '0';
+    patch(copy, 'index.html', `<dd class="stat-value" aria-hidden="true">${stars}</dd>`, `<dd class="stat-value" aria-hidden="true">${drifted}</dd>`);
   }, /hero stat block does not match the machine data/);
 });
 
@@ -781,7 +785,9 @@ test('the site validator refuses a 404 title without the display name', () => {
 
 test('the site validator refuses a drifted activity summary and refresh date', () => {
   expectSite((copy) => {
-    patch(copy, 'index.html', '139 pushes to public repositories', '0 pushes to public repositories');
+    const activity = readJson(copy, 'data/site-data.json').activity;
+    const pushes = activity.pushes ?? 0;
+    patch(copy, 'index.html', activityLine(activity).pushes, `${pushes + 1} pushes to public repositories`);
   }, /#activity-panel block does not match the machine data/);
   expectSite((copy) => {
     patch(copy, 'index.html', 'id="data-refreshed">Data refreshed', 'id="data-refreshed">Data refreshed soon:');

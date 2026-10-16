@@ -14,13 +14,13 @@
       "name": "pi-hashline-edit-pro",
       "description": "Anchor-addressed read, replace, replace_match, insert, copy, move, grep, and undo_last_change tools for the pi coding agent; every served line gets a unique 4-character anchor",
       "language": "TypeScript",
-      "stars": 108,
+      "stars": 109,
       "forks": 32,
       "url": "https://github.com/YuGiMob/pi-hashline-edit-pro",
       "npm": "pi-hashline-edit-pro",
       "license": "MIT",
-      "npmWeeklyDownloads": 3992,
-      "pushedAt": "2026-10-10T19:56:34Z"
+      "npmWeeklyDownloads": 4506,
+      "pushedAt": "2026-10-12T14:00:42Z"
     },
     {
       "name": "pi-tor-proxy",
@@ -31,7 +31,7 @@
       "url": "https://github.com/YuGiMob/pi-tor-proxy",
       "npm": "pi-tor-proxy",
       "license": "MIT",
-      "npmWeeklyDownloads": 16,
+      "npmWeeklyDownloads": 15,
       "pushedAt": "2026-09-21T23:06:20Z"
     },
     {
@@ -43,7 +43,7 @@
       "url": "https://github.com/YuGiMob/pi-git-commit",
       "npm": "pi-git-commit",
       "license": "MIT",
-      "npmWeeklyDownloads": 382,
+      "npmWeeklyDownloads": 539,
       "pushedAt": "2026-10-07T06:12:10Z"
     },
     {
@@ -55,7 +55,7 @@
       "url": "https://github.com/YuGiMob/pi-msg-workflow",
       "npm": "pi-msg-workflow",
       "license": "MIT",
-      "npmWeeklyDownloads": 10,
+      "npmWeeklyDownloads": 9,
       "pushedAt": "2026-09-21T22:52:27Z"
     },
     {
@@ -67,7 +67,7 @@
       "url": "https://github.com/YuGiMob/pi-unsloth-webtools",
       "npm": "pi-unsloth-webtools",
       "license": "AGPL-3.0",
-      "npmWeeklyDownloads": 1069,
+      "npmWeeklyDownloads": 343,
       "pushedAt": "2026-10-05T08:06:44Z"
     }
   ],
@@ -78,8 +78,8 @@
     "forksReceived": 33
   },
   "activity": {
-    "window": "2026-09-09..2026-10-10",
-    "pushes": 139,
+    "window": "2026-09-11..2026-10-13",
+    "pushes": 152,
     "highlights": [
       "closed issue #59 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #60 on YuGiMob/pi-hashline-edit-pro",
@@ -87,27 +87,17 @@
       "starred HanzCEO/pi-codebase-reader",
       "starred kunkun9527/pi-hashline-edit-pro-lean"
     ],
-    "fetchedAt": "2026-10-11",
+    "fetchedAt": "2026-10-13",
     "daily": [
       {
-        "date": "2026-09-09",
+        "date": "2026-09-11",
         "events": 1,
         "pushes": 1
       },
       {
-        "date": "2026-09-10",
-        "events": 2,
-        "pushes": 2
-      },
-      {
-        "date": "2026-09-11",
-        "events": 12,
-        "pushes": 2
-      },
-      {
         "date": "2026-09-12",
-        "events": 6,
-        "pushes": 1
+        "events": 0,
+        "pushes": 0
       },
       {
         "date": "2026-09-13",
@@ -248,6 +238,21 @@
         "date": "2026-10-10",
         "events": 2,
         "pushes": 2
+      },
+      {
+        "date": "2026-10-11",
+        "events": 6,
+        "pushes": 5
+      },
+      {
+        "date": "2026-10-12",
+        "events": 6,
+        "pushes": 5
+      },
+      {
+        "date": "2026-10-13",
+        "events": 9,
+        "pushes": 8
       }
     ]
   },
@@ -344,6 +349,11 @@
       "date": "2026-10-11",
       "totalStars": 118,
       "totalDownloads": 5469
+    },
+    {
+      "date": "2026-10-13",
+      "totalStars": 118,
+      "totalDownloads": 5412
     }
   ]
 }
