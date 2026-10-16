@@ -2,7 +2,7 @@
 
 > Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, review workflows, and a human gate in front of every commit.
 
-Data refreshed 2026-10-13.
+Data refreshed 2026-10-16.
 
 I build extensions for pi, the terminal coding agent. Each one takes a class of mistake that instructions alone cannot reliably prevent and moves it into the tool, where it is impossible, refused, or visible.
 
@@ -12,11 +12,11 @@ The source is on GitHub, the page is hand-written and static, and the numbers re
 
 ## Tools
 
-- [pi-hashline-edit-pro](https://github.com/YuGiMob/pi-hashline-edit-pro): Every line a tool serves gets its own four-letter anchor. Install: `pi install npm:pi-hashline-edit-pro`. Stars 109, 4,506 npm installs per week.
-- [pi-unsloth-webtools](https://github.com/YuGiMob/pi-unsloth-webtools): Two keyless tools: web_search sweeps DuckDuckGo and Startpage by default and fuses their rankings; web_fetch normalizes a URL, extracts HTML or PDF text to Markdown with page metadata, and retries a refusal through a browser-fingerprint transport. Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 343 npm installs per week.
-- [pi-tor-proxy](https://github.com/YuGiMob/pi-tor-proxy): The extension manages its own Tor binary and routes every request through it. Install: `pi install npm:pi-tor-proxy`. Stars 3, 15 npm installs per week.
-- [pi-msg-workflow](https://github.com/YuGiMob/pi-msg-workflow): Numbered message and command stores live in editable files, so the plan does not depend on the context window. Install: `pi install npm:pi-msg-workflow`. Stars 1, 9 npm installs per week.
-- [pi-git-commit](https://github.com/YuGiMob/pi-git-commit): The bash guard blocks mutative git commands before they run. Install: `pi install npm:pi-git-commit`. Stars 2, 539 npm installs per week.
+- [pi-hashline-edit-pro](https://github.com/YuGiMob/pi-hashline-edit-pro): Every line a tool serves gets its own four-letter anchor. Install: `pi install npm:pi-hashline-edit-pro`. Stars 112, 4,127 npm installs per week.
+- [pi-unsloth-webtools](https://github.com/YuGiMob/pi-unsloth-webtools): Two keyless tools: web_search sweeps DuckDuckGo and Startpage by default and fuses their rankings; web_fetch normalizes a URL, extracts HTML or PDF text to Markdown with page metadata, and retries a refusal through a browser-fingerprint transport. Install: `pi install npm:pi-unsloth-webtools`. Stars 2, 147 npm installs per week.
+- [pi-tor-proxy](https://github.com/YuGiMob/pi-tor-proxy): The extension manages its own Tor binary and routes every request through it. Install: `pi install npm:pi-tor-proxy`. Stars 3, 16 npm installs per week.
+- [pi-msg-workflow](https://github.com/YuGiMob/pi-msg-workflow): Numbered message and command stores live in editable files, so the plan does not depend on the context window. Install: `pi install npm:pi-msg-workflow`. Stars 1, 16 npm installs per week.
+- [pi-git-commit](https://github.com/YuGiMob/pi-git-commit): The bash guard blocks mutative git commands before they run. Install: `pi install npm:pi-git-commit`. Stars 2, 392 npm installs per week.
 
 ## Data
 
