@@ -78,8 +78,8 @@
     "forksReceived": 33
   },
   "activity": {
-    "window": "2026-09-15..2026-10-16",
-    "pushes": 148,
+    "window": "2026-09-16..2026-10-16",
+    "pushes": 144,
     "highlights": [
       "reopened issue #65 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #65 on YuGiMob/pi-hashline-edit-pro",
@@ -87,17 +87,12 @@
       "closed issue #60 on YuGiMob/pi-hashline-edit-pro",
       "closed issue #61 on YuGiMob/pi-hashline-edit-pro"
     ],
-    "fetchedAt": "2026-10-16",
+    "fetchedAt": "2026-10-17",
     "daily": [
       {
-        "date": "2026-09-15",
-        "events": 4,
-        "pushes": 4
-      },
-      {
         "date": "2026-09-16",
-        "events": 5,
-        "pushes": 5
+        "events": 3,
+        "pushes": 3
       },
       {
         "date": "2026-09-17",
@@ -246,8 +241,8 @@
       },
       {
         "date": "2026-10-16",
-        "events": 2,
-        "pushes": 0
+        "events": 5,
+        "pushes": 2
       }
     ]
   },
@@ -352,6 +347,11 @@
     },
     {
       "date": "2026-10-16",
+      "totalStars": 121,
+      "totalDownloads": 4698
+    },
+    {
+      "date": "2026-10-17",
       "totalStars": 121,
       "totalDownloads": 4698
     }

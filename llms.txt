@@ -2,7 +2,7 @@
 
 > Extensions for the pi coding agent: anchored edits, keyless web tools, Tor routing, review workflows, and a human gate in front of every commit.
 
-Data refreshed 2026-10-16.
+Data refreshed 2026-10-17.
 
 I build extensions for pi, the terminal coding agent. Each one takes a class of mistake that instructions alone cannot reliably prevent and moves it into the tool, where it is impossible, refused, or visible.
 
